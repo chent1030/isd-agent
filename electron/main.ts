@@ -1,5 +1,18 @@
 import { app, BrowserWindow, ipcMain, session } from 'electron'
 import path from 'path'
+import fs from 'fs'
+import * as dotenv from 'dotenv'
+
+// 优先加载 resourcesPath 下的 .env（打包后），其次当前目录（开发时）
+const envPaths = [
+  path.join(process.resourcesPath ?? '', '.env'),
+  path.join(app.getPath('userData'), '.env'),
+  path.join(process.cwd(), '.env'),
+]
+for (const p of envPaths) {
+  if (fs.existsSync(p)) { dotenv.config({ path: p }); break }
+}
+
 import { registerFaceHandlers } from './ipc/face'
 import { registerSTTHandlers } from './ipc/stt'
 import { registerTTSHandlers } from './ipc/tts'

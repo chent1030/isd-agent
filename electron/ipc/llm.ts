@@ -1,95 +1,19 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import axios from 'axios'
 import * as dotenv from 'dotenv'
-import { getSkillsAsTools, executeSkill } from './skills'
+import { buildSkillsSystemPrompt, loadSkillContent, executeSkillScript } from './skills'
 dotenv.config()
 
 interface Message {
   role: string
-  content: string | object
-}
-
-// 递归处理 tool_use：LLM 返回 tool_use → 执行 skill → 把结果作为 tool_result 再次调用 LLM
-async function chatWithTools(
-  messages: Message[],
-  url: string,
-  headers: Record<string, string>,
-  onChunk: (chunk: string) => void,
-  depth = 0
-): Promise<void> {
-  if (depth > 5) return // 防止无限循环
-
-  const tools = getSkillsAsTools()
-
-  // 先用非流式请求检测是否有 tool_use（流式 + tool_use 处理复杂，分两步）
-  const checkResp = await axios.post(
-    url,
-    { messages, tools: tools.length > 0 ? tools : undefined, stream: false },
-    { headers, timeout: 60000 }
-  )
-
-  const respData = checkResp.data
-  const stopReason = respData.stop_reason ?? respData.finish_reason ?? ''
-  const content = respData.content ?? respData.choices?.[0]?.message?.content ?? ''
-
-  // 判断是否触发了 tool_use
-  const toolUseBlocks = Array.isArray(respData.content)
-    ? respData.content.filter((b: any) => b.type === 'tool_use')
-    : []
-
-  if (toolUseBlocks.length > 0 && (stopReason === 'tool_use' || stopReason === 'tool_calls')) {
-    // 先把 LLM 的 assistant 消息（含 tool_use）加入历史
-    const assistantMsg: Message = { role: 'assistant', content: respData.content }
-
-    // 执行所有 tool_use
-    const toolResults: object[] = []
-    for (const block of toolUseBlocks) {
-      onChunk(`\n[调用技能: ${block.name}]\n`)
-      try {
-        const result = await executeSkill(block.name, block.input ?? {})
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: result,
-        })
-      } catch (e: any) {
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: `Error: ${e?.message ?? 'unknown'}`,
-          is_error: true,
-        })
-      }
-    }
-
-    // 把 tool_result 加入消息，再次调用 LLM（流式输出最终回答）
-    const nextMessages: Message[] = [
-      ...messages,
-      assistantMsg,
-      { role: 'user', content: toolResults },
-    ]
-    return chatWithTools(nextMessages, url, headers, onChunk, depth + 1)
-  }
-
-  // 没有 tool_use，直接流式输出（或把非流式结果分块发出）
-  const textContent = typeof content === 'string'
-    ? content
-    : Array.isArray(content)
-      ? content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-      : ''
-
-  if (textContent) {
-    // 模拟流式：按句子分块发送
-    const chunks = textContent.match(/[\s\S]{1,30}/g) ?? [textContent]
-    for (const chunk of chunks) {
-      onChunk(chunk)
-      await new Promise(r => setTimeout(r, 8))
-    }
-  }
+  content: string
 }
 
 export function registerLLMHandlers() {
-  ipcMain.handle('llm:chat', async (event, { messages, channel }: { messages: Message[], channel: string }) => {
+  ipcMain.handle('llm:chat', async (
+    event,
+    { messages, channel, isAuthenticated }: { messages: Message[]; channel: string; isAuthenticated: boolean }
+  ) => {
     const url = process.env.LLM_API_URL
     const key = process.env.LLM_API_KEY
     if (!url) throw new Error('LLM_API_URL not configured')
@@ -102,12 +26,92 @@ export function registerLLMHandlers() {
       ...(key ? { Authorization: `Bearer ${key}` } : {}),
     }
 
-    await chatWithTools(
-      messages,
+    // 构建 system prompt，注入可用 skills 列表（只有名称+描述，不注入正文）
+    const skillsBlock = await buildSkillsSystemPrompt(isAuthenticated)
+    const systemPrompt = [
+      '你是一个智能助手。',
+      skillsBlock,
+      skillsBlock
+        ? '当用户的需求匹配某个 skill 时，先回复 <use_skill name="skill名称"/> 让系统加载该 skill 的完整内容，再执行。'
+        : '',
+    ].filter(Boolean).join('\n\n')
+
+    const fullMessages: Message[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ]
+
+    // 流式请求
+    const resp = await axios.post(
       url,
-      headers,
-      (chunk) => win.webContents.send(channel, chunk),
+      { messages: fullMessages, stream: true },
+      { headers, responseType: 'stream', timeout: 60000 }
     )
+
+    let buffer = ''
+    let pendingSkillName: string | null = null
+
+    await new Promise<void>((resolve, reject) => {
+      resp.data.on('data', async (chunk: Buffer) => {
+        buffer += chunk.toString()
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') { resolve(); return }
+
+          try {
+            const json = JSON.parse(data)
+            const text: string =
+              json.choices?.[0]?.delta?.content ??
+              json.delta?.text ?? ''
+
+            if (!text) continue
+
+            // 检测 <use_skill name="..."/> 标记
+            const skillMatch = text.match(/<use_skill name="([^"]+)"\s*\/>/)
+            if (skillMatch) {
+              pendingSkillName = skillMatch[1]
+              win.webContents.send(channel, `\n[加载技能: ${pendingSkillName}]\n`)
+
+              try {
+                // 按需加载 skill 完整内容，追加到消息后再继续（此处简化：通知前端）
+                const skillContent = await loadSkillContent(pendingSkillName)
+                win.webContents.send(channel, `__SKILL_CONTENT__${skillContent}`)
+              } catch (e: any) {
+                win.webContents.send(channel, `[技能加载失败: ${e?.message}]\n`)
+              }
+              pendingSkillName = null
+              continue
+            }
+
+            // 检测 <run_skill name="..." params='...'/>
+            const runMatch = text.match(/<run_skill name="([^"]+)" params='([^']+)'\s*\/>/)
+            if (runMatch) {
+              const [, name, paramsStr] = runMatch
+              win.webContents.send(channel, `\n[执行技能: ${name}]\n`)
+              try {
+                const params = JSON.parse(paramsStr)
+                const result = await executeSkillScript(name, params)
+                win.webContents.send(channel, `__SKILL_RESULT__${result}`)
+              } catch (e: any) {
+                win.webContents.send(channel, `[技能执行失败: ${e?.message}]\n`)
+              }
+              continue
+            }
+
+            win.webContents.send(channel, text)
+          } catch {
+            // 忽略解析错误
+          }
+        }
+      })
+
+      resp.data.on('end', resolve)
+      resp.data.on('error', reject)
+    })
 
     win.webContents.send(channel, '[DONE]')
   })

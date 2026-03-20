@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-CFjPhJqf.js";import{p as t}from"./chunk-XZSTWKYB-DjnI6khj.js";import{n,r}from"./chunk-XIRO2GV7-B7h7QevT.js";e((()=>{r(),t()}))();export{n as createPieServices};

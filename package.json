@@ -25,13 +25,16 @@
     "files": [
       "dist/**/*",
       "skills/**/*",
-      ".env",
       "node_modules/**/*"
     ],
     "extraResources": [
       {
         "from": "skills",
         "to": "skills"
+      },
+      {
+        "from": ".env.example",
+        "to": ".env.example"
       }
     ],
     "mac": {
@@ -62,6 +65,7 @@
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
     "form-data": "^4.0.5",
+    "gray-matter": "^4.0.3",
     "katex": "^0.16.39",
     "mermaid": "^11.13.0",
     "react": "^19.2.4",

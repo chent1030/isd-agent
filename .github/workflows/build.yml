@@ -22,18 +22,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create .env
-        run: |
-          cat > .env << EOF
-          FACE_API_URL=${{ secrets.FACE_API_URL }}
-          STT_API_URL=${{ secrets.STT_API_URL }}
-          TTS_API_URL=${{ secrets.TTS_API_URL }}
-          LLM_API_URL=${{ secrets.LLM_API_URL }}
-          LLM_API_KEY=${{ secrets.LLM_API_KEY }}
-          DIFY_API_URL=${{ secrets.DIFY_API_URL }}
-          DIFY_API_KEY=${{ secrets.DIFY_API_KEY }}
-          EOF
-
       - name: Build & Package
         run: npm run dist -- --mac
         env:
@@ -69,19 +57,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Create .env
-        shell: pwsh
-        run: |
-          @"
-          FACE_API_URL=${{ secrets.FACE_API_URL }}
-          STT_API_URL=${{ secrets.STT_API_URL }}
-          TTS_API_URL=${{ secrets.TTS_API_URL }}
-          LLM_API_URL=${{ secrets.LLM_API_URL }}
-          LLM_API_KEY=${{ secrets.LLM_API_KEY }}
-          DIFY_API_URL=${{ secrets.DIFY_API_URL }}
-          DIFY_API_KEY=${{ secrets.DIFY_API_KEY }}
-          "@ | Out-File -FilePath .env -Encoding utf8
 
       - name: Build & Package
         run: npm run dist -- --win
