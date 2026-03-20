@@ -1,0 +1,14 @@
+{
+  "name": "query_employee",
+  "description": "根据员工姓名或工号查询员工基本信息，当用户询问员工相关信息、查找同事、查询工号等时调用此工具",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "keyword": {
+        "type": "string",
+        "description": "员工姓名或工号，例如：张三、12312312"
+      }
+    },
+    "required": ["keyword"]
+  }
+}
