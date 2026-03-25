@@ -23,11 +23,20 @@ cp .env.example .env
 ```
 FACE_API_URL=http://your-internal-api/face/recognize
 STT_API_URL=http://your-internal-api/stt/transcribe
+STT_MODEL=whisper-1
+STT_FILE_FIELD=file
+STT_API_KEY=
 TTS_API_URL=http://your-internal-api/tts/synthesize
 LLM_API_URL=http://your-internal-api/llm/chat
 LLM_API_KEY=your-key-here
 LLM_MODEL=gpt-4o-mini
 ```
+
+`STT`（NewAPI）约定：
+- 使用 `multipart/form-data`
+- 音频字段默认 `file`，文件名 `audio.wav`，格式 `audio/wav`
+- 携带 `model` 字段（来自 `STT_MODEL`）
+- 响应示例：`{"text":"xxx","task":"transcribe","language":"中文","duration":null}`
 
 会话链路由页面模式决定：
 - 未认证（访客）：仅问答模式，走 Dify

@@ -2,7 +2,12 @@ import { SkillManifest } from './index'
 
 export interface ElectronAPI {
   recognizeFace: (imageBase64: string) => Promise<{ empName: string; empWorkNo: string } | null>
-  transcribeAudio: (audioBuffer: ArrayBuffer) => Promise<{ text: string }>
+  transcribeAudio: (audioBuffer: ArrayBuffer) => Promise<{
+    text: string
+    task?: string
+    language?: string
+    duration?: number | null
+  }>
   synthesizeSpeech: (text: string) => Promise<ArrayBuffer>
   chatStream: (
     messages: Array<{ role: string; content: string }>,

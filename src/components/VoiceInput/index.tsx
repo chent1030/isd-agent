@@ -10,6 +10,55 @@ type RecordState = 'idle' | 'recording' | 'processing'
 const SILENCE_THRESHOLD = 0.01
 const SILENCE_DURATION = 1500
 
+function encodeWav(audioBuffer: AudioBuffer): ArrayBuffer {
+  const numChannels = 1
+  const sampleRate = audioBuffer.sampleRate
+  const samples = audioBuffer.length
+  const bytesPerSample = 2
+  const blockAlign = numChannels * bytesPerSample
+  const byteRate = sampleRate * blockAlign
+  const dataSize = samples * blockAlign
+  const buffer = new ArrayBuffer(44 + dataSize)
+  const view = new DataView(buffer)
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+  }
+
+  writeString(0, 'RIFF')
+  view.setUint32(4, 36 + dataSize, true)
+  writeString(8, 'WAVE')
+  writeString(12, 'fmt ')
+  view.setUint32(16, 16, true) // PCM chunk size
+  view.setUint16(20, 1, true) // PCM format
+  view.setUint16(22, numChannels, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, byteRate, true)
+  view.setUint16(32, blockAlign, true)
+  view.setUint16(34, 16, true) // bits per sample
+  writeString(36, 'data')
+  view.setUint32(40, dataSize, true)
+
+  const channelData = audioBuffer.getChannelData(0)
+  let offset = 44
+  for (let i = 0; i < channelData.length; i++) {
+    const s = Math.max(-1, Math.min(1, channelData[i]))
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+    offset += 2
+  }
+  return buffer
+}
+
+async function webmToWav(webmBuffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const ctx = new AudioContext()
+  try {
+    const decoded = await ctx.decodeAudioData(webmBuffer.slice(0))
+    return encodeWav(decoded)
+  } finally {
+    await ctx.close()
+  }
+}
+
 export default function VoiceInput({ onTranscribed, disabled }: Props) {
   const [state, setState] = useState<RecordState>('idle')
   const [volume, setVolume] = useState(0)
@@ -64,9 +113,10 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
     recorder.onstop = async () => {
       stream.getTracks().forEach(t => t.stop())
       const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-      const buffer = await blob.arrayBuffer()
+      const webmBuffer = await blob.arrayBuffer()
       try {
-        const result = await window.electronAPI.transcribeAudio(buffer)
+        const wavBuffer = await webmToWav(webmBuffer)
+        const result = await window.electronAPI.transcribeAudio(wavBuffer)
         if (result?.text) onTranscribed(result.text)
       } catch (e) { console.error('STT error:', e) }
       setState('idle')
