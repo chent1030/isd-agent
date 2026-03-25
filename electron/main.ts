@@ -20,7 +20,7 @@ import { registerLLMHandlers } from './ipc/llm'
 import { registerDifyHandlers } from './ipc/dify'
 import { registerSkillHandlers, loadSkills } from './ipc/skills'
 
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = !app.isPackaged || process.env.NODE_ENV === 'development'
 
 function createWindow() {
   const win = new BrowserWindow({

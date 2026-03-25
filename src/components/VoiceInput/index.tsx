@@ -63,19 +63,44 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
   const [state, setState] = useState<RecordState>('idle')
   const [volume, setVolume] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const startPendingRef = useRef(false)
   const chunksRef = useRef<Blob[]>([])
   const audioContextRef = useRef<AudioContext | null>(null)
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rafRef = useRef<number>(0)
 
-  const stopRecording = async () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-    audioContextRef.current?.close()
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+  }
+
+  const stopVAD = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = 0
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+    if (audioContextRef.current) {
+      void audioContextRef.current.close().catch(() => {})
+      audioContextRef.current = null
+    }
     setVolume(0)
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return
+  }
+
+  const stopRecording = async () => {
+    stopVAD()
+    const recorder = mediaRecorderRef.current
+    if (!recorder || recorder.state === 'inactive') {
+      stopStream()
+      setState('idle')
+      return
+    }
     setState('processing')
-    mediaRecorderRef.current.stop()
+    recorder.stop()
   }
 
   const startVAD = (stream: MediaStream) => {
@@ -103,26 +128,46 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
   }
 
   const startRecording = async () => {
-    if (disabled) return
+    if (disabled || startPendingRef.current || state !== 'idle') return
+    startPendingRef.current = true
     chunksRef.current = []
-    setState('recording')
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const recorder = new MediaRecorder(stream)
-    mediaRecorderRef.current = recorder
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-    recorder.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop())
-      const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-      const webmBuffer = await blob.arrayBuffer()
-      try {
-        const wavBuffer = await webmToWav(webmBuffer)
-        const result = await window.electronAPI.transcribeAudio(wavBuffer)
-        if (result?.text) onTranscribed(result.text)
-      } catch (e) { console.error('STT error:', e) }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stopStream()
+        mediaRecorderRef.current = null
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        if (!blob.size) {
+          setState('idle')
+          return
+        }
+        const webmBuffer = await blob.arrayBuffer()
+        try {
+          const wavBuffer = await webmToWav(webmBuffer)
+          const result = await window.electronAPI.transcribeAudio(wavBuffer)
+          if (result?.text) onTranscribed(result.text)
+        } catch (e) {
+          console.error('STT error:', e)
+        } finally {
+          setState('idle')
+        }
+      }
+      recorder.start(100)
+      setState('recording')
+      startVAD(stream)
+    } catch (e) {
+      console.error('Start recording error:', e)
+      stopVAD()
+      stopStream()
+      mediaRecorderRef.current = null
       setState('idle')
+    } finally {
+      startPendingRef.current = false
     }
-    recorder.start(100)
-    startVAD(stream)
   }
 
   const handleClick = () => {
@@ -131,9 +176,11 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
   }
 
   useEffect(() => () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-    audioContextRef.current?.close()
+    stopVAD()
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    stopStream()
   }, [])
 
   const isRecording = state === 'recording'
@@ -164,6 +211,7 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
           position: 'absolute', inset: 0, borderRadius: 6,
           background: `rgba(255,68,102,${volume * 0.15})`,
           transition: 'background 0.1s',
+          pointerEvents: 'none',
         }} />
       )}
       {isProcessing ? (

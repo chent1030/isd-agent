@@ -134,7 +134,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--amber)', boxShadow: '0 0 6px var(--amber)' }} />
             <span style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Rajdhani', letterSpacing: '0.1em' }}>
-              访客模式 — 仅支持问答，Skills 技能库不可用
+              访客模式
             </span>
           </div>
           <button onClick={onUpgrade}
