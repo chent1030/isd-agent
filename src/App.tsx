@@ -6,22 +6,28 @@ import ChatPanel from './components/Chat'
 import SkillsPanel from './components/Skills'
 
 type View = 'lock' | 'app'
+type ChatMode = 'qa' | 'agent'
 
 export default function App() {
   const [view, setView] = useState<View>('lock')
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [guestMode, setGuestMode] = useState(false)
   const [skillsOpen, setSkillsOpen] = useState(true)
+  const [chatMode, setChatMode] = useState<ChatMode>('qa')
 
   const { user, isAuthenticated, logout } = useAuthStore()
   const setSkills = useSkillsStore(s => s.setSkills)
 
   useEffect(() => {
-    window.electronAPI.getSkills().then(setSkills).catch(console.error)
-  }, [])
+    window.electronAPI.getSkills(isAuthenticated).then(setSkills).catch(console.error)
+  }, [isAuthenticated, setSkills])
 
   useEffect(() => {
     if (isAuthenticated) { setGuestMode(false); setView('app') }
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    if (!isAuthenticated) setChatMode('qa')
   }, [isAuthenticated])
 
   useEffect(() => {
@@ -83,7 +89,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 中：模式指示 */}
+        {/* 中：模式指示 + 聊天模式切换 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {isAuthenticated && user ? (
             <div style={{
@@ -103,6 +109,49 @@ export default function App() {
             }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)', boxShadow: '0 0 6px var(--amber)' }} />
               <span style={{ fontFamily: 'Rajdhani', fontSize: 13, color: 'var(--amber)', letterSpacing: '0.1em' }}>访客模式</span>
+            </div>
+          )}
+
+          {isAuthenticated && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: 2,
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              background: 'rgba(8,14,26,0.7)',
+              gap: 2,
+            }}>
+              <button
+                onClick={() => setChatMode('qa')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontFamily: 'Rajdhani',
+                  letterSpacing: '0.08em',
+                  background: chatMode === 'qa' ? 'rgba(0,212,255,0.16)' : 'transparent',
+                  color: chatMode === 'qa' ? 'var(--cyan)' : 'var(--text-dim)',
+                }}>
+                问答
+              </button>
+              <button
+                onClick={() => setChatMode('agent')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontFamily: 'Rajdhani',
+                  letterSpacing: '0.08em',
+                  background: chatMode === 'agent' ? 'rgba(0,255,136,0.14)' : 'transparent',
+                  color: chatMode === 'agent' ? 'var(--green)' : 'var(--text-dim)',
+                }}>
+                智能体
+              </button>
             </div>
           )}
         </div>
@@ -163,8 +212,8 @@ export default function App() {
       {/* ── 主体 ── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
 
-        {/* 左侧 Skills 面板 */}
-        {isAuthenticated && (
+        {/* 左侧 Skills 面板（仅智能体模式） */}
+        {isAuthenticated && chatMode === 'agent' && (
           <aside style={{
             width: skillsOpen ? 260 : 0,
             overflow: 'hidden',
@@ -179,8 +228,8 @@ export default function App() {
           </aside>
         )}
 
-        {/* Skills 折叠按钮 */}
-        {isAuthenticated && (
+        {/* Skills 折叠按钮（仅智能体模式） */}
+        {isAuthenticated && chatMode === 'agent' && (
           <button onClick={() => setSkillsOpen(v => !v)}
             style={{
               position: 'absolute', left: skillsOpen ? 252 : 0, top: '50%', transform: 'translateY(-50%)',
@@ -198,7 +247,13 @@ export default function App() {
 
         {/* 对话区 */}
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <ChatPanel ttsEnabled={ttsEnabled} isAuthenticated={isAuthenticated} guestMode={guestMode} onUpgrade={handleUpgrade} />
+          <ChatPanel
+            ttsEnabled={ttsEnabled}
+            isAuthenticated={isAuthenticated}
+            guestMode={guestMode}
+            onUpgrade={handleUpgrade}
+            chatMode={chatMode}
+          />
         </main>
       </div>
 

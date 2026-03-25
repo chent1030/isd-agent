@@ -26,7 +26,12 @@ STT_API_URL=http://your-internal-api/stt/transcribe
 TTS_API_URL=http://your-internal-api/tts/synthesize
 LLM_API_URL=http://your-internal-api/llm/chat
 LLM_API_KEY=your-key-here
+LLM_MODEL=gpt-4o-mini
 ```
+
+会话链路由页面模式决定：
+- 未认证（访客）：仅问答模式，走 Dify
+- 已认证：可在“问答（Dify）/智能体（LangChain + Skills）”间切换
 
 ### 2. 安装依赖
 

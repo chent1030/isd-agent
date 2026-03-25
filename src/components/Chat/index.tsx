@@ -9,13 +9,14 @@ interface Props {
   isAuthenticated: boolean
   guestMode: boolean
   onUpgrade: () => void
+  chatMode: 'qa' | 'agent'
 }
 
 function splitSentences(text: string): string[] {
   return text.split(/(?<=[。！？\n])/).filter(s => s.trim())
 }
 
-export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUpgrade }: Props) {
+export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUpgrade, chatMode }: Props) {
   const [input, setInput] = useState('')
   const { messages, isLoading, addMessage, updateMessage, setLoading } = useChatStore()
   const { user } = useAuthStore()
@@ -55,26 +56,56 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
     setLoading(false)
     let fullText = ''
     let spokenSentences: string[] = []
-    const difyUser = user?.empWorkNo ?? 'guest'
-    const result = await window.electronAPI.difyChat(
-      text,
-      conversationIdRef.current,
-      difyUser,
-      (chunk: string) => {
-        if (chunk === '[DONE]') return
-        fullText += chunk
-        updateMessage(assistantId, { content: fullText })
-        if (ttsEnabled && !isSpeakingRef.current) {
-          const sentences = splitSentences(fullText)
-          const newSentences = sentences.slice(spokenSentences.length, -1)
-          if (newSentences.length > 0) {
-            spokenSentences = [...spokenSentences, ...newSentences]
-            speakNext(assistantId, spokenSentences, spokenSentences.length - newSentences.length)
+    const useAgentMode = isAuthenticated && chatMode === 'agent'
+    try {
+      if (useAgentMode) {
+        const history = useChatStore.getState().messages
+          .filter(m => !m.isStreaming)
+          .map(m => ({ role: m.role, content: m.content }))
+
+        await window.electronAPI.chatStream(
+          history,
+          isAuthenticated,
+          (chunk: string) => {
+            if (chunk === '[DONE]') return
+            fullText += chunk
+            updateMessage(assistantId, { content: fullText })
+            if (ttsEnabled && !isSpeakingRef.current) {
+              const sentences = splitSentences(fullText)
+              const newSentences = sentences.slice(spokenSentences.length, -1)
+              if (newSentences.length > 0) {
+                spokenSentences = [...spokenSentences, ...newSentences]
+                speakNext(assistantId, spokenSentences, spokenSentences.length - newSentences.length)
+              }
+            }
           }
-        }
+        )
+      } else {
+        const difyUser = user?.empWorkNo ?? 'guest'
+        const result = await window.electronAPI.difyChat(
+          text,
+          conversationIdRef.current,
+          difyUser,
+          (chunk: string) => {
+            if (chunk === '[DONE]') return
+            fullText += chunk
+            updateMessage(assistantId, { content: fullText })
+            if (ttsEnabled && !isSpeakingRef.current) {
+              const sentences = splitSentences(fullText)
+              const newSentences = sentences.slice(spokenSentences.length, -1)
+              if (newSentences.length > 0) {
+                spokenSentences = [...spokenSentences, ...newSentences]
+                speakNext(assistantId, spokenSentences, spokenSentences.length - newSentences.length)
+              }
+            }
+          }
+        )
+        conversationIdRef.current = result.conversationId
       }
-    )
-    conversationIdRef.current = result.conversationId
+    } catch (e: any) {
+      fullText = `[请求失败] ${e?.message ?? String(e)}`
+    }
+
     updateMessage(assistantId, { content: fullText, isStreaming: false })
     if (ttsEnabled) {
       const finalSentences = splitSentences(fullText)
@@ -84,7 +115,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
         if (!isSpeakingRef.current) speakNext(assistantId, spokenSentences, spokenSentences.length - remaining.length)
       }
     }
-  }, [isLoading, touch, addMessage, updateMessage, setLoading, ttsEnabled, speakNext, user])
+  }, [isLoading, touch, addMessage, updateMessage, setLoading, ttsEnabled, speakNext, user, isAuthenticated, chatMode])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
