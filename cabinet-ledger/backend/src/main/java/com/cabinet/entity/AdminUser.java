@@ -1,11 +1,8 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
 
-@TableName("admin_user")
 public class AdminUser {
-    @TableId(type = IdType.AUTO)
     private Long id;
     private String username;
     private String displayName;
@@ -15,7 +12,6 @@ public class AdminUser {
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    @TableLogic
     private Integer deleted;
 
     public Long getId() { return id; }

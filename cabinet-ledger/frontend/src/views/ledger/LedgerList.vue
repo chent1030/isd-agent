@@ -256,8 +256,8 @@ const fetchLedgerData = async () => {
       size: pagination.value.pageSize
     }
     const res = await getLedgerList(params)
-    ledgerData.value = res.data?.list || []
-    pagination.value.total = res.data?.total || 0
+    ledgerData.value = res.data?.content || []
+    pagination.value.total = res.data?.totalElements || 0
   } catch (error) {
     console.error(error)
   } finally {

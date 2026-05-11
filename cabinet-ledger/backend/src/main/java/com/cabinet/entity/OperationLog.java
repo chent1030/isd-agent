@@ -1,11 +1,8 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
 
-@TableName("operation_log")
 public class OperationLog {
-    @TableId(type = IdType.AUTO)
     private Long id;
     private String cabinetId;
     private String operator;

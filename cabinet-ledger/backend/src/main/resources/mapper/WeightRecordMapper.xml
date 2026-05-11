@@ -3,6 +3,21 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cabinet.mapper.WeightRecordMapper">
 
+    <insert id="insert" parameterType="com.cabinet.entity.WeightRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO weight_record
+        (cabinet_id, slot_id, weight, change_amount, event_type, recorded_at, deleted)
+        VALUES
+        (#{cabinetId}, #{slotId}, #{weight}, #{changeAmount}, #{eventType}, #{recordedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <select id="selectByCabinetId" resultType="com.cabinet.entity.WeightRecord">
+        SELECT *
+        FROM weight_record
+        WHERE cabinet_id = #{cabinetId}
+          AND deleted = 0
+        ORDER BY recorded_at DESC, id DESC
+    </select>
+
     <select id="selectLatestByCabinetId" resultType="com.cabinet.entity.WeightRecord">
         SELECT wr.*
         FROM weight_record wr

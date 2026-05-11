@@ -31,11 +31,7 @@ public class WeightRecordController {
 
     @GetMapping("/list")
     public Result<List<WeightRecord>> list(@RequestParam String cabinetId) {
-        List<WeightRecord> list = weightRecordService.lambdaQuery()
-                .eq(WeightRecord::getCabinetId, cabinetId)
-                .orderByDesc(WeightRecord::getRecordedAt)
-                .list();
-        return Result.success(list);
+        return Result.success(weightRecordService.listByCabinetId(cabinetId));
     }
 
     // ==================== 导出 ====================

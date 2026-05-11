@@ -36,6 +36,59 @@
         <result column="slot_no" property="slotNo"/>
     </resultMap>
 
+    <select id="selectAll" resultType="com.cabinet.entity.Item">
+        SELECT * FROM item WHERE deleted = 0 ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="selectById" resultType="com.cabinet.entity.Item">
+        SELECT * FROM item WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectByUniqueFields" resultType="com.cabinet.entity.Item">
+        SELECT *
+        FROM item
+        WHERE name = #{name}
+          AND deleted = 0
+        <choose>
+            <when test="category != null and category != ''">
+                AND category = #{category}
+            </when>
+            <otherwise>
+                AND (category IS NULL OR category = '')
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="spec != null and spec != ''">
+                AND spec = #{spec}
+            </when>
+            <otherwise>
+                AND (spec IS NULL OR spec = '')
+            </otherwise>
+        </choose>
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.cabinet.entity.Item" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO item
+        (name, category, spec, standard_weight, use_type, warning_quantity, max_quantity, created_at, updated_at, deleted)
+        VALUES
+        (#{name}, #{category}, #{spec}, #{standardWeight}, #{useType}, #{warningQuantity}, #{maxQuantity}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.Item">
+        UPDATE item
+        SET name = #{name},
+            category = #{category},
+            spec = #{spec},
+            standard_weight = #{standardWeight},
+            use_type = #{useType},
+            warning_quantity = #{warningQuantity},
+            max_quantity = #{maxQuantity},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
     <select id="selectAvailableItems" resultMap="AvailableItemResultMap">
         SELECT
             i.id,

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabinet.mapper.ItemStockMapper">
+
+    <select id="selectByItemId" resultType="com.cabinet.entity.ItemStock">
+        SELECT * FROM item_stock WHERE item_id = #{itemId} AND deleted = 0 LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.cabinet.entity.ItemStock" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO item_stock
+        (item_id, cabinet_id, slot_id, quantity, borrowed_quantity, ledger_weight, actual_weight, warning_quantity, max_quantity, stock_status, updated_at, deleted)
+        VALUES
+        (#{itemId}, #{cabinetId}, #{slotId}, #{quantity}, #{borrowedQuantity}, #{ledgerWeight}, #{actualWeight}, #{warningQuantity}, #{maxQuantity}, #{stockStatus}, #{updatedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.ItemStock">
+        UPDATE item_stock
+        SET item_id = #{itemId},
+            cabinet_id = #{cabinetId},
+            slot_id = #{slotId},
+            quantity = #{quantity},
+            borrowed_quantity = #{borrowedQuantity},
+            ledger_weight = #{ledgerWeight},
+            actual_weight = #{actualWeight},
+            warning_quantity = #{warningQuantity},
+            max_quantity = #{maxQuantity},
+            stock_status = #{stockStatus},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+</mapper>

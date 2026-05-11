@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.util.StringUtils;
 
 import com.cabinet.common.Result;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cabinet.dto.ItemReceiveDTO;
 import com.cabinet.dto.ItemSaveDTO;
 import com.cabinet.entity.CabinetSlot;
@@ -73,9 +72,7 @@ public class ItemController {
                                      @RequestHeader(value = "X-Operator", required = false) String operator,
                                      HttpServletRequest request) {
         Item item = validateReceive(dto);
-        CabinetSlot slot = cabinetSlotMapper.selectOne(new LambdaQueryWrapper<CabinetSlot>()
-                .eq(CabinetSlot::getItemId, dto.getItemId())
-                .last("LIMIT 1"));
+        CabinetSlot slot = cabinetSlotMapper.selectByItemId(dto.getItemId());
         if (slot == null) {
             throw new IllegalArgumentException("物品未绑定柜子格口");
         }
@@ -152,7 +149,7 @@ public class ItemController {
                                      @RequestHeader(value = "X-Operator", required = false) String operator,
                                      HttpServletRequest request) throws IOException {
         excelUtil.importItem(file.getInputStream());
-        itemMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Item>())
+        itemMapper.selectAll()
                 .forEach(item -> itemStockService.updateStockConfig(item.getId(), item.getWarningQuantity(), item.getMaxQuantity()));
         operationLogService.record(null, operatorOrDefault(operator), "ITEM_IMPORT", "导入物品基础信息", request.getRemoteAddr());
         return Result.success("导入成功");

@@ -1,12 +1,9 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@TableName("weight_record")
 public class WeightRecord {
-    @TableId(type = IdType.AUTO)
     private Long id;
     private String cabinetId;
     private Long slotId;
@@ -14,7 +11,6 @@ public class WeightRecord {
     private BigDecimal changeAmount;
     private Integer eventType;
     private LocalDateTime recordedAt;
-    @TableLogic
     private Integer deleted;
 
     public Long getId() { return id; }

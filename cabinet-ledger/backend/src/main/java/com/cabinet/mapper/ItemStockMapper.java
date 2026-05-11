@@ -1,7 +1,12 @@
 package com.cabinet.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.cabinet.entity.ItemStock;
+import org.apache.ibatis.annotations.Param;
 
-public interface ItemStockMapper extends BaseMapper<ItemStock> {
+public interface ItemStockMapper {
+    ItemStock selectByItemId(@Param("itemId") Long itemId);
+
+    int insert(ItemStock stock);
+
+    int updateById(ItemStock stock);
 }

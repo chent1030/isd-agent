@@ -1,11 +1,8 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
 
-@TableName("cabinet")
 public class Cabinet {
-    @TableId(type = IdType.INPUT)
     private String id;
     private Integer cabinetNo;
     private String name;
@@ -13,7 +10,6 @@ public class Cabinet {
     private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    @TableLogic
     private Integer deleted;
 
     public String getId() { return id; }

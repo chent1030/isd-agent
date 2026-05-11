@@ -1,12 +1,12 @@
 package com.cabinet.controller;
 
-import com.cabinet.common.PageResult;
 import com.cabinet.common.Result;
 import com.cabinet.dto.ItemBorrowDTO;
 import com.cabinet.dto.ItemReturnDTO;
 import com.cabinet.service.ItemBorrowRecordService;
 import com.cabinet.service.OperationLogService;
 import com.cabinet.vo.ItemBorrowRecordVO;
+import io.choerodon.core.domain.Page;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,11 +30,11 @@ public class ItemBorrowRecordController {
     }
 
     @GetMapping("/list")
-    public Result<PageResult<ItemBorrowRecordVO>> list(@RequestParam(required = false) Integer status,
-                                                       @RequestParam(required = false) Long itemId,
-                                                       @RequestParam(required = false) String borrower,
-                                                       @RequestParam(defaultValue = "1") int page,
-                                                       @RequestParam(defaultValue = "20") int size) {
+    public Result<Page<ItemBorrowRecordVO>> list(@RequestParam(required = false) Integer status,
+                                                 @RequestParam(required = false) Long itemId,
+                                                 @RequestParam(required = false) String borrower,
+                                                 @RequestParam(defaultValue = "1") int page,
+                                                 @RequestParam(defaultValue = "20") int size) {
         return Result.success(borrowRecordService.getBorrowRecordList(status, itemId, borrower, page, size));
     }
 

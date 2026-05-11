@@ -4,7 +4,7 @@ import com.cabinet.dto.InventoryCheckDTO;
 import com.cabinet.entity.ItemLedger;
 import com.cabinet.vo.InventoryCheckVO;
 import com.cabinet.vo.LedgerVO;
-import com.cabinet.common.PageResult;
+import io.choerodon.core.domain.Page;
 
 /**
  * 物品台账 Service 接口
@@ -20,7 +20,7 @@ public interface ItemLedgerService {
      * @param category    分类
      * @return 分页结果
      */
-    PageResult<LedgerVO> getLedgerList(String cabinetId, Integer operationType, Integer status, String category, int page, int size);
+    Page<LedgerVO> getLedgerList(String cabinetId, Integer operationType, Integer status, String category, int page, int size);
 
     /**
      * 盘点库存

@@ -1,7 +1,5 @@
 package com.cabinet.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cabinet.entity.CabinetSlot;
 import com.cabinet.entity.ItemLedger;
 import com.cabinet.entity.ItemStock;
@@ -16,11 +14,15 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ItemStockServiceImpl extends ServiceImpl<ItemStockMapper, ItemStock> implements ItemStockService {
+public class ItemStockServiceImpl implements ItemStockService {
+    private final ItemStockMapper itemStockMapper;
     private final CabinetSlotMapper cabinetSlotMapper;
     private final CabinetLedgerProperties properties;
 
-    public ItemStockServiceImpl(CabinetSlotMapper cabinetSlotMapper, CabinetLedgerProperties properties) {
+    public ItemStockServiceImpl(ItemStockMapper itemStockMapper,
+                                CabinetSlotMapper cabinetSlotMapper,
+                                CabinetLedgerProperties properties) {
+        this.itemStockMapper = itemStockMapper;
         this.cabinetSlotMapper = cabinetSlotMapper;
         this.properties = properties;
     }
@@ -146,7 +148,7 @@ public class ItemStockServiceImpl extends ServiceImpl<ItemStockMapper, ItemStock
     }
 
     private ItemStock getOrCreateByItemId(Long itemId) {
-        ItemStock stock = lambdaQuery().eq(ItemStock::getItemId, itemId).last("LIMIT 1").one();
+        ItemStock stock = itemStockMapper.selectByItemId(itemId);
         if (stock != null) {
             return stock;
         }
@@ -166,9 +168,9 @@ public class ItemStockServiceImpl extends ServiceImpl<ItemStockMapper, ItemStock
         normalize(stock);
         stock.setUpdatedAt(LocalDateTime.now());
         if (stock.getId() == null) {
-            save(stock);
+            itemStockMapper.insert(stock);
         } else {
-            updateById(stock);
+            itemStockMapper.updateById(stock);
         }
     }
 

@@ -31,7 +31,46 @@
         <result column="remark" property="remark"/>
     </resultMap>
 
-    <select id="selectBorrowRecordPage" resultMap="BorrowRecordResultMap">
+    <select id="selectById" resultType="com.cabinet.entity.ItemBorrowRecord">
+        SELECT * FROM item_borrow_record WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <insert id="insert" parameterType="com.cabinet.entity.ItemBorrowRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO item_borrow_record
+        (item_id, cabinet_id, slot_id, quantity, returned_quantity, borrower, borrow_operator, borrow_operator_no,
+         borrow_operator_name, return_operator, return_operator_no, return_operator_name, borrow_time,
+         expected_return_time, return_time, status, remark, created_at, updated_at, deleted)
+        VALUES
+        (#{itemId}, #{cabinetId}, #{slotId}, #{quantity}, #{returnedQuantity}, #{borrower}, #{borrowOperator}, #{borrowOperatorNo},
+         #{borrowOperatorName}, #{returnOperator}, #{returnOperatorNo}, #{returnOperatorName}, #{borrowTime},
+         #{expectedReturnTime}, #{returnTime}, #{status}, #{remark}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.ItemBorrowRecord">
+        UPDATE item_borrow_record
+        SET item_id = #{itemId},
+            cabinet_id = #{cabinetId},
+            slot_id = #{slotId},
+            quantity = #{quantity},
+            returned_quantity = #{returnedQuantity},
+            borrower = #{borrower},
+            borrow_operator = #{borrowOperator},
+            borrow_operator_no = #{borrowOperatorNo},
+            borrow_operator_name = #{borrowOperatorName},
+            return_operator = #{returnOperator},
+            return_operator_no = #{returnOperatorNo},
+            return_operator_name = #{returnOperatorName},
+            borrow_time = #{borrowTime},
+            expected_return_time = #{expectedReturnTime},
+            return_time = #{returnTime},
+            status = #{status},
+            remark = #{remark},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectBorrowRecordList" resultMap="BorrowRecordResultMap">
         SELECT
             br.id,
             br.item_id,

@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cabinet.common.Result;
 import com.cabinet.dto.AdminUserDTO;
 import com.cabinet.entity.AdminUser;
@@ -35,9 +34,7 @@ public class AdminUserController {
 
     @GetMapping("/list")
     public Result<List<AdminUserVO>> list() {
-        List<AdminUserVO> list = adminUserMapper.selectList(
-                new LambdaQueryWrapper<AdminUser>().orderByDesc(AdminUser::getUpdatedAt)
-        ).stream().map(this::toVO).toList();
+        List<AdminUserVO> list = adminUserMapper.selectAll().stream().map(this::toVO).toList();
         return Result.success(list);
     }
 

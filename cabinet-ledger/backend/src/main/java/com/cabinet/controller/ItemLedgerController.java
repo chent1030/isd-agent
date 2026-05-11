@@ -1,7 +1,6 @@
 package com.cabinet.controller;
 
 import com.cabinet.common.Result;
-import com.cabinet.common.PageResult;
 import com.cabinet.dto.InventoryCheckDTO;
 import com.cabinet.entity.ItemLedger;
 import com.cabinet.excel.ExcelUtil;
@@ -9,6 +8,7 @@ import com.cabinet.service.ItemLedgerService;
 import com.cabinet.service.OperationLogService;
 import com.cabinet.vo.InventoryCheckVO;
 import com.cabinet.vo.LedgerVO;
+import io.choerodon.core.domain.Page;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.*;
@@ -31,15 +31,14 @@ public class ItemLedgerController {
     }
 
     @GetMapping("/list")
-    public Result<PageResult<LedgerVO>> list(
+    public Result<Page<LedgerVO>> list(
             @RequestParam(required = false) String cabinetId,
             @RequestParam(required = false) Integer operationType,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        PageResult<LedgerVO> result = itemLedgerService.getLedgerList(cabinetId, operationType, status, category, page, size);
-        return Result.success(result);
+        return Result.success(itemLedgerService.getLedgerList(cabinetId, operationType, status, category, page, size));
     }
 
     @PostMapping("/save")

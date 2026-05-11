@@ -1,12 +1,9 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@TableName("item_ledger")
 public class ItemLedger {
-    @TableId(type = IdType.AUTO)
     private Long id;
     private Long itemId;
     private String cabinetId;
@@ -25,7 +22,6 @@ public class ItemLedger {
     private String remark;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    @TableLogic
     private Integer deleted;
 
     public Long getId() { return id; }

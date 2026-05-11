@@ -2,7 +2,6 @@ package com.cabinet.excel;
 
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cabinet.entity.Item;
 import com.cabinet.mapper.ItemMapper;
 import com.cabinet.util.WeightUnitUtil;
@@ -22,11 +21,7 @@ public class ItemImportListener implements ReadListener<ItemExcelTemplate> {
             return;
         }
 
-        Item item = itemMapper.selectOne(new LambdaQueryWrapper<Item>()
-                .eq(Item::getName, row.getName())
-                .eq(StringUtils.hasText(row.getCategory()), Item::getCategory, row.getCategory())
-                .eq(StringUtils.hasText(row.getSpec()), Item::getSpec, row.getSpec())
-                .last("LIMIT 1"));
+        Item item = itemMapper.selectByUniqueFields(row.getName(), row.getCategory(), row.getSpec());
         if (item == null) {
             item = new Item();
             item.setName(row.getName());

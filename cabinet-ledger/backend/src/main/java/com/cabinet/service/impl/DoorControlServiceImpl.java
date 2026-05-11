@@ -1,11 +1,11 @@
 package com.cabinet.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cabinet.dto.DoorOpenDTO;
 import com.cabinet.entity.Cabinet;
 import com.cabinet.entity.CabinetSlot;
@@ -80,25 +80,18 @@ public class DoorControlServiceImpl implements DoorControlService {
     private CabinetSlot findSlot(DoorOpenDTO dto) {
         String cabinetId = dto.getCabinetId();
         if (!StringUtils.hasText(cabinetId)) {
-            Cabinet cabinet = cabinetService.getOne(
-                    new LambdaQueryWrapper<Cabinet>()
-                            .eq(Cabinet::getCabinetNo, dto.getCabinetNo())
-                            .last("LIMIT 1")
-            );
+            Cabinet cabinet = cabinetService.getByCabinetNo(dto.getCabinetNo());
             if (cabinet == null) {
                 return null;
             }
             cabinetId = cabinet.getId();
         }
-        LambdaQueryWrapper<CabinetSlot> wrapper = new LambdaQueryWrapper<CabinetSlot>()
-                .eq(CabinetSlot::getCabinetId, cabinetId)
-                .orderByAsc(CabinetSlot::getSlotNo);
         if (dto.getSlotId() != null) {
-            wrapper.eq(CabinetSlot::getId, dto.getSlotId());
+            return cabinetSlotMapper.selectById(dto.getSlotId());
         } else if (dto.getSlotNo() != null) {
-            wrapper.eq(CabinetSlot::getSlotNo, dto.getSlotNo());
+            return cabinetSlotMapper.selectByCabinetIdAndSlotNo(cabinetId, dto.getSlotNo());
         }
-        wrapper.last("LIMIT 1");
-        return cabinetSlotMapper.selectOne(wrapper);
+        List<CabinetSlot> slots = cabinetSlotMapper.selectByCabinetId(cabinetId);
+        return slots.isEmpty() ? null : slots.get(0);
     }
 }

@@ -73,9 +73,8 @@ const fetchData = async () => {
       size: pagination.value.pageSize
     }
     const res = await getLogList(params)
-    tableData.value = res.data || []
-    // 注意：后端返回的是列表，没有 total，这里简化处理
-    pagination.value.total = tableData.value.length
+    tableData.value = res.data?.content || []
+    pagination.value.total = res.data?.totalElements || 0
   } catch (error) {
     console.error(error)
   } finally {

@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cabinet.dto.WeightReportDTO;
 import com.cabinet.entity.WeightRecord;
 import com.cabinet.mapper.WeightRecordMapper;
@@ -17,14 +16,17 @@ import com.cabinet.vo.WeightReportVO;
 import org.springframework.stereotype.Service;
 
 @Service
-public class WeightRecordServiceImpl extends ServiceImpl<WeightRecordMapper, WeightRecord> implements WeightRecordService {
+public class WeightRecordServiceImpl implements WeightRecordService {
+    private final WeightRecordMapper weightRecordMapper;
     private final CabinetLedgerProperties properties;
     private final ItemLedgerService itemLedgerService;
     private final ItemStockService itemStockService;
 
-    public WeightRecordServiceImpl(CabinetLedgerProperties properties,
+    public WeightRecordServiceImpl(WeightRecordMapper weightRecordMapper,
+                                   CabinetLedgerProperties properties,
                                    ItemLedgerService itemLedgerService,
                                    ItemStockService itemStockService) {
+        this.weightRecordMapper = weightRecordMapper;
         this.properties = properties;
         this.itemLedgerService = itemLedgerService;
         this.itemStockService = itemStockService;
@@ -43,12 +45,7 @@ public class WeightRecordServiceImpl extends ServiceImpl<WeightRecordMapper, Wei
         }
         dto.setWeight(WeightUnitUtil.requireIntegerGram(dto.getWeight(), "重量"));
 
-        WeightRecord previous = lambdaQuery()
-                .eq(WeightRecord::getCabinetId, dto.getCabinetId())
-                .eq(WeightRecord::getSlotId, dto.getSlotId())
-                .orderByDesc(WeightRecord::getRecordedAt)
-                .last("LIMIT 1")
-                .one();
+        WeightRecord previous = weightRecordMapper.selectLatestBySlotId(dto.getCabinetId(), dto.getSlotId());
 
         BigDecimal changeAmount = previous == null
                 ? BigDecimal.ZERO
@@ -66,7 +63,7 @@ public class WeightRecordServiceImpl extends ServiceImpl<WeightRecordMapper, Wei
         record.setChangeAmount(changeAmount);
         record.setEventType(eventType);
         record.setRecordedAt(dto.getTimestamp() == null ? LocalDateTime.now() : dto.getTimestamp());
-        save(record);
+        weightRecordMapper.insert(record);
         itemStockService.applyWeightRecord(record);
 
         if (eventType != 0) {
@@ -83,10 +80,15 @@ public class WeightRecordServiceImpl extends ServiceImpl<WeightRecordMapper, Wei
 
     @Override
     public BigDecimal getLatestCabinetWeight(String cabinetId) {
-        List<WeightRecord> latestBySlot = baseMapper.selectLatestByCabinetId(cabinetId);
+        List<WeightRecord> latestBySlot = weightRecordMapper.selectLatestByCabinetId(cabinetId);
         return latestBySlot.stream()
                 .map(WeightRecord::getWeight)
                 .filter(weight -> weight != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Override
+    public List<WeightRecord> listByCabinetId(String cabinetId) {
+        return weightRecordMapper.selectByCabinetId(cabinetId);
     }
 }

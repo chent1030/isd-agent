@@ -19,7 +19,38 @@
         <result column="operated_at" property="storedAt"/>
     </resultMap>
 
-    <select id="selectLedgerPage" resultMap="LedgerResultMap">
+    <insert id="insert" parameterType="com.cabinet.entity.ItemLedger" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO item_ledger
+        (item_id, cabinet_id, slot_id, quantity, total_weight, operation_type, status, operator_no, operator_name,
+         stored_by, stored_at, removed_by, removed_at, weight_record_id, remark, created_at, updated_at, deleted)
+        VALUES
+        (#{itemId}, #{cabinetId}, #{slotId}, #{quantity}, #{totalWeight}, #{operationType}, #{status}, #{operatorNo}, #{operatorName},
+         #{storedBy}, #{storedAt}, #{removedBy}, #{removedAt}, #{weightRecordId}, #{remark}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.ItemLedger">
+        UPDATE item_ledger
+        SET item_id = #{itemId},
+            cabinet_id = #{cabinetId},
+            slot_id = #{slotId},
+            quantity = #{quantity},
+            total_weight = #{totalWeight},
+            operation_type = #{operationType},
+            status = #{status},
+            operator_no = #{operatorNo},
+            operator_name = #{operatorName},
+            stored_by = #{storedBy},
+            stored_at = #{storedAt},
+            removed_by = #{removedBy},
+            removed_at = #{removedAt},
+            weight_record_id = #{weightRecordId},
+            remark = #{remark},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectLedgerList" resultMap="LedgerResultMap">
         SELECT
             il.id,
             i.name AS item_name,

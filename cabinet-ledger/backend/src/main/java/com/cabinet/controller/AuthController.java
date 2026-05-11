@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cabinet.common.Result;
 import com.cabinet.dto.LoginDTO;
 import com.cabinet.entity.AdminUser;
@@ -36,9 +35,7 @@ public class AuthController {
             throw new IllegalArgumentException("账号和密码不能为空");
         }
 
-        AdminUser user = adminUserMapper.selectOne(new LambdaQueryWrapper<AdminUser>()
-                .eq(AdminUser::getUsername, dto.getUsername())
-                .last("LIMIT 1"));
+        AdminUser user = adminUserMapper.selectByUsername(dto.getUsername());
         if (user == null || user.getStatus() == null || user.getStatus() != 1) {
             throw new IllegalArgumentException("账号不存在或已停用");
         }

@@ -1,9 +1,5 @@
 package com.cabinet.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.cabinet.common.PageResult;
 import com.cabinet.dto.ItemBorrowDTO;
 import com.cabinet.dto.ItemReturnDTO;
 import com.cabinet.entity.CabinetSlot;
@@ -20,6 +16,9 @@ import com.cabinet.service.ItemLedgerService;
 import com.cabinet.service.ItemStockService;
 import com.cabinet.util.WeightUnitUtil;
 import com.cabinet.vo.ItemBorrowRecordVO;
+import io.choerodon.core.domain.Page;
+import io.choerodon.mybatis.pagehelper.PageHelper;
+import io.choerodon.mybatis.pagehelper.domain.PageRequest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
@@ -68,16 +67,12 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
             throw new IllegalArgumentException("该物品仅支持领用，不能借用");
         }
 
-        CabinetSlot slot = cabinetSlotMapper.selectOne(new LambdaQueryWrapper<CabinetSlot>()
-                .eq(CabinetSlot::getItemId, dto.getItemId())
-                .last("LIMIT 1"));
+        CabinetSlot slot = cabinetSlotMapper.selectByItemId(dto.getItemId());
         if (slot == null) {
             throw new IllegalArgumentException("物品未绑定柜子格口");
         }
 
-        ItemStock stock = itemStockMapper.selectOne(new LambdaQueryWrapper<ItemStock>()
-                .eq(ItemStock::getItemId, dto.getItemId())
-                .last("LIMIT 1"));
+        ItemStock stock = itemStockMapper.selectByItemId(dto.getItemId());
         int available = stock == null || stock.getQuantity() == null ? 0 : stock.getQuantity();
         if (available < quantity) {
             throw new IllegalArgumentException("可借库存不足");
@@ -147,16 +142,11 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
     }
 
     @Override
-    public PageResult<ItemBorrowRecordVO> getBorrowRecordList(Integer status, Long itemId, String borrower, int page, int size) {
+    public Page<ItemBorrowRecordVO> getBorrowRecordList(Integer status, Long itemId, String borrower, int page, int size) {
         int current = page <= 0 ? 1 : page;
         int pageSize = size <= 0 ? 20 : size;
-        IPage<ItemBorrowRecordVO> pageResult = borrowRecordMapper.selectBorrowRecordPage(new Page<>(current, pageSize), status, itemId, borrower);
-        PageResult<ItemBorrowRecordVO> result = new PageResult<>();
-        result.setTotal(pageResult.getTotal());
-        result.setPage((int) pageResult.getCurrent());
-        result.setPageSize((int) pageResult.getSize());
-        result.setList(pageResult.getRecords());
-        return result;
+        return PageHelper.doPage(new PageRequest(current - 1, pageSize),
+                () -> borrowRecordMapper.selectBorrowRecordList(status, itemId, borrower));
     }
 
     private ItemBorrowRecordVO getRecord(Long id) {

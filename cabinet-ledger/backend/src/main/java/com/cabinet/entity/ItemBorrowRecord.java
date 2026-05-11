@@ -1,14 +1,8 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@TableName("item_borrow_record")
 public class ItemBorrowRecord {
-    @TableId(type = IdType.AUTO)
     private Long id;
     private Long itemId;
     private String cabinetId;
@@ -29,7 +23,6 @@ public class ItemBorrowRecord {
     private String remark;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    @TableLogic
     private Integer deleted;
 
     public Long getId() { return id; }

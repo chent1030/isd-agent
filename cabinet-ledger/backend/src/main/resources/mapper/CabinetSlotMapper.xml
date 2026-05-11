@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabinet.mapper.CabinetSlotMapper">
+
+    <select id="selectById" resultType="com.cabinet.entity.CabinetSlot">
+        SELECT * FROM cabinet_slot WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectByCabinetId" resultType="com.cabinet.entity.CabinetSlot">
+        SELECT * FROM cabinet_slot WHERE cabinet_id = #{cabinetId} AND deleted = 0 ORDER BY slot_no ASC, id ASC
+    </select>
+
+    <select id="selectByItemId" resultType="com.cabinet.entity.CabinetSlot">
+        SELECT * FROM cabinet_slot WHERE item_id = #{itemId} AND deleted = 0 LIMIT 1
+    </select>
+
+    <select id="selectByCabinetIdAndSlotNo" resultType="com.cabinet.entity.CabinetSlot">
+        SELECT *
+        FROM cabinet_slot
+        WHERE cabinet_id = #{cabinetId}
+          AND slot_no = #{slotNo}
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="countByCabinetSlotNo" resultType="int">
+        SELECT COUNT(1)
+        FROM cabinet_slot
+        WHERE cabinet_id = #{cabinetId}
+          AND slot_no = #{slotNo}
+          AND deleted = 0
+        <if test="excludeId != null">
+          AND id != #{excludeId}
+        </if>
+    </select>
+
+    <select id="countByItemId" resultType="int">
+        SELECT COUNT(1)
+        FROM cabinet_slot
+        WHERE item_id = #{itemId}
+          AND deleted = 0
+        <if test="excludeId != null">
+          AND id != #{excludeId}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.cabinet.entity.CabinetSlot" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cabinet_slot
+        (cabinet_id, slot_no, item_id, board_addr, lock_number, sensor_id, weight_limit, status, created_at, deleted)
+        VALUES
+        (#{cabinetId}, #{slotNo}, #{itemId}, #{boardAddr}, #{lockNumber}, #{sensorId}, #{weightLimit}, #{status}, #{createdAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.CabinetSlot">
+        UPDATE cabinet_slot
+        SET cabinet_id = #{cabinetId},
+            slot_no = #{slotNo},
+            item_id = #{itemId},
+            board_addr = #{boardAddr},
+            lock_number = #{lockNumber},
+            sensor_id = #{sensorId},
+            weight_limit = #{weightLimit},
+            status = #{status},
+            created_at = #{createdAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+</mapper>

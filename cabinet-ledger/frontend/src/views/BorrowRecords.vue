@@ -206,8 +206,8 @@ const fetchData = async () => {
       page: pagination.value.page,
       size: pagination.value.pageSize
     })
-    tableData.value = res.data?.list || []
-    pagination.value.total = res.data?.total || 0
+    tableData.value = res.data?.content || []
+    pagination.value.total = res.data?.totalElements || 0
   } finally {
     loading.value = false
   }

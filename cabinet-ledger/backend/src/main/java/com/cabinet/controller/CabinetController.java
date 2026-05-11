@@ -1,6 +1,5 @@
 package com.cabinet.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cabinet.common.Result;
 import com.cabinet.entity.Cabinet;
 import com.cabinet.entity.CabinetSlot;
@@ -52,11 +51,7 @@ public class CabinetController {
 
     @GetMapping("/slots")
     public Result<List<CabinetSlot>> slots(@RequestParam String cabinetId) {
-        return Result.success(cabinetSlotMapper.selectList(
-                new LambdaQueryWrapper<CabinetSlot>()
-                        .eq(CabinetSlot::getCabinetId, cabinetId)
-                        .orderByAsc(CabinetSlot::getSlotNo)
-        ));
+        return Result.success(cabinetSlotMapper.selectByCabinetId(cabinetId));
     }
 
     @GetMapping("/slot/by-item")
@@ -64,11 +59,7 @@ public class CabinetController {
         if (itemId == null) {
             throw new IllegalArgumentException("物品ID不能为空");
         }
-        CabinetSlot slot = cabinetSlotMapper.selectOne(
-                new LambdaQueryWrapper<CabinetSlot>()
-                        .eq(CabinetSlot::getItemId, itemId)
-                        .last("LIMIT 1")
-        );
+        CabinetSlot slot = cabinetSlotMapper.selectByItemId(itemId);
         if (slot == null) {
             throw new IllegalArgumentException("该物品未绑定格口");
         }
@@ -89,20 +80,11 @@ public class CabinetController {
         if (slotNo == null) {
             throw new IllegalArgumentException("格口号不能为空");
         }
-        Cabinet cabinet = cabinetService.getOne(
-                new LambdaQueryWrapper<Cabinet>()
-                        .eq(Cabinet::getCabinetNo, cabinetNo)
-                        .last("LIMIT 1")
-        );
+        Cabinet cabinet = cabinetService.getByCabinetNo(cabinetNo);
         if (cabinet == null || cabinet.getStatus() == null || cabinet.getStatus() != 1) {
             throw new IllegalArgumentException("柜子不存在或未启用");
         }
-        CabinetSlot slot = cabinetSlotMapper.selectOne(
-                new LambdaQueryWrapper<CabinetSlot>()
-                        .eq(CabinetSlot::getCabinetId, cabinet.getId())
-                        .eq(CabinetSlot::getSlotNo, slotNo)
-                        .last("LIMIT 1")
-        );
+        CabinetSlot slot = cabinetSlotMapper.selectByCabinetIdAndSlotNo(cabinet.getId(), slotNo);
         if (slot == null) {
             throw new IllegalArgumentException("未找到柜号和格口号对应的格口配置");
         }
@@ -244,38 +226,20 @@ public class CabinetController {
     }
 
     private void ensureCabinetNoUnique(Cabinet cabinet) {
-        LambdaQueryWrapper<Cabinet> wrapper = new LambdaQueryWrapper<Cabinet>()
-                .eq(Cabinet::getCabinetNo, cabinet.getCabinetNo())
-                .eq(Cabinet::getDeleted, 0);
-        if (StringUtils.hasText(cabinet.getId())) {
-            wrapper.ne(Cabinet::getId, cabinet.getId());
-        }
-        if (cabinetService.count(wrapper) > 0) {
+        String excludeId = StringUtils.hasText(cabinet.getId()) ? cabinet.getId() : null;
+        if (cabinetService.countByCabinetNo(cabinet.getCabinetNo(), excludeId) > 0) {
             throw new IllegalArgumentException("柜号不能重复");
         }
     }
 
     private void ensureSlotUnique(CabinetSlot slot) {
-        LambdaQueryWrapper<CabinetSlot> sameSlotNo = new LambdaQueryWrapper<CabinetSlot>()
-                .eq(CabinetSlot::getCabinetId, slot.getCabinetId())
-                .eq(CabinetSlot::getSlotNo, slot.getSlotNo());
-        excludeCurrentSlot(sameSlotNo, slot.getId());
-        if (cabinetSlotMapper.selectCount(sameSlotNo) > 0) {
+        if (cabinetSlotMapper.countByCabinetSlotNo(slot.getCabinetId(), slot.getSlotNo(), slot.getId()) > 0) {
             throw new IllegalArgumentException("同一柜子的格口编号不能重复");
         }
         if (slot.getItemId() != null) {
-            LambdaQueryWrapper<CabinetSlot> sameItem = new LambdaQueryWrapper<CabinetSlot>()
-                    .eq(CabinetSlot::getItemId, slot.getItemId());
-            excludeCurrentSlot(sameItem, slot.getId());
-            if (cabinetSlotMapper.selectCount(sameItem) > 0) {
+            if (cabinetSlotMapper.countByItemId(slot.getItemId(), slot.getId()) > 0) {
                 throw new IllegalArgumentException("该物品已绑定其他格口");
             }
-        }
-    }
-
-    private void excludeCurrentSlot(LambdaQueryWrapper<CabinetSlot> wrapper, Long slotId) {
-        if (slotId != null) {
-            wrapper.ne(CabinetSlot::getId, slotId);
         }
     }
 }

@@ -1,7 +1,13 @@
 package com.cabinet.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.cabinet.entity.OperationLog;
+import org.apache.ibatis.annotations.Param;
 
-public interface OperationLogMapper extends BaseMapper<OperationLog> {
+import java.util.List;
+
+public interface OperationLogMapper {
+    int insert(OperationLog log);
+
+    List<OperationLog> selectLogList(@Param("cabinetId") String cabinetId,
+                                     @Param("operator") String operator);
 }

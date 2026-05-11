@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabinet.mapper.AdminUserMapper">
+
+    <select id="selectAll" resultType="com.cabinet.entity.AdminUser">
+        SELECT * FROM admin_user WHERE deleted = 0 ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="selectById" resultType="com.cabinet.entity.AdminUser">
+        SELECT * FROM admin_user WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectByUsername" resultType="com.cabinet.entity.AdminUser">
+        SELECT * FROM admin_user WHERE username = #{username} AND deleted = 0 LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.cabinet.entity.AdminUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO admin_user
+        (username, display_name, password_hash, salt, status, last_login_at, created_at, updated_at, deleted)
+        VALUES
+        (#{username}, #{displayName}, #{passwordHash}, #{salt}, #{status}, #{lastLoginAt}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.AdminUser">
+        UPDATE admin_user
+        SET username = #{username},
+            display_name = #{displayName},
+            password_hash = #{passwordHash},
+            salt = #{salt},
+            status = #{status},
+            last_login_at = #{lastLoginAt},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+</mapper>

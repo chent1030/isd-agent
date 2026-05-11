@@ -1,12 +1,9 @@
 package com.cabinet.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@TableName("cabinet_slot")
 public class CabinetSlot {
-    @TableId(type = IdType.AUTO)
     private Long id;
     private String cabinetId;
     private Integer slotNo;
@@ -17,7 +14,6 @@ public class CabinetSlot {
     private BigDecimal weightLimit;
     private Integer status;
     private LocalDateTime createdAt;
-    @TableLogic
     private Integer deleted;
 
     public Long getId() { return id; }

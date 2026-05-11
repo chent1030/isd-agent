@@ -49,7 +49,7 @@ public class ExcelUtil {
      */
     public void exportLedger(String cabinetId, Integer operationType, Integer status, String category,
                              HttpServletResponse response) throws IOException {
-        List<LedgerVO> list = itemLedgerService.getLedgerList(cabinetId, operationType, status, category, 1, 100000).getList();
+        List<LedgerVO> list = itemLedgerService.getLedgerList(cabinetId, operationType, status, category, 1, 100000).getContent();
 
         List<LedgerExcelTemplate> excelList = list.stream().map(vo -> {
             LedgerExcelTemplate t = new LedgerExcelTemplate();
@@ -98,10 +98,7 @@ public class ExcelUtil {
      * 导出称重记录
      */
     public void exportWeightRecord(String cabinetId, HttpServletResponse response) throws IOException {
-        List<WeightRecord> list = weightRecordService.lambdaQuery()
-                .eq(WeightRecord::getCabinetId, cabinetId)
-                .orderByDesc(WeightRecord::getRecordedAt)
-                .list();
+        List<WeightRecord> list = weightRecordService.listByCabinetId(cabinetId);
 
         List<WeightRecordExcelTemplate> excelList = list.stream().map(r -> {
             WeightRecordExcelTemplate t = new WeightRecordExcelTemplate();
@@ -124,10 +121,7 @@ public class ExcelUtil {
      * 导出物品基础信息
      */
     public void exportItem(HttpServletResponse response) throws IOException {
-        List<Item> list = itemMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Item>()
-                        .orderByDesc(Item::getUpdatedAt)
-        );
+        List<Item> list = itemMapper.selectAll();
         List<ItemExcelTemplate> excelList = list.stream().map(item -> {
             ItemExcelTemplate t = new ItemExcelTemplate();
             t.setName(item.getName());

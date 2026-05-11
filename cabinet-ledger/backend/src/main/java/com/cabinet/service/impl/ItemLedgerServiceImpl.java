@@ -1,8 +1,5 @@
 package com.cabinet.service.impl;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.cabinet.common.PageResult;
 import com.cabinet.dto.InventoryCheckDTO;
 import com.cabinet.entity.Cabinet;
 import com.cabinet.entity.CabinetSlot;
@@ -19,6 +16,9 @@ import com.cabinet.service.CabinetService;
 import com.cabinet.util.WeightUnitUtil;
 import com.cabinet.vo.InventoryCheckVO;
 import com.cabinet.vo.LedgerVO;
+import io.choerodon.core.domain.Page;
+import io.choerodon.mybatis.pagehelper.PageHelper;
+import io.choerodon.mybatis.pagehelper.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -50,17 +50,11 @@ public class ItemLedgerServiceImpl implements ItemLedgerService {
     }
 
     @Override
-    public PageResult<LedgerVO> getLedgerList(String cabinetId, Integer operationType, Integer status, String category, int page, int size) {
+    public Page<LedgerVO> getLedgerList(String cabinetId, Integer operationType, Integer status, String category, int page, int size) {
         int current = page <= 0 ? 1 : page;
         int pageSize = size <= 0 ? 20 : size;
-        IPage<LedgerVO> pageResult = itemLedgerMapper.selectLedgerPage(new Page<>(current, pageSize), cabinetId, operationType, status, category);
-        
-        PageResult<LedgerVO> result = new PageResult<>();
-        result.setTotal(pageResult.getTotal());
-        result.setPage((int) pageResult.getCurrent());
-        result.setPageSize((int) pageResult.getSize());
-        result.setList(pageResult.getRecords());
-        return result;
+        return PageHelper.doPage(new PageRequest(current - 1, pageSize),
+                () -> itemLedgerMapper.selectLedgerList(cabinetId, operationType, status, category));
     }
 
     @Override
