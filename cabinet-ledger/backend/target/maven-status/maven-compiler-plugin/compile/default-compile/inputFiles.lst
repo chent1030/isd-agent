@@ -75,5 +75,6 @@
 /Users/csai/project/isd-robot/cabinet-ledger/backend/src/main/java/com/cabinet/excel/WeightRecordExcelTemplate.java
 /Users/csai/project/isd-robot/cabinet-ledger/backend/src/main/java/com/cabinet/controller/AuthController.java
 /Users/csai/project/isd-robot/cabinet-ledger/backend/src/main/java/com/cabinet/common/Result.java
+/Users/csai/project/isd-robot/cabinet-ledger/backend/src/main/java/com/cabinet/dto/ItemReceiveDTO.java
 /Users/csai/project/isd-robot/cabinet-ledger/backend/src/main/java/com/cabinet/vo/WeightReportVO.java
 /Users/csai/project/isd-robot/cabinet-ledger/backend/src/main/java/com/cabinet/vo/CabinetVO.java

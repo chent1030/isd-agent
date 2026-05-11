@@ -12,5 +12,6 @@ public interface ItemStockService extends IService<ItemStock> {
     void applyLedger(ItemLedger ledger);
     void applyWeightRecord(WeightRecord record);
     void updateStockConfig(Long itemId, Integer warningQuantity, Integer maxQuantity);
+    ItemStock getStockByItemId(Long itemId);
     boolean adjustStock(ItemStock stock);
 }

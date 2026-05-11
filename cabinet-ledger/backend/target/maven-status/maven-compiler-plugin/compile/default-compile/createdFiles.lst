@@ -38,6 +38,7 @@ com/cabinet/service/CabinetService.class
 com/cabinet/service/impl/CabinetServiceImpl.class
 com/cabinet/vo/LedgerVO.class
 com/cabinet/properties/CabinetLedgerProperties.class
+com/cabinet/dto/ItemReceiveDTO.class
 com/cabinet/controller/ItemLedgerController.class
 com/cabinet/vo/AdminUserVO.class
 com/cabinet/mapper/CabinetSlotMapper.class

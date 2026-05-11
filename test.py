@@ -3,7 +3,7 @@ import time
 
 
 SERVER_IP = '10.134.231.111'
-SERVER_HOST = 10123
+SERVER_PORT = 10123
 
 
 PROTOCOL_HEADER = [0x73, 0x74, 0x61, 0x72]
@@ -37,7 +37,7 @@ def build_command(cmd_code, board_addr, lock_num_or_data):
             payload = [cmd_code, board_addr, lock_num_or_data]
     bcc = calculate_bcc(payload)
     full_command = PROTOCOL_HEADER + payload + [bcc] + PROTOCOL_FOOTER
-    return bytes(full_command)
+    return bytearray(full_command)
 
 
 def send_commane_and_receive_response(tcp_socket, command_bytes):
@@ -49,7 +49,7 @@ def send_commane_and_receive_response(tcp_socket, command_bytes):
     return response
 
 
-def open_single_lock(server_id, server_port, board_address, lock_number):
+def open_single_lock_tcp(server_id, server_port, board_address, lock_number):
     """
     打开单个锁
     """
@@ -134,3 +134,10 @@ def open_all_locks_tcp(server_id, server_port, board_address):
         print(f"发生错误: {e}")
     finally:
         socket.close()
+
+
+if __name__ == "__main__":
+    BOARD_ADDR = 1
+    LOCK_NUM = 1
+
+    open_single_lock_tcp(SERVER_IP, SERVER_PORT, BOARD_ADDR, LOCK_NUM)

@@ -13,11 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.util.StringUtils;
 
 import com.cabinet.common.Result;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cabinet.dto.ItemReceiveDTO;
 import com.cabinet.dto.ItemSaveDTO;
+import com.cabinet.entity.CabinetSlot;
 import com.cabinet.entity.Item;
+import com.cabinet.entity.ItemLedger;
 import com.cabinet.entity.ItemStock;
 import com.cabinet.excel.ExcelUtil;
+import com.cabinet.mapper.CabinetSlotMapper;
 import com.cabinet.mapper.ItemMapper;
+import com.cabinet.service.ItemLedgerService;
 import com.cabinet.service.ItemStockService;
 import com.cabinet.service.OperationLogService;
 import com.cabinet.util.WeightUnitUtil;
@@ -32,16 +38,22 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/cabinet/item")
 public class ItemController {
     private final ItemMapper itemMapper;
+    private final CabinetSlotMapper cabinetSlotMapper;
     private final ItemStockService itemStockService;
+    private final ItemLedgerService itemLedgerService;
     private final OperationLogService operationLogService;
     private final ExcelUtil excelUtil;
 
     public ItemController(ItemMapper itemMapper,
+                          CabinetSlotMapper cabinetSlotMapper,
                           ItemStockService itemStockService,
+                          ItemLedgerService itemLedgerService,
                           OperationLogService operationLogService,
                           ExcelUtil excelUtil) {
         this.itemMapper = itemMapper;
+        this.cabinetSlotMapper = cabinetSlotMapper;
         this.itemStockService = itemStockService;
+        this.itemLedgerService = itemLedgerService;
         this.operationLogService = operationLogService;
         this.excelUtil = excelUtil;
     }
@@ -54,6 +66,45 @@ public class ItemController {
     @GetMapping("/available")
     public Result<List<AvailableItemVO>> available() {
         return Result.success(itemMapper.selectAvailableItems());
+    }
+
+    @PostMapping("/receive")
+    public Result<ItemStock> receive(@RequestBody ItemReceiveDTO dto,
+                                     @RequestHeader(value = "X-Operator", required = false) String operator,
+                                     HttpServletRequest request) {
+        Item item = validateReceive(dto);
+        CabinetSlot slot = cabinetSlotMapper.selectOne(new LambdaQueryWrapper<CabinetSlot>()
+                .eq(CabinetSlot::getItemId, dto.getItemId())
+                .last("LIMIT 1"));
+        if (slot == null) {
+            throw new IllegalArgumentException("物品未绑定柜子格口");
+        }
+        ItemStock stock = itemStockService.getStockByItemId(dto.getItemId());
+        int currentQuantity = stock == null || stock.getQuantity() == null ? 0 : stock.getQuantity();
+        int quantity = dto.getQuantity();
+        if (currentQuantity < quantity) {
+            throw new IllegalArgumentException("库存不足，当前库存：" + currentQuantity);
+        }
+
+        ItemLedger ledger = new ItemLedger();
+        ledger.setItemId(item.getId());
+        ledger.setCabinetId(slot.getCabinetId());
+        ledger.setSlotId(slot.getId());
+        ledger.setQuantity(quantity);
+        ledger.setTotalWeight(WeightUnitUtil.zeroIfNullIntegerGram(item.getStandardWeight(), "标准重量")
+                .multiply(java.math.BigDecimal.valueOf(quantity)));
+        ledger.setOperationType(1);
+        ledger.setStatus(1);
+        ledger.setOperatorNo(StringUtils.hasText(dto.getOperatorNo()) ? dto.getOperatorNo() : operatorOrDefault(operator));
+        ledger.setOperatorName(StringUtils.hasText(dto.getOperatorName()) ? dto.getOperatorName() : operatorOrDefault(operator));
+        ledger.setRemovedBy(ledger.getOperatorNo());
+        ledger.setRemark(StringUtils.hasText(dto.getRemark()) ? dto.getRemark() : "领用物品");
+        boolean success = itemLedgerService.saveLedger(ledger);
+        if (success) {
+            operationLogService.record(slot.getCabinetId(), operatorOrDefault(operator), "ITEM_RECEIVE",
+                    "领用物品：" + item.getName() + "，数量：" + quantity, request.getRemoteAddr());
+        }
+        return Result.success(itemStockService.getStockByItemId(item.getId()));
     }
 
     @PostMapping("/save")
@@ -124,6 +175,23 @@ public class ItemController {
         item.setUseType(dto.getUseType());
         item.setWarningQuantity(dto.getWarningQuantity());
         item.setMaxQuantity(dto.getMaxQuantity());
+        return item;
+    }
+
+    private Item validateReceive(ItemReceiveDTO dto) {
+        if (dto == null || dto.getItemId() == null) {
+            throw new IllegalArgumentException("物品ID不能为空");
+        }
+        if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
+            throw new IllegalArgumentException("领用数量必须大于0");
+        }
+        Item item = itemMapper.selectById(dto.getItemId());
+        if (item == null) {
+            throw new IllegalArgumentException("物品不存在");
+        }
+        if (item.getUseType() != null && item.getUseType() == 1) {
+            throw new IllegalArgumentException("该物品仅支持借用，不能领用");
+        }
         return item;
     }
 

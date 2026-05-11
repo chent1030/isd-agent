@@ -107,6 +107,14 @@ public class ItemStockServiceImpl extends ServiceImpl<ItemStockMapper, ItemStock
     }
 
     @Override
+    public ItemStock getStockByItemId(Long itemId) {
+        if (itemId == null) {
+            return null;
+        }
+        return getOrCreateByItemId(itemId);
+    }
+
+    @Override
     public boolean adjustStock(ItemStock input) {
         if (input == null || input.getItemId() == null) {
             throw new IllegalArgumentException("物品ID不能为空");

@@ -16,10 +16,12 @@ description: >
 
 当用户表达要领取/借用/归还某物品时：
 
-1. 运行 `node scripts/cli.mjs list` 从 API 获取所有物品信息（列表中已包含每个物品的柜号、板地址、锁号）
+1. 运行 `node scripts/cli.mjs list` 从 API 获取所有可操作物品信息（列表中包含物品 ID、名称、柜号、格口号、库存数量、使用类型）
 2. 根据用户的描述（可能模糊、不精确），在物品列表中找到最匹配的物品
-3. 如果匹配到多个候选物品，全部列出让用户选择
-4. 如果没有匹配到，告诉用户当前可用的物品列表
+3. 判断物品是否支持领用，并判断库存是否满足用户提出的数量
+4. 如果匹配到多个候选物品，全部列出让用户选择
+5. 如果没有匹配到，告诉用户当前可用的物品列表
+6. 如果库存不足或物品不支持领用，停止流程，不允许开柜
 
 ### 第二步：展示信息并等待用户确认
 
@@ -27,8 +29,9 @@ description: >
 
 ```
 物品名称: 螺丝刀
-存放位置: 板1 锁5
+存放位置: 柜号1 格口5
 库存数量: 3
+领用数量: 1
 
 确认要领取该物品吗？
 ```
@@ -42,35 +45,35 @@ description: >
 用户确认后，运行开锁指令：
 
 ```bash
-node scripts/cli.mjs unlock <板地址> <锁号>
+node scripts/cli.mjs borrow <物品ID> [数量] [操作人工号] [操作人姓名]
 ```
 
-告诉用户柜门已打开，请取走物品。
+该命令会使用后端返回的柜号和格口号直接打开对应柜门。硬件协议中的 `board_addr` 就是业务柜号，`lock_num` 就是业务格口号，不需要额外维护板地址和锁号。告诉用户柜门已打开，请取走物品。
 
 ### 第四步：监控柜门关闭
 
 运行监控指令等待门关上：
 
 ```bash
-node scripts/cli.mjs monitor <板地址> <锁号>
+node scripts/cli.mjs monitor <柜号> <格口号>
 ```
 
 这个命令会持续轮询锁状态，直到检测到门关闭（默认超时60秒）。也可以通过代码调用：
 
 ```javascript
 import { openAndWaitForClose } from './scripts/door-monitor.mjs'
-const result = await openAndWaitForClose(boardAddr, lockNumber)
+const result = await openAndWaitForClose(cabinetNo, slotNo)
 ```
 
 ### 第五步：扣减库存
 
-门关闭后，运行扣减指令：
+门关闭后，脚本会调用后端领用接口扣减库存并生成台账：
 
 ```bash
-node scripts/cli.mjs deduct <物品ID> [数量]
+POST /api/cabinet/item/receive
 ```
 
-如果是归还操作，这里应该调用归还/增加库存的 API 而非扣减。
+领用接口必须传递或补齐操作人工号和操作人姓名。接口成功后即可结束对话。
 
 ## 归还流程
 
@@ -97,15 +100,15 @@ scripts/
 
 `scripts/api-service.mjs` 中有三个函数需要根据实际后端 API 填写：
 
-1. **`getAllItems()`** — 获取所有物品列表（含柜号、板地址、锁号，一个接口搞定）
-2. **`deductInventory(itemId, quantity)`** — 扣减库存（领取时用）
+1. **`getAllItems()`** — 获取所有物品列表（含柜号、格口号、库存数量、使用类型）
+2. **`deductInventory(itemId, quantity, options)`** — 调用后端领用接口扣减库存（领取时用）
 3. **`returnInventory(itemId, quantity)`** — 增加库存（归还时用）
 
-函数签名和返回值结构已定义好，填写 `fetch` 调用即可。
+MVP1 先实现领用闭环；借用和归还接口可在后续版本接入同一流程。
 
 ## 配置
 
-锁控板地址在 `cabinet-control.mjs` / `door-monitor.mjs` 顶部：
+锁控 TCP 服务地址在 `cabinet-control.mjs` / `door-monitor.mjs` 顶部：
 - `DEFAULT_SERVER_IP = '10.134.231.111'`
 - `DEFAULT_SERVER_PORT = 10123`
 

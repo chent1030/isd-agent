@@ -8,11 +8,11 @@ const args = process.argv.slice(2)
 if (args.length === 0) {
   console.log(`用法:
   node cli.mjs list                          -- 获取所有物品列表
-  node cli.mjs borrow <物品ID> [数量]         -- 领取物品（开柜→监控→扣减）
+  node cli.mjs borrow <物品ID> [数量] [工号] [姓名] -- 领取物品（开柜→监控→扣减）
   node cli.mjs return <物品ID> [数量]         -- 归还物品（开柜→监控→增加库存）
-  node cli.mjs unlock <板地址> <锁号>         -- 仅打开指定锁
-  node cli.mjs unlock-all <板地址>            -- 打开板上所有锁
-  node cli.mjs monitor <板地址> <锁号>        -- 监控门状态直到关闭
+  node cli.mjs unlock <柜号> <格口号>         -- 仅打开指定格口
+  node cli.mjs unlock-all <柜号>              -- 打开柜号对应的所有锁
+  node cli.mjs monitor <柜号> <格口号>        -- 监控门状态直到关闭
 `)
   process.exit(0)
 }
@@ -34,7 +34,9 @@ async function main() {
           console.error('请提供物品 ID')
           process.exit(1)
         }
-        const result = await borrowItem(itemId, quantity)
+        const operatorNo = args[3]
+        const operatorName = args[4]
+        const result = await borrowItem(itemId, quantity, { operatorNo, operatorName })
         console.log('领取完成:', JSON.stringify(result, null, 2))
         break
       }
@@ -51,35 +53,35 @@ async function main() {
       }
       case 'unlock': {
         if (!args[1] || !args[2]) {
-          console.error('请提供有效的板地址和锁号')
+          console.error('请提供有效的柜号和格口号')
           process.exit(1)
         }
-        const boardAddr = parseHardwareCode(args[1], '板地址')
-        const lockNumber = parseHardwareCode(args[2], '锁号')
+        const boardAddr = parseHardwareCode(args[1], '柜号')
+        const lockNumber = parseHardwareCode(args[2], '格口号')
         const result = await openSingleLock(boardAddr, lockNumber)
         console.log('开锁结果:', JSON.stringify(result, null, 2))
         break
       }
       case 'unlock-all': {
         if (!args[1]) {
-          console.error('请提供有效的板地址')
+          console.error('请提供有效的柜号')
           process.exit(1)
         }
-        const boardAddr = parseHardwareCode(args[1], '板地址')
+        const boardAddr = parseHardwareCode(args[1], '柜号')
         const result = await openAllLocks(boardAddr)
         console.log('全部开锁结果:', JSON.stringify(result, null, 2))
         break
       }
       case 'monitor': {
         if (!args[1] || !args[2]) {
-          console.error('请提供有效的板地址和锁号')
+          console.error('请提供有效的柜号和格口号')
           process.exit(1)
         }
-        const boardAddr = parseHardwareCode(args[1], '板地址')
-        const lockNumber = parseHardwareCode(args[2], '锁号')
+        const boardAddr = parseHardwareCode(args[1], '柜号')
+        const lockNumber = parseHardwareCode(args[2], '格口号')
         const result = await openAndWaitForClose(boardAddr, lockNumber, {
           onStatusChange: (info) => {
-            console.log(`[状态] 板${info.boardAddr} 锁${info.lockNumber}: ${info.status}`)
+            console.log(`[状态] 柜号${info.boardAddr} 格口${info.lockNumber}: ${info.status}`)
           }
         })
         console.log('监控完成:', JSON.stringify(result, null, 2))

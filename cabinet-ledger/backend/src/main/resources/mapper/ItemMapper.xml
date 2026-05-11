@@ -28,6 +28,9 @@
     <resultMap id="AvailableItemResultMap" type="com.cabinet.vo.AvailableItemVO">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
+        <result column="category" property="category"/>
+        <result column="spec" property="spec"/>
+        <result column="use_type" property="useType"/>
         <result column="stock" property="stock"/>
         <result column="cabinet_no" property="cabinetNo"/>
         <result column="slot_no" property="slotNo"/>
@@ -37,6 +40,9 @@
         SELECT
             i.id,
             i.name,
+            i.category,
+            i.spec,
+            i.use_type,
             COALESCE(s.quantity, 0) AS stock,
             c.cabinet_no,
             cs.slot_no

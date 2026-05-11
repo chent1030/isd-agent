@@ -54,11 +54,17 @@ function validateHardwareByte(parsed, fieldName, rawValue) {
 }
 
 export async function borrowItem(item, quantity = 1, options = {}) {
-  const { serverIp, serverPort, onStatusChange } = options
+  const { serverIp, serverPort, onStatusChange, operatorNo, operatorName } = options
   item = await resolveItem(item)
-  const hardware = await getSlotHardware(item.cabinetNo, item.slotNo)
-  const boardAddr = parseHardwareCode(hardware.boardAddr, '板地址')
-  const lockNumber = parseHardwareCode(hardware.lockNumber, '锁号')
+  if (item.useType === 1) {
+    throw new Error(`物品 ${item.name} 仅支持借用，不能领用`)
+  }
+  if ((item.stock ?? 0) < quantity) {
+    throw new Error(`库存不足: ${item.name} 当前库存 ${item.stock ?? 0}, 请求数量 ${quantity}`)
+  }
+  const hardware = getSlotHardware(item.cabinetNo, item.slotNo)
+  const boardAddr = parseHardwareCode(hardware.boardAddr, '柜号')
+  const lockNumber = parseHardwareCode(hardware.lockNumber, '格口号')
 
   console.log(`=== 领取物品: ${item.name} (${item.id}) ===`)
   console.log(`柜号信息: 柜号${item.cabinetNo} 格口${item.slotNo}`)
@@ -68,7 +74,11 @@ export async function borrowItem(item, quantity = 1, options = {}) {
   })
   console.log(`柜门关闭，耗时 ${doorResult.elapsed}ms`)
 
-  const deductResult = await deductInventory(item.id, quantity)
+  const deductResult = await deductInventory(item.id, quantity, {
+    operatorNo,
+    operatorName,
+    remark: `skill领用：${item.name}`
+  })
   console.log(`库存扣减: 成功=${deductResult.success}, 剩余=${deductResult.remainingStock}`)
 
   return { item, doorResult, deductResult, quantity }
@@ -77,9 +87,9 @@ export async function borrowItem(item, quantity = 1, options = {}) {
 export async function returnItem(item, quantity = 1, options = {}) {
   const { serverIp, serverPort, onStatusChange } = options
   item = await resolveItem(item)
-  const hardware = await getSlotHardware(item.cabinetNo, item.slotNo)
-  const boardAddr = parseHardwareCode(hardware.boardAddr, '板地址')
-  const lockNumber = parseHardwareCode(hardware.lockNumber, '锁号')
+  const hardware = getSlotHardware(item.cabinetNo, item.slotNo)
+  const boardAddr = parseHardwareCode(hardware.boardAddr, '柜号')
+  const lockNumber = parseHardwareCode(hardware.lockNumber, '格口号')
 
   console.log(`=== 归还物品: ${item.name} (${item.id}) ===`)
   console.log(`柜号信息: 柜号${item.cabinetNo} 格口${item.slotNo}`)

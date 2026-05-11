@@ -35,6 +35,9 @@ export async function getAllItems() {
   return (items || []).map(item => ({
     id: item.id,
     name: item.name,
+    category: item.category,
+    spec: item.spec,
+    useType: item.useType,
     stock: item.stock,
     cabinetNo: item.cabinetNo,
     slotNo: item.slotNo
@@ -42,33 +45,40 @@ export async function getAllItems() {
 }
 
 /**
- * 通过业务柜号和格口号解析后端维护的硬件配置。
+ * 将业务柜号和格口号映射为锁控协议参数。
+ * 当前硬件协议中 board_addr 就是柜号，lock_num 就是格口号。
  * @param {number} cabinetNo
  * @param {number} slotNo
- * @returns {Promise<{boardAddr: string, lockNumber: string}>}
+ * @returns {Promise<{boardAddr: number, lockNumber: number}>}
  */
-export async function getSlotHardware(cabinetNo, slotNo) {
-  const params = new URLSearchParams({
-    cabinetNo: String(cabinetNo),
-    slotNo: String(slotNo)
-  })
-  return requestJson(`/cabinet/slot/by-no?${params.toString()}`)
+export function getSlotHardware(cabinetNo, slotNo) {
+  return {
+    boardAddr: cabinetNo,
+    lockNumber: slotNo
+  }
 }
 
 /**
  * 扣减库存（领取时使用）
  * @param {string|number} itemId - 物品 ID
  * @param {number} quantity - 扣减数量，默认为 1
+ * @param {{operatorNo?: string, operatorName?: string, remark?: string}} options
  * @returns {Promise<{success: boolean, remainingStock: number}>}
  */
-export async function deductInventory(itemId, quantity = 1) {
-  // 台账最终以称重上报为准；这里先返回最新库存，避免领取流程被占位接口阻断。
-  const items = await getAllItems()
-  const item = items.find(current => String(current.id) === String(itemId))
-  const stock = item?.stock ?? 0
+export async function deductInventory(itemId, quantity = 1, options = {}) {
+  const stock = await requestJson('/cabinet/item/receive', {
+    method: 'POST',
+    body: JSON.stringify({
+      itemId,
+      quantity,
+      operatorNo: options.operatorNo || process.env.CABINET_LEDGER_OPERATOR_NO || process.env.CABINET_LEDGER_OPERATOR || 'skill',
+      operatorName: options.operatorName || process.env.CABINET_LEDGER_OPERATOR_NAME || process.env.CABINET_LEDGER_OPERATOR || 'skill',
+      remark: options.remark || 'skill领用'
+    })
+  })
   return {
     success: true,
-    remainingStock: Math.max(stock - quantity, 0)
+    remainingStock: stock?.quantity ?? 0
   }
 }
 
