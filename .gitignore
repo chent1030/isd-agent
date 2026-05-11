@@ -1,1 +1,9 @@
 node_modules
+
+# Build outputs
+target/
+dist/
+
+# Project build outputs
+cabinet-ledger/backend/target/
+cabinet-ledger/frontend/dist/
