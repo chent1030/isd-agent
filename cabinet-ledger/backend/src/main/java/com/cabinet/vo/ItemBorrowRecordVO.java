@@ -18,7 +18,11 @@ public class ItemBorrowRecordVO {
     private Integer pendingQuantity;
     private String borrower;
     private String borrowOperator;
+    private String borrowOperatorNo;
+    private String borrowOperatorName;
     private String returnOperator;
+    private String returnOperatorNo;
+    private String returnOperatorName;
     private LocalDateTime borrowTime;
     private LocalDateTime expectedReturnTime;
     private LocalDateTime returnTime;
@@ -55,8 +59,16 @@ public class ItemBorrowRecordVO {
     public void setBorrower(String borrower) { this.borrower = borrower; }
     public String getBorrowOperator() { return borrowOperator; }
     public void setBorrowOperator(String borrowOperator) { this.borrowOperator = borrowOperator; }
+    public String getBorrowOperatorNo() { return borrowOperatorNo; }
+    public void setBorrowOperatorNo(String borrowOperatorNo) { this.borrowOperatorNo = borrowOperatorNo; }
+    public String getBorrowOperatorName() { return borrowOperatorName; }
+    public void setBorrowOperatorName(String borrowOperatorName) { this.borrowOperatorName = borrowOperatorName; }
     public String getReturnOperator() { return returnOperator; }
     public void setReturnOperator(String returnOperator) { this.returnOperator = returnOperator; }
+    public String getReturnOperatorNo() { return returnOperatorNo; }
+    public void setReturnOperatorNo(String returnOperatorNo) { this.returnOperatorNo = returnOperatorNo; }
+    public String getReturnOperatorName() { return returnOperatorName; }
+    public void setReturnOperatorName(String returnOperatorName) { this.returnOperatorName = returnOperatorName; }
     public LocalDateTime getBorrowTime() { return borrowTime; }
     public void setBorrowTime(LocalDateTime borrowTime) { this.borrowTime = borrowTime; }
     public LocalDateTime getExpectedReturnTime() { return expectedReturnTime; }

@@ -37,6 +37,19 @@ public class ItemStockServiceImpl extends ServiceImpl<ItemStockMapper, ItemStock
     }
 
     @Override
+    public void clearSlotBinding(Long itemId, Long slotId) {
+        if (itemId == null) {
+            return;
+        }
+        ItemStock stock = getOrCreateByItemId(itemId);
+        if (slotId == null || slotId.equals(stock.getSlotId())) {
+            stock.setCabinetId(null);
+            stock.setSlotId(null);
+            saveOrUpdateStock(stock);
+        }
+    }
+
+    @Override
     public void applyLedger(ItemLedger ledger) {
         if (ledger == null || ledger.getItemId() == null) {
             return;

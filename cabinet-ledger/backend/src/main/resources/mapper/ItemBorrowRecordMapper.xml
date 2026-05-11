@@ -19,7 +19,11 @@
         <result column="pending_quantity" property="pendingQuantity"/>
         <result column="borrower" property="borrower"/>
         <result column="borrow_operator" property="borrowOperator"/>
+        <result column="borrow_operator_no" property="borrowOperatorNo"/>
+        <result column="borrow_operator_name" property="borrowOperatorName"/>
         <result column="return_operator" property="returnOperator"/>
+        <result column="return_operator_no" property="returnOperatorNo"/>
+        <result column="return_operator_name" property="returnOperatorName"/>
         <result column="borrow_time" property="borrowTime"/>
         <result column="expected_return_time" property="expectedReturnTime"/>
         <result column="return_time" property="returnTime"/>
@@ -44,7 +48,11 @@
             (br.quantity - br.returned_quantity) AS pending_quantity,
             br.borrower,
             br.borrow_operator,
+            br.borrow_operator_no,
+            br.borrow_operator_name,
             br.return_operator,
+            br.return_operator_no,
+            br.return_operator_name,
             br.borrow_time,
             br.expected_return_time,
             br.return_time,
@@ -84,7 +92,11 @@
             (br.quantity - br.returned_quantity) AS pending_quantity,
             br.borrower,
             br.borrow_operator,
+            br.borrow_operator_no,
+            br.borrow_operator_name,
             br.return_operator,
+            br.return_operator_no,
+            br.return_operator_name,
             br.borrow_time,
             br.expected_return_time,
             br.return_time,

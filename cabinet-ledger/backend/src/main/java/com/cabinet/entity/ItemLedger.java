@@ -15,6 +15,8 @@ public class ItemLedger {
     private BigDecimal totalWeight;
     private Integer operationType;
     private Integer status;
+    private String operatorNo;
+    private String operatorName;
     private String storedBy;
     private LocalDateTime storedAt;
     private String removedBy;
@@ -42,6 +44,10 @@ public class ItemLedger {
     public void setOperationType(Integer operationType) { this.operationType = operationType; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public String getOperatorNo() { return operatorNo; }
+    public void setOperatorNo(String operatorNo) { this.operatorNo = operatorNo; }
+    public String getOperatorName() { return operatorName; }
+    public void setOperatorName(String operatorName) { this.operatorName = operatorName; }
     public String getStoredBy() { return storedBy; }
     public void setStoredBy(String storedBy) { this.storedBy = storedBy; }
     public LocalDateTime getStoredAt() { return storedAt; }

@@ -115,12 +115,18 @@ public class CabinetController {
                                     HttpServletRequest request) {
         validateSlot(slot);
         Cabinet cabinet = cabinetService.getById(slot.getCabinetId());
-        ensureCabinetEditable(cabinet, "启用中的柜子不能修改格口配置");
+        if (cabinet == null) {
+            throw new IllegalArgumentException("柜子不存在");
+        }
         ensureSlotUnique(slot);
+        CabinetSlot oldSlot = slot.getId() == null ? null : cabinetSlotMapper.selectById(slot.getId());
         boolean success = slot.getId() == null
                 ? cabinetSlotMapper.insert(slot) > 0
                 : cabinetSlotMapper.updateById(slot) > 0;
         if (success) {
+            if (oldSlot != null && oldSlot.getItemId() != null && !oldSlot.getItemId().equals(slot.getItemId())) {
+                itemStockService.clearSlotBinding(oldSlot.getItemId(), oldSlot.getId());
+            }
             itemStockService.syncSlotBinding(slot);
         }
         if (success) {

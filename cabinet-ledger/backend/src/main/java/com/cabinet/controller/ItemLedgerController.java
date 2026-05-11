@@ -46,6 +46,7 @@ public class ItemLedgerController {
     public Result<Void> save(@RequestBody ItemLedger ledger,
                              @RequestHeader(value = "X-Operator", required = false) String operator,
                              HttpServletRequest request) {
+        applyOperatorFallback(ledger, operator);
         boolean success = itemLedgerService.saveLedger(ledger);
         if (success) {
             operationLogService.record(ledger.getCabinetId(), operatorOrDefault(operator), "LEDGER_SAVE", "保存台账记录：" + ledger.getId(), request.getRemoteAddr());
@@ -84,5 +85,24 @@ public class ItemLedgerController {
 
     private String operatorOrDefault(String operator) {
         return StringUtils.hasText(operator) ? operator : "admin";
+    }
+
+    private void applyOperatorFallback(ItemLedger ledger, String operator) {
+        if (ledger == null) {
+            return;
+        }
+        String fallback = operatorOrDefault(operator);
+        if (!StringUtils.hasText(ledger.getOperatorNo())) {
+            ledger.setOperatorNo(fallback);
+        }
+        if (!StringUtils.hasText(ledger.getOperatorName())) {
+            ledger.setOperatorName(fallback);
+        }
+        if (ledger.getStatus() != null && ledger.getStatus() == 1 && !StringUtils.hasText(ledger.getRemovedBy())) {
+            ledger.setRemovedBy(fallback);
+        }
+        if ((ledger.getStatus() == null || ledger.getStatus() == 0) && !StringUtils.hasText(ledger.getStoredBy())) {
+            ledger.setStoredBy(fallback);
+        }
     }
 }

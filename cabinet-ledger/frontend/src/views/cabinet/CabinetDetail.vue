@@ -25,7 +25,7 @@
           <span>格口与物品绑定</span>
           <div class="cabinet-layout-meta">
             <el-tag type="info">{{ columnCount }}排 x {{ rowCount }}行</el-tag>
-            <el-button type="primary" size="small" :disabled="!editable" @click="openSlotDialog()">新增格口</el-button>
+            <el-button type="primary" size="small" @click="openSlotDialog()">新增格口</el-button>
           </div>
         </div>
       </template>
@@ -38,7 +38,6 @@
             class="slot-card"
             :class="[slotStatusClass(slot), { virtual: slot.virtual }]"
             type="button"
-            :disabled="!editable"
             @click="openSlotDialog(slot)"
           >
             <div class="slot-card-header">
@@ -87,6 +86,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
+        <el-button v-if="slotForm.id" type="warning" plain @click="clearSlot">清空格口</el-button>
         <el-button @click="slotDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="saveSlot">保存</el-button>
       </template>
@@ -110,7 +110,6 @@ const slotDialogVisible = ref(false)
 const slotForm = ref({})
 const rowCount = 6
 
-const editable = computed(() => detail.value.status !== 1)
 const columnCount = computed(() => {
   const text = `${detail.value.name || ''}${detail.value.location || ''}`
   const maxSlotNo = slots.value.reduce((max, slot) => Math.max(max, slot.slotNo || 0), 0)
@@ -164,10 +163,6 @@ const fetchSlots = async () => {
 }
 
 const openSlotDialog = (row) => {
-  if (!editable.value) {
-    ElMessage.warning('启用中的柜子不能修改格口配置，请先停用')
-    return
-  }
   slotForm.value = row
     ? { ...row, id: row.virtual ? null : row.id }
     : { cabinetId: route.params.id, slotNo: null, itemId: null, weightLimit: 0, status: 0 }
@@ -178,6 +173,19 @@ const saveSlot = async () => {
   const res = await saveCabinetSlot(slotForm.value)
   if (res.code === 200) {
     ElMessage.success('保存成功')
+    slotDialogVisible.value = false
+    fetchSlots()
+  }
+}
+
+const clearSlot = async () => {
+  const res = await saveCabinetSlot({
+    ...slotForm.value,
+    itemId: null,
+    status: 0
+  })
+  if (res.code === 200) {
+    ElMessage.success('格口已清空')
     slotDialogVisible.value = false
     fetchSlots()
   }

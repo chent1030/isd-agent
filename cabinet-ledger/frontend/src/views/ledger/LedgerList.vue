@@ -64,7 +64,8 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="storedBy" label="操作人" width="120" />
+            <el-table-column prop="operatorNo" label="操作人工号" width="120" />
+            <el-table-column prop="operatorName" label="操作人姓名" width="120" />
             <el-table-column prop="storedAt" label="操作时间" width="160" />
           </el-table>
 

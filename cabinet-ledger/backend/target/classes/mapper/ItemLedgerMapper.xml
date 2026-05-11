@@ -13,7 +13,9 @@
         <result column="total_weight" property="totalWeight"/>
         <result column="operation_type" property="operationType"/>
         <result column="status" property="status"/>
-        <result column="operator_name" property="storedBy"/>
+        <result column="operator_no" property="operatorNo"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="operator_display" property="storedBy"/>
         <result column="operated_at" property="storedAt"/>
     </resultMap>
 
@@ -28,7 +30,9 @@
             il.total_weight,
             il.operation_type,
             il.status,
-            COALESCE(il.stored_by, il.removed_by) AS operator_name,
+            il.operator_no,
+            il.operator_name,
+            COALESCE(il.operator_name, il.operator_no, il.stored_by, il.removed_by) AS operator_display,
             COALESCE(il.stored_at, il.removed_at, il.created_at) AS operated_at
         FROM item_ledger il
         LEFT JOIN item i ON il.item_id = i.id AND i.deleted = 0

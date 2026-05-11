@@ -8,6 +8,7 @@ import com.cabinet.entity.WeightRecord;
 
 public interface ItemStockService extends IService<ItemStock> {
     void syncSlotBinding(CabinetSlot slot);
+    void clearSlotBinding(Long itemId, Long slotId);
     void applyLedger(ItemLedger ledger);
     void applyWeightRecord(WeightRecord record);
     void updateStockConfig(Long itemId, Integer warningQuantity, Integer maxQuantity);

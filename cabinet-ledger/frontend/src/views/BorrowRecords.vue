@@ -49,6 +49,10 @@
         <el-table-column prop="returnedQuantity" label="已归还" width="90" />
         <el-table-column prop="pendingQuantity" label="未归还" width="90" />
         <el-table-column prop="borrower" label="借用人" width="120" />
+        <el-table-column prop="borrowOperatorNo" label="借出工号" width="120" />
+        <el-table-column prop="borrowOperatorName" label="借出姓名" width="120" />
+        <el-table-column prop="returnOperatorNo" label="归还工号" width="120" />
+        <el-table-column prop="returnOperatorName" label="归还姓名" width="120" />
         <el-table-column prop="borrowTime" label="借用时间" width="170" />
         <el-table-column prop="expectedReturnTime" label="预计归还" width="170" />
         <el-table-column prop="status" label="状态" width="100">
@@ -104,6 +108,12 @@
         <el-form-item label="借用人">
           <el-input v-model="borrowForm.borrower" />
         </el-form-item>
+        <el-form-item label="操作人工号">
+          <el-input v-model="borrowForm.operatorNo" />
+        </el-form-item>
+        <el-form-item label="操作人姓名">
+          <el-input v-model="borrowForm.operatorName" />
+        </el-form-item>
         <el-form-item label="预计归还">
           <el-date-picker
             v-model="borrowForm.expectedReturnTime"
@@ -139,6 +149,12 @@
             :min="1"
             :max="returnForm.pendingQuantity || 1"
           />
+        </el-form-item>
+        <el-form-item label="操作人工号">
+          <el-input v-model="returnForm.operatorNo" />
+        </el-form-item>
+        <el-form-item label="操作人姓名">
+          <el-input v-model="returnForm.operatorName" />
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="returnForm.remark" type="textarea" :rows="3" />
@@ -229,6 +245,8 @@ const openBorrowDialog = () => {
     itemId: null,
     quantity: 1,
     borrower: '',
+    operatorNo: '',
+    operatorName: '',
     expectedReturnTime: null,
     remark: ''
   }
@@ -251,6 +269,8 @@ const openReturnDialog = (row) => {
     itemName: row.itemName,
     pendingQuantity: row.pendingQuantity,
     quantity: row.pendingQuantity || 1,
+    operatorNo: '',
+    operatorName: '',
     remark: row.remark || ''
   }
   returnDialogVisible.value = true

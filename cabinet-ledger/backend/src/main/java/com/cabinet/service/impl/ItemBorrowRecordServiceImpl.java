@@ -92,6 +92,8 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         record.setReturnedQuantity(0);
         record.setBorrower(dto.getBorrower());
         record.setBorrowOperator(operator);
+        record.setBorrowOperatorNo(resolveOperatorNo(dto.getOperatorNo(), operator));
+        record.setBorrowOperatorName(resolveOperatorName(dto.getOperatorName(), operator));
         record.setBorrowTime(now);
         record.setExpectedReturnTime(dto.getExpectedReturnTime());
         record.setStatus(0);
@@ -100,7 +102,7 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         record.setUpdatedAt(now);
         borrowRecordMapper.insert(record);
 
-        itemStockService.applyLedger(createLedger(item, slot, quantity, 2, 1, operator, now, "借用记录：" + record.getId()));
+        itemStockService.applyLedger(createLedger(item, slot, quantity, 2, 1, operator, dto.getOperatorNo(), dto.getOperatorName(), now, "借用记录：" + record.getId()));
         return getRecord(record.getId());
     }
 
@@ -128,6 +130,8 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         LocalDateTime now = LocalDateTime.now();
         record.setReturnedQuantity(returned + quantity);
         record.setReturnOperator(operator);
+        record.setReturnOperatorNo(resolveOperatorNo(dto.getOperatorNo(), operator));
+        record.setReturnOperatorName(resolveOperatorName(dto.getOperatorName(), operator));
         record.setReturnTime(record.getReturnedQuantity().equals(record.getQuantity()) ? now : record.getReturnTime());
         record.setStatus(record.getReturnedQuantity().equals(record.getQuantity()) ? 1 : 2);
         record.setUpdatedAt(now);
@@ -138,7 +142,7 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
 
         Item item = itemMapper.selectById(record.getItemId());
         CabinetSlot slot = cabinetSlotMapper.selectById(record.getSlotId());
-        itemStockService.applyLedger(createLedger(item, slot, quantity, 3, 0, operator, now, "归还借用记录：" + record.getId()));
+        itemStockService.applyLedger(createLedger(item, slot, quantity, 3, 0, operator, dto.getOperatorNo(), dto.getOperatorName(), now, "归还借用记录：" + record.getId()));
         return getRecord(record.getId());
     }
 
@@ -159,7 +163,7 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         return borrowRecordMapper.selectBorrowRecordById(id);
     }
 
-    private ItemLedger createLedger(Item item, CabinetSlot slot, int quantity, int operationType, int status, String operator, LocalDateTime now, String remark) {
+    private ItemLedger createLedger(Item item, CabinetSlot slot, int quantity, int operationType, int status, String operator, String operatorNo, String operatorName, LocalDateTime now, String remark) {
         if (slot == null) {
             throw new IllegalArgumentException("格口不存在");
         }
@@ -172,6 +176,8 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         ledger.setTotalWeight(WeightUnitUtil.zeroIfNullIntegerGram(standardWeight.multiply(BigDecimal.valueOf(quantity)), "总重量"));
         ledger.setOperationType(operationType);
         ledger.setStatus(status);
+        ledger.setOperatorNo(resolveOperatorNo(operatorNo, operator));
+        ledger.setOperatorName(resolveOperatorName(operatorName, operator));
         ledger.setRemark(remark);
         if (status == 0) {
             ledger.setStoredBy(operator);
@@ -181,6 +187,14 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
             ledger.setRemovedAt(now);
         }
         return ledger;
+    }
+
+    private String resolveOperatorNo(String operatorNo, String fallback) {
+        return StringUtils.hasText(operatorNo) ? operatorNo : fallback;
+    }
+
+    private String resolveOperatorName(String operatorName, String fallback) {
+        return StringUtils.hasText(operatorName) ? operatorName : fallback;
     }
 
     private int requirePositiveQuantity(Integer quantity) {
