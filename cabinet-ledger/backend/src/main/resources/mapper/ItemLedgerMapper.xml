@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabinet.mapper.ItemLedgerMapper">
+
+    <resultMap id="LedgerResultMap" type="com.cabinet.vo.LedgerVO">
+        <id column="id" property="id"/>
+        <result column="item_name" property="itemName"/>
+        <result column="category" property="category"/>
+        <result column="spec" property="spec"/>
+        <result column="slot_no" property="slotNo"/>
+        <result column="quantity" property="quantity"/>
+        <result column="total_weight" property="totalWeight"/>
+        <result column="operation_type" property="operationType"/>
+        <result column="status" property="status"/>
+        <result column="operator_name" property="storedBy"/>
+        <result column="operated_at" property="storedAt"/>
+    </resultMap>
+
+    <select id="selectLedgerPage" resultMap="LedgerResultMap">
+        SELECT
+            il.id,
+            i.name AS item_name,
+            i.category,
+            i.spec,
+            cs.slot_no,
+            il.quantity,
+            il.total_weight,
+            il.operation_type,
+            il.status,
+            COALESCE(il.stored_by, il.removed_by) AS operator_name,
+            COALESCE(il.stored_at, il.removed_at, il.created_at) AS operated_at
+        FROM item_ledger il
+        LEFT JOIN item i ON il.item_id = i.id AND i.deleted = 0
+        LEFT JOIN cabinet_slot cs ON il.slot_id = cs.id AND cs.deleted = 0
+        WHERE il.deleted = 0
+        <if test="cabinetId != null and cabinetId != ''">
+            AND il.cabinet_id = #{cabinetId}
+        </if>
+        <if test="operationType != null">
+            AND il.operation_type = #{operationType}
+        </if>
+        <if test="status != null">
+            AND il.status = #{status}
+        </if>
+        <if test="category != null and category != ''">
+            AND i.category = #{category}
+        </if>
+        ORDER BY COALESCE(il.stored_at, il.removed_at, il.created_at) DESC
+    </select>
+
+    <select id="selectTotalWeightBySlotId" resultType="java.math.BigDecimal">
+        SELECT SUM(total_weight) FROM item_ledger
+        WHERE cabinet_id = #{cabinetId}
+          AND slot_id = #{slotId}
+          AND status = 0
+          AND deleted = 0
+    </select>
+
+</mapper>

@@ -1,0 +1,64 @@
+package com.cabinet.controller;
+
+import com.cabinet.common.PageResult;
+import com.cabinet.common.Result;
+import com.cabinet.dto.ItemBorrowDTO;
+import com.cabinet.dto.ItemReturnDTO;
+import com.cabinet.service.ItemBorrowRecordService;
+import com.cabinet.service.OperationLogService;
+import com.cabinet.vo.ItemBorrowRecordVO;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/cabinet/borrow")
+public class ItemBorrowRecordController {
+    private final ItemBorrowRecordService borrowRecordService;
+    private final OperationLogService operationLogService;
+
+    public ItemBorrowRecordController(ItemBorrowRecordService borrowRecordService,
+                                      OperationLogService operationLogService) {
+        this.borrowRecordService = borrowRecordService;
+        this.operationLogService = operationLogService;
+    }
+
+    @GetMapping("/list")
+    public Result<PageResult<ItemBorrowRecordVO>> list(@RequestParam(required = false) Integer status,
+                                                       @RequestParam(required = false) Long itemId,
+                                                       @RequestParam(required = false) String borrower,
+                                                       @RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "20") int size) {
+        return Result.success(borrowRecordService.getBorrowRecordList(status, itemId, borrower, page, size));
+    }
+
+    @PostMapping("/borrow")
+    public Result<ItemBorrowRecordVO> borrow(@RequestBody ItemBorrowDTO dto,
+                                             @RequestHeader(value = "X-Operator", required = false) String operator,
+                                             HttpServletRequest request) {
+        ItemBorrowRecordVO vo = borrowRecordService.borrow(dto, operatorOrDefault(operator));
+        operationLogService.record(vo == null ? null : vo.getCabinetId(), operatorOrDefault(operator), "ITEM_BORROW",
+                "借用物品：" + (vo == null ? dto.getItemId() : vo.getItemName()), request.getRemoteAddr());
+        return Result.success(vo);
+    }
+
+    @PostMapping("/return")
+    public Result<ItemBorrowRecordVO> returnItem(@RequestBody ItemReturnDTO dto,
+                                                 @RequestHeader(value = "X-Operator", required = false) String operator,
+                                                 HttpServletRequest request) {
+        ItemBorrowRecordVO vo = borrowRecordService.returnItem(dto, operatorOrDefault(operator));
+        operationLogService.record(vo == null ? null : vo.getCabinetId(), operatorOrDefault(operator), "ITEM_RETURN",
+                "归还物品：" + (vo == null ? dto.getBorrowRecordId() : vo.getItemName()), request.getRemoteAddr());
+        return Result.success(vo);
+    }
+
+    private String operatorOrDefault(String operator) {
+        return StringUtils.hasText(operator) ? operator : "admin";
+    }
+}

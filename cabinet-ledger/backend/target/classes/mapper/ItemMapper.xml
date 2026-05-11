@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabinet.mapper.ItemMapper">
+
+    <resultMap id="ItemStockResultMap" type="com.cabinet.vo.ItemStockVO">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="category" property="category"/>
+        <result column="spec" property="spec"/>
+        <result column="standard_weight" property="standardWeight"/>
+        <result column="use_type" property="useType"/>
+        <result column="quantity" property="quantity"/>
+        <result column="borrowed_quantity" property="borrowedQuantity"/>
+        <result column="ledger_weight" property="ledgerWeight"/>
+        <result column="actual_weight" property="actualWeight"/>
+        <result column="warning_quantity" property="warningQuantity"/>
+        <result column="max_quantity" property="maxQuantity"/>
+        <result column="stock_status" property="stockStatus"/>
+        <result column="cabinet_id" property="cabinetId"/>
+        <result column="cabinet_no" property="cabinetNo"/>
+        <result column="cabinet_name" property="cabinetName"/>
+        <result column="slot_id" property="slotId"/>
+        <result column="slot_no" property="slotNo"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <resultMap id="AvailableItemResultMap" type="com.cabinet.vo.AvailableItemVO">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="stock" property="stock"/>
+        <result column="cabinet_no" property="cabinetNo"/>
+        <result column="slot_no" property="slotNo"/>
+    </resultMap>
+
+    <select id="selectAvailableItems" resultMap="AvailableItemResultMap">
+        SELECT
+            i.id,
+            i.name,
+            COALESCE(s.quantity, 0) AS stock,
+            c.cabinet_no,
+            cs.slot_no
+        FROM item i
+        INNER JOIN cabinet_slot cs ON cs.item_id = i.id AND cs.deleted = 0
+        INNER JOIN cabinet c ON c.id = cs.cabinet_id AND c.deleted = 0 AND c.status = 1
+        LEFT JOIN item_stock s ON s.item_id = i.id AND s.deleted = 0
+        WHERE i.deleted = 0
+        ORDER BY i.name ASC, c.cabinet_no ASC, cs.slot_no ASC
+    </select>
+
+    <select id="selectItemStockList" resultMap="ItemStockResultMap">
+        SELECT
+            i.id,
+            i.name,
+            i.category,
+            i.spec,
+            i.standard_weight,
+            i.use_type,
+            COALESCE(s.quantity, 0) AS quantity,
+            COALESCE(s.borrowed_quantity, 0) AS borrowed_quantity,
+            COALESCE(s.ledger_weight, 0) AS ledger_weight,
+            COALESCE(s.actual_weight, 0) AS actual_weight,
+            COALESCE(s.warning_quantity, i.warning_quantity, 0) AS warning_quantity,
+            COALESCE(s.max_quantity, i.max_quantity, 0) AS max_quantity,
+            COALESCE(s.stock_status, 0) AS stock_status,
+            cs.cabinet_id,
+            c.cabinet_no,
+            c.name AS cabinet_name,
+            cs.id AS slot_id,
+            cs.slot_no,
+            COALESCE(s.updated_at, i.updated_at) AS updated_at
+        FROM item i
+        LEFT JOIN item_stock s ON s.item_id = i.id AND s.deleted = 0
+        LEFT JOIN cabinet_slot cs ON cs.item_id = i.id AND cs.deleted = 0
+        LEFT JOIN cabinet c ON c.id = cs.cabinet_id AND c.deleted = 0
+        WHERE i.deleted = 0
+        ORDER BY i.updated_at DESC
+    </select>
+
+</mapper>
