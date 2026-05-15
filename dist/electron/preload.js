@@ -29,5 +29,6 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     loadSkill: (name) => electron_1.ipcRenderer.invoke('skills:load', { name }),
     // 窗口控制
     minimizeWindow: () => electron_1.ipcRenderer.send('window:minimize'),
+    toggleFullScreen: () => electron_1.ipcRenderer.send('window:toggle-fullscreen'),
     closeWindow: () => electron_1.ipcRenderer.send('window:close'),
 });

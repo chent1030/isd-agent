@@ -58,7 +58,29 @@ const tts_1 = require("./ipc/tts");
 const llm_1 = require("./ipc/llm");
 const dify_1 = require("./ipc/dify");
 const skills_1 = require("./ipc/skills");
-const isDev = !electron_1.app.isPackaged || process.env.NODE_ENV === 'development';
+function isDebugBuild() {
+    if (process.env.ISD_DEBUG === 'true')
+        return true;
+    if (electron_1.app.getName().toLowerCase().includes('debug'))
+        return true;
+    if (process.execPath.toLowerCase().includes('debug'))
+        return true;
+    try {
+        const packageJson = JSON.parse(fs_1.default.readFileSync(path_1.default.join(electron_1.app.getAppPath(), 'package.json'), 'utf-8'));
+        return packageJson.isdDebugBuild === true;
+    }
+    catch {
+        return false;
+    }
+}
+const isDev = !electron_1.app.isPackaged;
+const shouldOpenDevTools = isDev || isDebugBuild();
+function toggleFocusedWindowFullScreen() {
+    const win = electron_1.BrowserWindow.getFocusedWindow() ?? electron_1.BrowserWindow.getAllWindows()[0];
+    if (!win)
+        return;
+    win.setFullScreen(!win.isFullScreen());
+}
 function createWindow() {
     const win = new electron_1.BrowserWindow({
         width: 1280,
@@ -76,10 +98,18 @@ function createWindow() {
     });
     if (isDev) {
         win.loadURL('http://localhost:5173');
-        win.webContents.openDevTools();
     }
     else {
         win.loadFile(path_1.default.join(__dirname, '../renderer/index.html'));
+    }
+    if (shouldOpenDevTools) {
+        const openDevTools = () => {
+            if (win.webContents.isDestroyed())
+                return;
+            win.webContents.openDevTools({ mode: 'detach' });
+        };
+        win.webContents.once('did-finish-load', openDevTools);
+        setTimeout(openDevTools, 1500);
     }
 }
 electron_1.app.whenReady().then(async () => {
@@ -99,7 +129,21 @@ electron_1.app.whenReady().then(async () => {
     (0, llm_1.registerLLMHandlers)();
     (0, dify_1.registerDifyHandlers)();
     (0, skills_1.registerSkillHandlers)();
+    electron_1.ipcMain.on('window:toggle-fullscreen', event => {
+        const win = electron_1.BrowserWindow.fromWebContents(event.sender) ?? electron_1.BrowserWindow.getFocusedWindow();
+        win?.setFullScreen(!win.isFullScreen());
+    });
     createWindow();
+    electron_1.globalShortcut.register('F11', toggleFocusedWindowFullScreen);
+    electron_1.globalShortcut.register('CommandOrControl+Shift+F', toggleFocusedWindowFullScreen);
+    if (shouldOpenDevTools) {
+        electron_1.globalShortcut.register('F12', () => {
+            electron_1.BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools();
+        });
+        electron_1.globalShortcut.register('CommandOrControl+Shift+I', () => {
+            electron_1.BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools();
+        });
+    }
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0)
             createWindow();
@@ -108,4 +152,7 @@ electron_1.app.whenReady().then(async () => {
 electron_1.app.on('window-all-closed', () => {
     if (process.platform !== 'darwin')
         electron_1.app.quit();
+});
+electron_1.app.on('will-quit', () => {
+    electron_1.globalShortcut.unregisterAll();
 });
