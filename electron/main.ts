@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import * as dotenv from 'dotenv'
@@ -20,7 +20,29 @@ import { registerLLMHandlers } from './ipc/llm'
 import { registerDifyHandlers } from './ipc/dify'
 import { registerSkillHandlers, loadSkills } from './ipc/skills'
 
-const isDev = !app.isPackaged || process.env.NODE_ENV === 'development'
+function isDebugBuild() {
+  if (process.env.ISD_DEBUG === 'true') return true
+  if (app.getName().toLowerCase().includes('debug')) return true
+  if (process.execPath.toLowerCase().includes('debug')) return true
+
+  try {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(app.getAppPath(), 'package.json'), 'utf-8'),
+    )
+    return packageJson.isdDebugBuild === true
+  } catch {
+    return false
+  }
+}
+
+const isDev = !app.isPackaged
+const shouldOpenDevTools = isDev || isDebugBuild()
+
+function toggleFocusedWindowFullScreen() {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  if (!win) return
+  win.setFullScreen(!win.isFullScreen())
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -40,9 +62,18 @@ function createWindow() {
 
   if (isDev) {
     win.loadURL('http://localhost:5173')
-    win.webContents.openDevTools()
   } else {
     win.loadFile(path.join(__dirname, '../renderer/index.html'))
+  }
+
+  if (shouldOpenDevTools) {
+    const openDevTools = () => {
+      if (win.webContents.isDestroyed()) return
+      win.webContents.openDevTools({ mode: 'detach' })
+    }
+
+    win.webContents.once('did-finish-load', openDevTools)
+    setTimeout(openDevTools, 1500)
   }
 }
 
@@ -65,7 +96,24 @@ app.whenReady().then(async () => {
   registerDifyHandlers()
   registerSkillHandlers()
 
+  ipcMain.on('window:toggle-fullscreen', event => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow()
+    win?.setFullScreen(!win.isFullScreen())
+  })
+
   createWindow()
+
+  globalShortcut.register('F11', toggleFocusedWindowFullScreen)
+  globalShortcut.register('CommandOrControl+Shift+F', toggleFocusedWindowFullScreen)
+
+  if (shouldOpenDevTools) {
+    globalShortcut.register('F12', () => {
+      BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools()
+    })
+    globalShortcut.register('CommandOrControl+Shift+I', () => {
+      BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools()
+    })
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -74,4 +122,8 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })

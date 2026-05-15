@@ -3,6 +3,7 @@ node_modules
 # Build outputs
 target/
 dist/
+release-debug/
 
 # Project build outputs
 cabinet-ledger/backend/target/

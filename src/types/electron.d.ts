@@ -19,6 +19,7 @@ export interface ElectronAPI {
   getSkills: (isAuthenticated: boolean) => Promise<SkillManifest[]>
   loadSkill: (name: string) => Promise<string>
   minimizeWindow: () => void
+  toggleFullScreen: () => void
   closeWindow: () => void
 }
 

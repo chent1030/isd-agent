@@ -1,0 +1,41 @@
+{
+  "appId": "com.isd.robot.debug",
+  "productName": "ISD Robot Debug",
+  "directories": {
+    "output": "release-debug"
+  },
+  "extraMetadata": {
+    "isdDebugBuild": true
+  },
+  "files": [
+    "dist/**/*",
+    "skills/**/*",
+    "node_modules/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "skills",
+      "to": "skills"
+    },
+    {
+      "from": ".env.example",
+      "to": ".env.example"
+    }
+  ],
+  "mac": {
+    "target": "dmg",
+    "category": "public.app-category.productivity"
+  },
+  "win": {
+    "target": [
+      "nsis",
+      "portable"
+    ]
+  },
+  "nsis": {
+    "artifactName": "${productName}-${version}-setup-${arch}.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
+  }
+}
