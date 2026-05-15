@@ -9,10 +9,10 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     // TTS
     synthesizeSpeech: (text) => electron_1.ipcRenderer.invoke('tts:synthesize', text),
     // LLM（含 skills 注入）
-    chatStream: (messages, isAuthenticated, onChunk) => {
+    chatStream: (messages, isAuthenticated, operator, onChunk) => {
         const channel = `llm:chunk:${Date.now()}`;
         electron_1.ipcRenderer.on(channel, (_e, chunk) => onChunk(chunk));
-        return electron_1.ipcRenderer.invoke('llm:chat', { messages, channel, isAuthenticated }).finally(() => {
+        return electron_1.ipcRenderer.invoke('llm:chat', { messages, channel, isAuthenticated, operator }).finally(() => {
             electron_1.ipcRenderer.removeAllListeners(channel);
         });
     },

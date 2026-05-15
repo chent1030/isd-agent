@@ -14,10 +14,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('tts:synthesize', text),
 
   // LLM（含 skills 注入）
-  chatStream: (messages: object[], isAuthenticated: boolean, onChunk: (chunk: string) => void) => {
+  chatStream: (messages: object[], isAuthenticated: boolean, operator: object | null, onChunk: (chunk: string) => void) => {
     const channel = `llm:chunk:${Date.now()}`
     ipcRenderer.on(channel, (_e, chunk) => onChunk(chunk))
-    return ipcRenderer.invoke('llm:chat', { messages, channel, isAuthenticated }).finally(() => {
+    return ipcRenderer.invoke('llm:chat', { messages, channel, isAuthenticated, operator }).finally(() => {
       ipcRenderer.removeAllListeners(channel)
     })
   },

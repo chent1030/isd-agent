@@ -12,6 +12,7 @@ export interface ElectronAPI {
   chatStream: (
     messages: Array<{ role: string; content: string }>,
     isAuthenticated: boolean,
+    operator: { empName: string; empWorkNo: string } | null,
     onChunk: (chunk: string) => void
   ) => Promise<void>
   difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => Promise<{ conversationId: string }>

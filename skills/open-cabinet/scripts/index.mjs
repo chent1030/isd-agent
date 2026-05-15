@@ -1,5 +1,5 @@
 import { openAndWaitForClose } from './door-monitor.mjs'
-import { getAllItems, getSlotHardware, deductInventory, returnInventory } from './api-service.mjs'
+import { getAllItems, getSlotHardware, deductInventory, returnInventory, resolveOperatorIdentity } from './api-service.mjs'
 
 export async function fetchAllItems() {
   console.log(`[Step 1] 获取物品列表...`)
@@ -54,7 +54,8 @@ function validateHardwareByte(parsed, fieldName, rawValue) {
 }
 
 export async function borrowItem(item, quantity = 1, options = {}) {
-  const { serverIp, serverPort, onStatusChange, operatorNo, operatorName } = options
+  const { serverIp, serverPort, onStatusChange } = options
+  const operator = resolveOperatorIdentity(options)
   item = await resolveItem(item)
   if (item.useType === 1) {
     throw new Error(`物品 ${item.name} 仅支持借用，不能领用`)
@@ -67,6 +68,7 @@ export async function borrowItem(item, quantity = 1, options = {}) {
   const lockNumber = parseHardwareCode(hardware.lockNumber, '格口号')
 
   console.log(`=== 领取物品: ${item.name} (${item.id}) ===`)
+  console.log(`操作人: ${operator.operatorName} (${operator.operatorNo})`)
   console.log(`柜号信息: 柜号${item.cabinetNo} 格口${item.slotNo}`)
 
   const doorResult = await openAndWaitForClose(boardAddr, lockNumber, {
@@ -75,9 +77,8 @@ export async function borrowItem(item, quantity = 1, options = {}) {
   console.log(`柜门关闭，耗时 ${doorResult.elapsed}ms`)
 
   const deductResult = await deductInventory(item.id, quantity, {
-    operatorNo,
-    operatorName,
-    remark: `skill领用：${item.name}`
+    ...operator,
+    remark: `语音领用：${operator.operatorName} ${item.name}`
   })
   console.log(`库存扣减: 成功=${deductResult.success}, 剩余=${deductResult.remainingStock}`)
 
@@ -86,12 +87,14 @@ export async function borrowItem(item, quantity = 1, options = {}) {
 
 export async function returnItem(item, quantity = 1, options = {}) {
   const { serverIp, serverPort, onStatusChange } = options
+  const operator = resolveOperatorIdentity(options)
   item = await resolveItem(item)
   const hardware = getSlotHardware(item.cabinetNo, item.slotNo)
   const boardAddr = parseHardwareCode(hardware.boardAddr, '柜号')
   const lockNumber = parseHardwareCode(hardware.lockNumber, '格口号')
 
   console.log(`=== 归还物品: ${item.name} (${item.id}) ===`)
+  console.log(`操作人: ${operator.operatorName} (${operator.operatorNo})`)
   console.log(`柜号信息: 柜号${item.cabinetNo} 格口${item.slotNo}`)
 
   const doorResult = await openAndWaitForClose(boardAddr, lockNumber, {
@@ -99,12 +102,41 @@ export async function returnItem(item, quantity = 1, options = {}) {
   })
   console.log(`柜门关闭，耗时 ${doorResult.elapsed}ms`)
 
-  const returnResult = await returnInventory(item.id, quantity)
+  const returnResult = await returnInventory(item.id, quantity, operator)
   console.log(`库存归还: 成功=${returnResult.success}, 剩余=${returnResult.remainingStock}`)
 
   return { item, doorResult, returnResult, quantity }
 }
 
 export { openAndWaitForClose } from './door-monitor.mjs'
-export { getAllItems, getSlotHardware, deductInventory, returnInventory } from './api-service.mjs'
+export { getAllItems, getSlotHardware, deductInventory, returnInventory, resolveOperatorIdentity } from './api-service.mjs'
 export { openSingleLock, openAllLocks, queryLockStatus } from './cabinet-control.mjs'
+
+export async function execute(params = {}) {
+  const action = String(params.action || params.command || '').trim()
+  const itemId = params.itemId ?? params.id
+  const quantity = Number.parseInt(String(params.quantity ?? 1), 10) || 1
+  const operator = {
+    operatorNo: params.operatorNo || params.empWorkNo,
+    operatorName: params.operatorName || params.empName
+  }
+
+  switch (action) {
+    case 'list': {
+      return JSON.stringify(await fetchAllItems(), null, 2)
+    }
+    case 'borrow':
+    case 'receive': {
+      if (!itemId) throw new Error('缺少物品 ID')
+      const result = await borrowItem(itemId, quantity, operator)
+      return JSON.stringify(result, null, 2)
+    }
+    case 'return': {
+      if (!itemId) throw new Error('缺少物品 ID')
+      const result = await returnItem(itemId, quantity, operator)
+      return JSON.stringify(result, null, 2)
+    }
+    default:
+      throw new Error('缺少或不支持的 action，请使用 list、borrow/receive、return')
+  }
+}

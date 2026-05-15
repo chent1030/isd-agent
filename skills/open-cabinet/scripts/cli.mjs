@@ -8,8 +8,8 @@ const args = process.argv.slice(2)
 if (args.length === 0) {
   console.log(`用法:
   node cli.mjs list                          -- 获取所有物品列表
-  node cli.mjs borrow <物品ID> [数量] [工号] [姓名] -- 领取物品（开柜→监控→扣减）
-  node cli.mjs return <物品ID> [数量]         -- 归还物品（开柜→监控→增加库存）
+  node cli.mjs borrow <物品ID> [数量] <工号> <姓名> -- 领取物品（开柜→监控→扣减）
+  node cli.mjs return <物品ID> [数量] <工号> <姓名> -- 归还物品（开柜→监控→增加库存）
   node cli.mjs unlock <柜号> <格口号>         -- 仅打开指定格口
   node cli.mjs unlock-all <柜号>              -- 打开柜号对应的所有锁
   node cli.mjs monitor <柜号> <格口号>        -- 监控门状态直到关闭
@@ -18,6 +18,17 @@ if (args.length === 0) {
 }
 
 const command = args[0]
+
+function parseItemOperationArgs(args) {
+  const itemId = args[1]
+  const hasQuantity = /^\d+$/.test(String(args[2] || ''))
+  return {
+    itemId,
+    quantity: hasQuantity ? Number.parseInt(args[2], 10) : 1,
+    operatorNo: (hasQuantity ? args[3] : args[2]) || process.env.CABINET_LEDGER_OPERATOR_NO,
+    operatorName: (hasQuantity ? args[4] : args[3]) || process.env.CABINET_LEDGER_OPERATOR_NAME
+  }
+}
 
 async function main() {
   try {
@@ -28,26 +39,22 @@ async function main() {
         break
       }
       case 'borrow': {
-        const itemId = args[1]
-        const quantity = parseInt(args[2]) || 1
+        const { itemId, quantity, operatorNo, operatorName } = parseItemOperationArgs(args)
         if (!itemId) {
           console.error('请提供物品 ID')
           process.exit(1)
         }
-        const operatorNo = args[3]
-        const operatorName = args[4]
         const result = await borrowItem(itemId, quantity, { operatorNo, operatorName })
         console.log('领取完成:', JSON.stringify(result, null, 2))
         break
       }
       case 'return': {
-        const itemId = args[1]
-        const quantity = parseInt(args[2]) || 1
+        const { itemId, quantity, operatorNo, operatorName } = parseItemOperationArgs(args)
         if (!itemId) {
           console.error('请提供物品 ID')
           process.exit(1)
         }
-        const result = await returnItem(itemId, quantity)
+        const result = await returnItem(itemId, quantity, { operatorNo, operatorName })
         console.log('归还完成:', JSON.stringify(result, null, 2))
         break
       }

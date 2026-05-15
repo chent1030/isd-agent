@@ -16,6 +16,7 @@ const gray_matter_1 = __importDefault(require("gray-matter"));
 // instance 级缓存
 const skillsMap = new Map();
 let loadTask = null;
+const dynamicImport = new Function('modulePath', 'return import(modulePath)');
 async function load() {
     skillsMap.clear();
     const skillsDir = path_1.default.join(process.cwd(), 'skills');
@@ -106,7 +107,7 @@ async function loadSkillContent(name) {
     return block;
 }
 /**
- * 执行 skill scripts/index.js（如存在）
+ * 执行 skill scripts/index.js 或 scripts/index.mjs（如存在）
  */
 async function executeSkillScript(name, params) {
     await ensure();
@@ -115,11 +116,18 @@ async function executeSkillScript(name, params) {
         throw new Error(`Skill not found: ${name}`);
     if (!skill.scriptsDir)
         throw new Error(`Skill "${name}" has no scripts directory`);
-    const indexPath = path_1.default.join(skill.scriptsDir, 'index.js');
+    const cjsPath = path_1.default.join(skill.scriptsDir, 'index.js');
+    const esmPath = path_1.default.join(skill.scriptsDir, 'index.mjs');
+    const indexPath = fs_1.default.existsSync(cjsPath) ? cjsPath : esmPath;
     if (!fs_1.default.existsSync(indexPath))
-        throw new Error(`Skill "${name}" has no scripts/index.js`);
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require(indexPath);
+        throw new Error(`Skill "${name}" has no scripts/index.js or scripts/index.mjs`);
+    const mod = indexPath.endsWith('.mjs')
+        ? await dynamicImport(`file://${indexPath}`)
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        : require(indexPath);
+    if (typeof mod.execute !== 'function') {
+        throw new Error(`Skill "${name}" does not export execute(params)`);
+    }
     return mod.execute(params);
 }
 function registerSkillHandlers() {

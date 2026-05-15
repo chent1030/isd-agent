@@ -1,9 +1,19 @@
 const API_CONFIG = {
-  baseUrl: process.env.CABINET_LEDGER_API_BASE_URL || 'http://localhost:8080/api',
+  baseUrl: process.env.CABINET_LEDGER_API_BASE_URL || 'https://cshzeroapi.uabcbattery.com/unify/v1/1',
   headers: {
-    'Content-Type': 'application/json',
-    'X-Operator': process.env.CABINET_LEDGER_OPERATOR || 'skill'
+    'Content-Type': 'application/json'
   }
+}
+
+export function resolveOperatorIdentity(options = {}) {
+  const operatorNo = String(options.operatorNo || process.env.CABINET_LEDGER_OPERATOR_NO || '').trim()
+  const operatorName = String(options.operatorName || process.env.CABINET_LEDGER_OPERATOR_NAME || '').trim()
+
+  if (!operatorNo || !operatorName) {
+    throw new Error('缺少操作人身份信息，请先通过摄像头识别人员并传入工号和姓名')
+  }
+
+  return { operatorNo, operatorName }
 }
 
 async function requestJson(path, options = {}) {
@@ -66,14 +76,18 @@ export function getSlotHardware(cabinetNo, slotNo) {
  * @returns {Promise<{success: boolean, remainingStock: number}>}
  */
 export async function deductInventory(itemId, quantity = 1, options = {}) {
+  const operator = resolveOperatorIdentity(options)
   const stock = await requestJson('/cabinet/item/receive', {
     method: 'POST',
+    headers: {
+      'X-Operator': operator.operatorNo
+    },
     body: JSON.stringify({
       itemId,
       quantity,
-      operatorNo: options.operatorNo || process.env.CABINET_LEDGER_OPERATOR_NO || process.env.CABINET_LEDGER_OPERATOR || 'skill',
-      operatorName: options.operatorName || process.env.CABINET_LEDGER_OPERATOR_NAME || process.env.CABINET_LEDGER_OPERATOR || 'skill',
-      remark: options.remark || 'skill领用'
+      operatorNo: operator.operatorNo,
+      operatorName: operator.operatorName,
+      remark: options.remark || `语音领用：${operator.operatorName}`
     })
   })
   return {
@@ -86,9 +100,11 @@ export async function deductInventory(itemId, quantity = 1, options = {}) {
  * 归还库存（归还物品时使用）
  * @param {string|number} itemId - 物品 ID
  * @param {number} quantity - 归还数量，默认为 1
+ * @param {{operatorNo?: string, operatorName?: string}} options
  * @returns {Promise<{success: boolean, remainingStock: number}>}
  */
-export async function returnInventory(itemId, quantity = 1) {
+export async function returnInventory(itemId, quantity = 1, options = {}) {
+  resolveOperatorIdentity(options)
   // 台账最终以称重上报为准；这里先返回最新库存，避免归还流程被占位接口阻断。
   const items = await getAllItems()
   const item = items.find(current => String(current.id) === String(itemId))

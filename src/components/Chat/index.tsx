@@ -66,6 +66,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
         await window.electronAPI.chatStream(
           history,
           isAuthenticated,
+          user ? { empName: user.empName, empWorkNo: user.empWorkNo } : null,
           (chunk: string) => {
             if (chunk === '[DONE]') return
             fullText += chunk

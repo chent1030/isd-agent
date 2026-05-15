@@ -100,9 +100,13 @@ function normalizeToolName(rawName, used) {
     used.add(name);
     return name;
 }
-function buildSystemPrompt(skillsBlock) {
+function buildSystemPrompt(skillsBlock, operator) {
+    const operatorText = operator?.empWorkNo && operator?.empName
+        ? `当前已通过摄像头识别的操作人: ${operator.empName} (${operator.empWorkNo})。调用涉及领用、借用、归还、开柜等业务 skill 时，必须传 operatorNo="${operator.empWorkNo}" 和 operatorName="${operator.empName}"，不要使用 skill/admin/guest 作为操作人。`
+        : '当前没有已识别的操作人。涉及领用、借用、归还、开柜等业务 skill 时，必须先要求用户完成人脸识别，不要调用 run_skill 执行业务动作。';
     return [
         '你是一个智能助手。',
+        operatorText,
         skillsBlock,
         '你可以通过工具调用 skills，并采用渐进式披露模式。',
         '流程要求：先调用 load_skill 获取该技能完整说明，再决定是否调用 run_skill。',
@@ -111,7 +115,7 @@ function buildSystemPrompt(skillsBlock) {
     ].filter(Boolean).join('\n\n');
 }
 function registerLLMHandlers() {
-    electron_1.ipcMain.handle('llm:chat', async (event, { messages, channel, isAuthenticated }) => {
+    electron_1.ipcMain.handle('llm:chat', async (event, { messages, channel, isAuthenticated, operator }) => {
         const win = electron_1.BrowserWindow.fromWebContents(event.sender);
         if (!win)
             throw new Error('No window found');
@@ -160,7 +164,13 @@ function registerLLMHandlers() {
                         return '技能名不能为空。';
                     if (!allowedSkills.has(skillName))
                         return `技能不可用或无权限: ${skillName}`;
-                    const params = input?.params && typeof input.params === 'object' ? input.params : {};
+                    const params = input?.params && typeof input.params === 'object' ? { ...input.params } : {};
+                    if (operator?.empWorkNo && operator?.empName) {
+                        if (!params.operatorNo)
+                            params.operatorNo = operator.empWorkNo;
+                        if (!params.operatorName)
+                            params.operatorName = operator.empName;
+                    }
                     try {
                         const result = await (0, skills_1.executeSkillScript)(skillName, params);
                         return typeof result === 'string' ? result : JSON.stringify(result);
@@ -179,7 +189,7 @@ function registerLLMHandlers() {
             });
             const modelWithTools = tools.length > 0 ? llm.bindTools(tools) : llm;
             const skillsBlock = await (0, skills_1.buildSkillsSystemPrompt)(isAuthenticated);
-            const systemPrompt = buildSystemPrompt(skillsBlock);
+            const systemPrompt = buildSystemPrompt(skillsBlock, operator);
             const lcMessages = [new SystemMessage(systemPrompt)];
             for (const msg of messages) {
                 if (!msg?.content)

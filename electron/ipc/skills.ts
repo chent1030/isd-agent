@@ -15,6 +15,7 @@ export interface SkillInfo {
 // instance 级缓存
 const skillsMap = new Map<string, SkillInfo>()
 let loadTask: Promise<void> | null = null
+const dynamicImport = new Function('modulePath', 'return import(modulePath)') as <T>(modulePath: string) => Promise<T>
 
 async function load() {
   skillsMap.clear()
@@ -114,7 +115,7 @@ export async function loadSkillContent(name: string): Promise<string> {
 }
 
 /**
- * 执行 skill scripts/index.js（如存在）
+ * 执行 skill scripts/index.js 或 scripts/index.mjs（如存在）
  */
 export async function executeSkillScript(name: string, params: Record<string, unknown>): Promise<string> {
   await ensure()
@@ -122,11 +123,18 @@ export async function executeSkillScript(name: string, params: Record<string, un
   if (!skill) throw new Error(`Skill not found: ${name}`)
   if (!skill.scriptsDir) throw new Error(`Skill "${name}" has no scripts directory`)
 
-  const indexPath = path.join(skill.scriptsDir, 'index.js')
-  if (!fs.existsSync(indexPath)) throw new Error(`Skill "${name}" has no scripts/index.js`)
+  const cjsPath = path.join(skill.scriptsDir, 'index.js')
+  const esmPath = path.join(skill.scriptsDir, 'index.mjs')
+  const indexPath = fs.existsSync(cjsPath) ? cjsPath : esmPath
+  if (!fs.existsSync(indexPath)) throw new Error(`Skill "${name}" has no scripts/index.js or scripts/index.mjs`)
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require(indexPath)
+  const mod = indexPath.endsWith('.mjs')
+    ? await dynamicImport<any>(`file://${indexPath}`)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    : require(indexPath)
+  if (typeof mod.execute !== 'function') {
+    throw new Error(`Skill "${name}" does not export execute(params)`)
+  }
   return mod.execute(params)
 }
 
