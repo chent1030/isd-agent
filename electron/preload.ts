@@ -15,20 +15,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // LLM（含 skills 注入）
   chatStream: (messages: object[], isAuthenticated: boolean, operator: object | null, onChunk: (chunk: string) => void) => {
-    const channel = `llm:chunk:${Date.now()}`
-    ipcRenderer.on(channel, (_e, chunk) => onChunk(chunk))
+    const channel = `llm:chunk:${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const handler = (_e: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk)
+    ipcRenderer.on(channel, handler)
     return ipcRenderer.invoke('llm:chat', { messages, channel, isAuthenticated, operator }).finally(() => {
-      ipcRenderer.removeAllListeners(channel)
+      ipcRenderer.removeListener(channel, handler)
     })
   },
 
   // Dify Chat
   difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => {
-    const channel = `dify:chunk:${Date.now()}`
-    ipcRenderer.on(channel, (_e, chunk) => onChunk(chunk))
+    const channel = `dify:chunk:${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const handler = (_e: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk)
+    ipcRenderer.on(channel, handler)
     return ipcRenderer
       .invoke('dify:chat', { query, conversationId, channel, user })
-      .finally(() => ipcRenderer.removeAllListeners(channel))
+      .finally(() => ipcRenderer.removeListener(channel, handler))
   },
 
   // Skills

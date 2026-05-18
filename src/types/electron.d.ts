@@ -15,7 +15,7 @@ export interface ElectronAPI {
     operator: { empName: string; empWorkNo: string } | null,
     onChunk: (chunk: string) => void
   ) => Promise<void>
-  difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => Promise<{ conversationId: string }>
+  difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => Promise<{ conversationId: string; answer: string }>
   getSkills: (isAuthenticated: boolean) => Promise<SkillManifest[]>
   loadSkill: (name: string) => Promise<string>
   getAppConfig: () => Promise<{

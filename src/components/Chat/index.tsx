@@ -97,7 +97,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           difyUser,
           (chunk: string) => {
             if (chunk === '[DONE]') return
-            fullText += chunk
+            fullText = chunk
             updateMessage(assistantId, { content: fullText })
             if (ttsEnabled && !isSpeakingRef.current) {
               const sentences = splitSentences(fullText)
@@ -110,6 +110,10 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           }
         )
         conversationIdRef.current = result.conversationId
+        if (result.answer) {
+          fullText = result.answer
+          updateMessage(assistantId, { content: fullText })
+        }
       }
     } catch (e: any) {
       fullText = `[请求失败] ${e?.message ?? String(e)}`

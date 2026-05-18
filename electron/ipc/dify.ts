@@ -36,11 +36,11 @@ export function registerDifyHandlers() {
       })
 
       // 使用 Node.js 原生 https/http 处理 SSE，避免 axios 缓冲问题
-      const url = new URL('/v1/chat-messages', baseUrl)
+      const url = new URL(baseUrl.endsWith('/') ? baseUrl + 'v1/chat-messages' : baseUrl + '/v1/chat-messages')
       const isHttps = url.protocol === 'https:'
       const transport = isHttps ? await import('https') : await import('http')
 
-      return new Promise<{ conversationId: string }>((resolve, reject) => {
+      return new Promise<{ conversationId: string; answer: string }>((resolve, reject) => {
         const req = transport.request(
           {
             hostname: url.hostname,
@@ -55,6 +55,7 @@ export function registerDifyHandlers() {
           },
           (res) => {
             let newConversationId = conversationId ?? ''
+            let fullAnswer = ''
             let buffer = ''
 
             res.on('data', (chunk: Buffer) => {
@@ -73,7 +74,10 @@ export function registerDifyHandlers() {
 
                   if (event === 'message' || event === 'agent_message') {
                     const text: string = parsed.answer ?? ''
-                    if (text) win.webContents.send(channel, text)
+                    if (text) {
+                      fullAnswer += text
+                      win.webContents.send(channel, fullAnswer)
+                    }
                     if (parsed.conversation_id) newConversationId = parsed.conversation_id
                   } else if (event === 'message_end') {
                     if (parsed.conversation_id) newConversationId = parsed.conversation_id
@@ -90,7 +94,7 @@ export function registerDifyHandlers() {
 
             res.on('end', () => {
               win.webContents.send(channel, '[DONE]')
-              resolve({ conversationId: newConversationId })
+              resolve({ conversationId: newConversationId, answer: fullAnswer })
             })
 
             res.on('error', (err) => {
