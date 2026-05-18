@@ -63,7 +63,20 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
     const assistantId = addMessage({ role: 'assistant', content: '', isStreaming: true })
     setLoading(false)
     let fullText = ''
-    let spokenSentences: string[] = []
+    const speechSentences: string[] = []
+    let spokenSentenceCount = 0
+    const enqueueSpeech = (textToSpeak: string, includeLastSentence: boolean) => {
+      if (!ttsEnabled) return
+      const sentences = splitSentences(textToSpeak)
+      const end = includeLastSentence ? sentences.length : Math.max(sentences.length - 1, 0)
+      const newSentences = sentences.slice(spokenSentenceCount, end)
+      if (newSentences.length === 0) return
+
+      const startIdx = speechSentences.length
+      speechSentences.push(...newSentences)
+      spokenSentenceCount += newSentences.length
+      if (!isSpeakingRef.current) speakNext(assistantId, speechSentences, startIdx)
+    }
     const useAgentMode = isAuthenticated && chatMode === 'agent'
     try {
       if (useAgentMode) {
@@ -79,14 +92,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             if (chunk === '[DONE]') return
             fullText += chunk
             updateMessage(assistantId, { content: fullText })
-            if (ttsEnabled && !isSpeakingRef.current) {
-              const sentences = splitSentences(fullText)
-              const newSentences = sentences.slice(spokenSentences.length, -1)
-              if (newSentences.length > 0) {
-                spokenSentences = [...spokenSentences, ...newSentences]
-                speakNext(assistantId, spokenSentences, spokenSentences.length - newSentences.length)
-              }
-            }
+            enqueueSpeech(fullText, false)
           }
         )
       } else {
@@ -99,14 +105,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             if (chunk === '[DONE]') return
             fullText = chunk
             updateMessage(assistantId, { content: fullText })
-            if (ttsEnabled && !isSpeakingRef.current) {
-              const sentences = splitSentences(fullText)
-              const newSentences = sentences.slice(spokenSentences.length, -1)
-              if (newSentences.length > 0) {
-                spokenSentences = [...spokenSentences, ...newSentences]
-                speakNext(assistantId, spokenSentences, spokenSentences.length - newSentences.length)
-              }
-            }
+            enqueueSpeech(fullText, false)
           }
         )
         conversationIdRef.current = result.conversationId
@@ -120,14 +119,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
     }
 
     updateMessage(assistantId, { content: fullText, isStreaming: false })
-    if (ttsEnabled) {
-      const finalSentences = splitSentences(fullText)
-      const remaining = finalSentences.slice(spokenSentences.length)
-      if (remaining.length > 0) {
-        spokenSentences = [...spokenSentences, ...remaining]
-        if (!isSpeakingRef.current) speakNext(assistantId, spokenSentences, spokenSentences.length - remaining.length)
-      }
-    }
+    enqueueSpeech(fullText, true)
   }, [isLoading, touch, addMessage, updateMessage, setLoading, ttsEnabled, speakNext, user, isAuthenticated, chatMode])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
