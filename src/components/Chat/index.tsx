@@ -123,13 +123,13 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent' }}>
       {/* 访客提示横幅 */}
       {guestMode && !isAuthenticated && (
         <div style={{
           padding: '8px 20px',
-          background: 'rgba(255,170,0,0.06)',
-          borderBottom: '1px solid rgba(255,170,0,0.15)',
+          background: 'rgba(255,247,225,0.82)',
+          borderBottom: '1px solid rgba(214,145,0,0.22)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -153,16 +153,16 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
       <MessageList messages={messages} isLoading={isLoading} />
 
       {/* 输入区 */}
-      <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--border)' }}>
+      <div style={{ padding: '12px 16px 118px', borderTop: '1px solid #c9dfea', position: 'relative', background: 'rgba(255,255,255,0.78)' }}>
         <div style={{
           display: 'flex', alignItems: 'flex-end', gap: 8,
-          background: 'rgba(13,22,38,0.8)',
-          border: '1px solid var(--border-bright)',
+          background: 'rgba(255,255,255,0.94)',
+          border: '1px solid #a8cfdf',
           borderRadius: 8, padding: '8px 12px',
           transition: 'border-color 0.2s',
         }}
-          onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--cyan-dim)')}
-          onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border-bright)')}
+          onFocusCapture={e => (e.currentTarget.style.borderColor = '#57c7e8')}
+          onBlurCapture={e => (e.currentTarget.style.borderColor = '#a8cfdf')}
         >
           <textarea
             value={input}
@@ -172,7 +172,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             rows={1}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              color: 'var(--text)', fontSize: 13, lineHeight: 1.6, resize: 'none',
+              color: '#102033', fontSize: 15, lineHeight: 1.6, resize: 'none',
               fontFamily: 'Noto Sans SC', minHeight: 36, maxHeight: 120,
             }}
             onInput={e => {
@@ -182,7 +182,6 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2 }}>
-            <VoiceInput onTranscribed={text => setInput(prev => prev + text)} disabled={isLoading} />
             <button
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || isLoading}
@@ -203,8 +202,21 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             </button>
           </div>
         </div>
-        <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.08em', fontFamily: 'Rajdhani' }}>
+        <div style={{ display: 'none' }}>
           ENTER 发送 · SHIFT+ENTER 换行 · 点击麦克风语音输入
+        </div>
+        <div style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 8,
+          display: 'flex',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <VoiceInput onTranscribed={text => { void sendMessage(text) }} disabled={isLoading} />
+          </div>
         </div>
       </div>
     </div>

@@ -41,8 +41,8 @@ function MessageBubble({ msg }: { msg: Message }) {
           color: 'var(--text)',
           whiteSpace: 'pre-wrap',
         } : {
-          background: 'rgba(13,22,38,0.9)',
-          border: '1px solid var(--border-bright)',
+          background: 'rgba(255,255,255,0.94)',
+          border: '1px solid #c9dfea',
           color: 'var(--text)',
         }),
       }}>
@@ -69,7 +69,7 @@ function MessageBubble({ msg }: { msg: Message }) {
       {isUser && (
         <div style={{
           width: 32, height: 32, borderRadius: 6, flexShrink: 0, marginTop: 2,
-          background: 'rgba(255,255,255,0.05)',
+          background: 'rgba(255,255,255,0.82)',
           border: '1px solid var(--border-bright)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
@@ -90,7 +90,7 @@ export default function MessageList({ messages, isLoading }: Props) {
   }, [messages])
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px', background: 'transparent' }}>
       {messages.length === 0 && (
         <div style={{
           height: '100%', display: 'flex', flexDirection: 'column',
@@ -101,7 +101,7 @@ export default function MessageList({ messages, isLoading }: Props) {
             width: 56, height: 56, borderRadius: '50%',
             border: '1px solid var(--border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,212,255,0.03)',
+            background: 'rgba(255,255,255,0.78)',
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--text-muted)">
               <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
@@ -125,7 +125,7 @@ export default function MessageList({ messages, isLoading }: Props) {
           </div>
           <div style={{
             padding: '12px 16px', borderRadius: '12px 12px 12px 4px',
-            background: 'rgba(13,22,38,0.9)', border: '1px solid var(--border-bright)',
+            background: 'rgba(255,255,255,0.94)', border: '1px solid #c9dfea',
             display: 'flex', alignItems: 'center', gap: 5,
           }}>
             {[0, 0.2, 0.4].map(d => (

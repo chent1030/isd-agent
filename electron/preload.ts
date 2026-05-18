@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Skills
   getSkills: (isAuthenticated: boolean) => ipcRenderer.invoke('skills:list', { isAuthenticated }),
   loadSkill: (name: string) => ipcRenderer.invoke('skills:load', { name }),
+  getAppConfig: () => ipcRenderer.invoke('app:get-config'),
 
   // 窗口控制
   minimizeWindow: () => ipcRenderer.send('window:minimize'),

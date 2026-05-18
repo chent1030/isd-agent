@@ -20,6 +20,7 @@ export function registerSTTHandlers() {
     if (model) form.append('model', model)
     if (process.env.STT_LANGUAGE) form.append('language', process.env.STT_LANGUAGE)
 
+    console.log(`[stt] transcribing audio -> ${url}`)
     const response = await axios.post(url, form, {
       headers: {
         ...form.getHeaders(),

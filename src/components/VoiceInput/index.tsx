@@ -7,8 +7,17 @@ interface Props {
 
 type RecordState = 'idle' | 'recording' | 'processing'
 
-const SILENCE_THRESHOLD = 0.01
-const SILENCE_DURATION = 1500
+const labels = {
+  micDenied: '\u65e0\u6cd5\u8bbf\u95ee\u9ea6\u514b\u98ce',
+  noAudio: '\u672a\u68c0\u6d4b\u5230\u5f55\u97f3\u5185\u5bb9',
+  noText: '\u672a\u8bc6\u522b\u5230\u8bed\u97f3\u5185\u5bb9',
+  sttFailed: '\u8bed\u97f3\u8bc6\u522b\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5',
+  idle: '\u6309\u4f4f\u8bf4\u8bdd',
+  recording: '\u677e\u5f00\u53d1\u9001',
+  processing: '\u8bc6\u522b\u4e2d',
+  startTitle: '\u6309\u4f4f\u5f00\u59cb\u5f55\u97f3',
+  stopTitle: '\u677e\u5f00\u7ed3\u675f\u5f55\u97f3',
+}
 
 function encodeWav(audioBuffer: AudioBuffer): ArrayBuffer {
   const numChannels = 1
@@ -29,13 +38,13 @@ function encodeWav(audioBuffer: AudioBuffer): ArrayBuffer {
   view.setUint32(4, 36 + dataSize, true)
   writeString(8, 'WAVE')
   writeString(12, 'fmt ')
-  view.setUint32(16, 16, true) // PCM chunk size
-  view.setUint16(20, 1, true) // PCM format
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
   view.setUint16(22, numChannels, true)
   view.setUint32(24, sampleRate, true)
   view.setUint32(28, byteRate, true)
   view.setUint16(32, blockAlign, true)
-  view.setUint16(34, 16, true) // bits per sample
+  view.setUint16(34, 16, true)
   writeString(36, 'data')
   view.setUint32(40, dataSize, true)
 
@@ -62,13 +71,14 @@ async function webmToWav(webmBuffer: ArrayBuffer): Promise<ArrayBuffer> {
 export default function VoiceInput({ onTranscribed, disabled }: Props) {
   const [state, setState] = useState<RecordState>('idle')
   const [volume, setVolume] = useState(0)
+  const [errorMessage, setErrorMessage] = useState('')
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const startPendingRef = useRef(false)
   const chunksRef = useRef<Blob[]>([])
   const audioContextRef = useRef<AudioContext | null>(null)
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rafRef = useRef<number>(0)
+  const errorTimerRef = useRef<number | null>(null)
 
   const stopStream = () => {
     streamRef.current?.getTracks().forEach(t => t.stop())
@@ -80,15 +90,20 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
       cancelAnimationFrame(rafRef.current)
       rafRef.current = 0
     }
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current)
-      silenceTimerRef.current = null
-    }
     if (audioContextRef.current) {
       void audioContextRef.current.close().catch(() => {})
       audioContextRef.current = null
     }
     setVolume(0)
+  }
+
+  const showError = (message: string) => {
+    if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
+    setErrorMessage(message)
+    errorTimerRef.current = window.setTimeout(() => {
+      setErrorMessage('')
+      errorTimerRef.current = null
+    }, 3500)
   }
 
   const stopRecording = async () => {
@@ -114,14 +129,12 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
     const check = () => {
       analyser.getByteTimeDomainData(data)
       let sum = 0
-      for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v }
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128
+        sum += v * v
+      }
       const rms = Math.sqrt(sum / data.length)
       setVolume(Math.min(rms * 8, 1))
-      if (rms < SILENCE_THRESHOLD) {
-        if (!silenceTimerRef.current) silenceTimerRef.current = setTimeout(() => stopRecording(), SILENCE_DURATION)
-      } else {
-        if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
-      }
       rafRef.current = requestAnimationFrame(check)
     }
     rafRef.current = requestAnimationFrame(check)
@@ -130,6 +143,7 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
   const startRecording = async () => {
     if (disabled || startPendingRef.current || state !== 'idle') return
     startPendingRef.current = true
+    setErrorMessage('')
     chunksRef.current = []
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -142,6 +156,7 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
         mediaRecorderRef.current = null
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
         if (!blob.size) {
+          showError(labels.noAudio)
           setState('idle')
           return
         }
@@ -149,9 +164,15 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
         try {
           const wavBuffer = await webmToWav(webmBuffer)
           const result = await window.electronAPI.transcribeAudio(wavBuffer)
-          if (result?.text) onTranscribed(result.text)
+          const text = result?.text?.trim()
+          if (text) {
+            onTranscribed(text)
+          } else {
+            showError(labels.noText)
+          }
         } catch (e) {
           console.error('STT error:', e)
+          showError(labels.sttFailed)
         } finally {
           setState('idle')
         }
@@ -161,6 +182,7 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
       startVAD(stream)
     } catch (e) {
       console.error('Start recording error:', e)
+      showError(labels.micDenied)
       stopVAD()
       stopStream()
       mediaRecorderRef.current = null
@@ -170,12 +192,21 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
     }
   }
 
-  const handleClick = () => {
-    if (state === 'idle') startRecording()
-    else if (state === 'recording') stopRecording()
+  const handlePressStart = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled || state !== 'idle') return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    void startRecording()
+  }
+
+  const handlePressEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    if (state === 'recording') void stopRecording()
   }
 
   useEffect(() => () => {
+    if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
     stopVAD()
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
@@ -187,44 +218,90 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
   const isProcessing = state === 'processing'
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={disabled || isProcessing}
-      title={isRecording ? '点击停止录音' : '点击开始录音'}
-      style={{
-        position: 'relative',
-        width: 34, height: 34, borderRadius: 6,
-        cursor: disabled || isProcessing ? 'not-allowed' : 'pointer',
-        background: isRecording
-          ? 'rgba(255,68,102,0.15)'
-          : 'transparent',
-        border: `1px solid ${isRecording ? 'rgba(255,68,102,0.4)' : 'var(--border)'}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: isRecording ? 'var(--red)' : isProcessing ? 'var(--text-muted)' : 'var(--text-dim)',
-        transition: 'all 0.2s',
-        opacity: disabled ? 0.4 : 1,
-        overflow: 'hidden',
-      }}>
-      {/* 音量波纹 */}
-      {isRecording && (
+    <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+      {errorMessage && (
         <div style={{
-          position: 'absolute', inset: 0, borderRadius: 6,
-          background: `rgba(255,68,102,${volume * 0.15})`,
-          transition: 'background 0.1s',
+          position: 'absolute',
+          bottom: 116,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          whiteSpace: 'nowrap',
+          padding: '7px 12px',
+          borderRadius: 6,
+          background: '#fff3f5',
+          border: '1px solid #ff9aad',
+          color: '#b4233f',
+          fontSize: 14,
+          fontWeight: 600,
+          boxShadow: '0 8px 22px rgba(180,35,63,0.16)',
           pointerEvents: 'none',
-        }} />
+        }}>
+          {errorMessage}
+        </div>
       )}
-      {isProcessing ? (
-        <div style={{
-          width: 12, height: 12,
-          border: '1.5px solid var(--border-bright)', borderTop: '1.5px solid var(--cyan)',
-          borderRadius: '50%', animation: 'rotate-ring 0.8s linear infinite',
-        }} />
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm-1 14.93V20H9v2h6v-2h-2v-2.07A7 7 0 0 0 19 11h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93z" />
-        </svg>
-      )}
-    </button>
+      <button
+        onPointerDown={handlePressStart}
+        onPointerUp={handlePressEnd}
+        onPointerCancel={handlePressEnd}
+        onContextMenu={e => e.preventDefault()}
+        disabled={disabled || isProcessing}
+        title={isRecording ? labels.stopTitle : labels.startTitle}
+        style={{
+          position: 'relative',
+          width: 108,
+          height: 108,
+          borderRadius: '50%',
+          cursor: disabled || isProcessing ? 'not-allowed' : 'pointer',
+          background: isRecording
+            ? 'linear-gradient(135deg, #ff6b82, #ff335f)'
+            : 'linear-gradient(135deg, #ffffff, #d5f4ff)',
+          border: `2px solid ${isRecording ? 'rgba(255,255,255,0.8)' : '#57c7e8'}`,
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          color: isRecording ? '#ffffff' : '#07111f',
+          transition: 'all 0.2s',
+          opacity: disabled ? 0.4 : 1,
+          overflow: 'hidden',
+          boxShadow: isRecording
+            ? '0 10px 28px rgba(255,68,102,0.35)'
+            : '0 12px 30px rgba(24,144,180,0.24), inset 0 2px 0 rgba(255,255,255,0.95)',
+          fontSize: 14,
+          fontWeight: 700,
+          letterSpacing: 0,
+          userSelect: 'none',
+          touchAction: 'none',
+        }}>
+        {isRecording && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: `rgba(255,255,255,${volume * 0.22})`,
+            transition: 'background 0.1s',
+            pointerEvents: 'none',
+          }} />
+        )}
+        {isProcessing ? (
+          <div style={{
+            width: 22,
+            height: 22,
+            border: '2px solid rgba(7,17,31,0.2)',
+            borderTop: '2px solid #07111f',
+            borderRadius: '50%',
+            animation: 'rotate-ring 0.8s linear infinite',
+          }} />
+        ) : (
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', zIndex: 1 }}>
+            <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm-1 14.93V20H9v2h6v-2h-2v-2.07A7 7 0 0 0 19 11h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93z" />
+          </svg>
+        )}
+        <span style={{ position: 'relative', zIndex: 1 }}>
+          {isProcessing ? labels.processing : isRecording ? labels.recording : labels.idle}
+        </span>
+      </button>
+    </div>
   )
 }

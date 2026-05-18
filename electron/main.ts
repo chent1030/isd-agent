@@ -44,6 +44,10 @@ function toggleFocusedWindowFullScreen() {
   win.setFullScreen(!win.isFullScreen())
 }
 
+function isEnabledEnv(value: string | undefined) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase())
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -100,6 +104,13 @@ app.whenReady().then(async () => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow()
     win?.setFullScreen(!win.isFullScreen())
   })
+  ipcMain.handle('app:get-config', () => ({
+    skipFaceAuth: isEnabledEnv(process.env.SKIP_FACE_AUTH) || isEnabledEnv(process.env.VITE_SKIP_FACE_AUTH),
+    skipFaceAuthUser: {
+      empName: process.env.SKIP_FACE_AUTH_EMP_NAME ?? process.env.VITE_SKIP_FACE_AUTH_EMP_NAME ?? '',
+      empWorkNo: process.env.SKIP_FACE_AUTH_EMP_WORK_NO ?? process.env.VITE_SKIP_FACE_AUTH_EMP_WORK_NO ?? '',
+    },
+  }))
 
   createWindow()
 

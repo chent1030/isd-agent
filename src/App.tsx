@@ -3,7 +3,6 @@ import { useAuthStore } from './store/authStore'
 import { useSkillsStore } from './store/skillsStore'
 import FaceAuth from './components/FaceAuth'
 import ChatPanel from './components/Chat'
-import SkillsPanel from './components/Skills'
 
 type View = 'lock' | 'app'
 type ChatMode = 'qa' | 'agent'
@@ -12,18 +11,32 @@ export default function App() {
   const [view, setView] = useState<View>('lock')
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [guestMode, setGuestMode] = useState(false)
-  const [skillsOpen, setSkillsOpen] = useState(true)
   const [chatMode, setChatMode] = useState<ChatMode>('qa')
 
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, login, logout } = useAuthStore()
   const setSkills = useSkillsStore(s => s.setSkills)
+
+  useEffect(() => {
+    window.electronAPI.getAppConfig()
+      .then(config => {
+        if (config.skipFaceAuth) {
+          const { empName, empWorkNo } = config.skipFaceAuthUser
+          if (!empName || !empWorkNo) {
+            console.error('SKIP_FACE_AUTH is enabled, but SKIP_FACE_AUTH_EMP_NAME or SKIP_FACE_AUTH_EMP_WORK_NO is missing')
+            return
+          }
+          login({ empName, empWorkNo })
+        }
+      })
+      .catch(console.error)
+  }, [login])
 
   useEffect(() => {
     window.electronAPI.getSkills(isAuthenticated).then(setSkills).catch(console.error)
   }, [isAuthenticated, setSkills])
 
   useEffect(() => {
-    if (isAuthenticated) { setGuestMode(false); setView('app') }
+    if (isAuthenticated) { setGuestMode(false); setChatMode('agent'); setView('app') }
   }, [isAuthenticated])
 
   useEffect(() => {
@@ -31,17 +44,27 @@ export default function App() {
   }, [isAuthenticated])
 
   useEffect(() => {
-    if (!isAuthenticated && view === 'app' && !guestMode) setView('lock')
-  }, [isAuthenticated, view, guestMode])
+    if (isAuthenticated || view !== 'app' || guestMode) return
+    setGuestMode(false)
+    setChatMode('qa')
+    setView('lock')
+    setSkills([])
+  }, [isAuthenticated, view, guestMode, setSkills])
 
   const handleUnmatched = () => { setGuestMode(true); setView('app') }
 
-  const handleLock = () => { logout(); setGuestMode(false); setView('lock') }
+  const handleLock = () => {
+    logout()
+    setGuestMode(false)
+    setChatMode('qa')
+    setView('lock')
+    setSkills([])
+  }
 
   // 访客 → 识别（在主界面内触发识别，不跳回锁屏）
   const handleUpgrade = () => {
     // 触发人脸识别流程：直接跳回锁屏让用户识别
-    logout(); setGuestMode(false); setView('lock')
+    handleLock()
   }
 
   if (view === 'lock') {
@@ -49,20 +72,27 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--surface)', position: 'relative', overflow: 'hidden' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      background: 'linear-gradient(180deg, #f7fbff 0%, #eaf7ff 52%, #f9fdff 100%)',
+      color: '#102033',
+      position: 'relative',
+      overflow: 'hidden',
+      ['--surface' as any]: '#f7fbff',
+      ['--surface-2' as any]: '#ffffff',
+      ['--surface-3' as any]: '#e7f4fb',
+      ['--border' as any]: '#c9dfea',
+      ['--border-bright' as any]: '#a8cfdf',
+      ['--text' as any]: '#102033',
+      ['--text-dim' as any]: '#526b7d',
+      ['--text-muted' as any]: '#7f95a4',
+    }}>
 
       {/* 背景网格 */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        backgroundImage: `
-          linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px)
-        `,
-        backgroundSize: '40px 40px',
-      }} />
-
       {/* 顶部光晕 */}
-      <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)', width: 800, height: 200, background: 'radial-gradient(ellipse, rgba(0,212,255,0.06) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)', width: 800, height: 200, background: 'radial-gradient(ellipse, rgba(52,164,205,0.16) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* ── 顶部栏 ── */}
       <header className="glass" style={{
@@ -70,7 +100,15 @@ export default function App() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 20px', height: 52,
         borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+        background: 'rgba(12,20,34,0.96)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border)',
+        ['--border' as any]: '#1a2d4a',
+        ['--border-bright' as any]: '#1e3a5f',
+        ['--text' as any]: '#c8dff5',
+        ['--text-dim' as any]: '#4a6a8a',
+        ['--text-muted' as any]: '#2a4060',
       }}>
         {/* 左：Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -213,38 +251,7 @@ export default function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
 
         {/* 左侧 Skills 面板（仅智能体模式） */}
-        {isAuthenticated && chatMode === 'agent' && (
-          <aside style={{
-            width: skillsOpen ? 260 : 0,
-            overflow: 'hidden',
-            transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
-            borderRight: '1px solid var(--border)',
-            background: 'rgba(8,14,26,0.6)',
-            flexShrink: 0,
-          }}>
-            <div style={{ width: 260, height: '100%', overflowY: 'auto' }}>
-              <SkillsPanel />
-            </div>
-          </aside>
-        )}
-
         {/* Skills 折叠按钮（仅智能体模式） */}
-        {isAuthenticated && chatMode === 'agent' && (
-          <button onClick={() => setSkillsOpen(v => !v)}
-            style={{
-              position: 'absolute', left: skillsOpen ? 252 : 0, top: '50%', transform: 'translateY(-50%)',
-              zIndex: 20, width: 16, height: 48, borderRadius: '0 4px 4px 0',
-              background: 'var(--surface-3)', border: '1px solid var(--border)',
-              borderLeft: 'none', cursor: 'pointer', color: 'var(--text-dim)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
-            }}>
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
-              <path d={skillsOpen ? 'M5 1L2 4l3 3' : 'M3 1l3 3-3 3'} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-            </svg>
-          </button>
-        )}
-
         {/* 对话区 */}
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <ChatPanel
@@ -261,7 +268,7 @@ export default function App() {
       <div style={{
         position: 'relative', zIndex: 10, height: 24,
         borderTop: '1px solid var(--border)',
-        background: 'rgba(8,14,26,0.8)',
+        background: 'rgba(255,255,255,0.84)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 16px',
         fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em',

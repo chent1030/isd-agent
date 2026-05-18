@@ -18,6 +18,10 @@ export interface ElectronAPI {
   difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => Promise<{ conversationId: string }>
   getSkills: (isAuthenticated: boolean) => Promise<SkillManifest[]>
   loadSkill: (name: string) => Promise<string>
+  getAppConfig: () => Promise<{
+    skipFaceAuth: boolean
+    skipFaceAuthUser: { empName: string; empWorkNo: string }
+  }>
   minimizeWindow: () => void
   toggleFullScreen: () => void
   closeWindow: () => void
