@@ -29,10 +29,10 @@ async function requestJson(path, options = {}) {
   }
 
   const data = await response.json()
-  if (data.code !== undefined && data.code !== 200) {
+  if (data === undefined) {
     throw new Error(data.message || 'API 返回失败')
   }
-  return data.data
+  return data
 }
 
 /**
