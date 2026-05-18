@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from './store/authStore'
 import { useSkillsStore } from './store/skillsStore'
+import { useChatStore } from './store/chatStore'
 import FaceAuth from './components/FaceAuth'
 import ChatPanel from './components/Chat'
 
@@ -12,9 +13,16 @@ export default function App() {
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [guestMode, setGuestMode] = useState(false)
   const [chatMode, setChatMode] = useState<ChatMode>('qa')
+  const [chatResetKey, setChatResetKey] = useState(0)
 
   const { user, isAuthenticated, login, logout } = useAuthStore()
   const setSkills = useSkillsStore(s => s.setSkills)
+  const clearMessages = useChatStore(s => s.clearMessages)
+
+  const resetChat = useCallback(() => {
+    clearMessages()
+    setChatResetKey(key => key + 1)
+  }, [clearMessages])
 
   useEffect(() => {
     window.electronAPI.getAppConfig()
@@ -36,8 +44,8 @@ export default function App() {
   }, [isAuthenticated, setSkills])
 
   useEffect(() => {
-    if (isAuthenticated) { setGuestMode(false); setChatMode('agent'); setView('app') }
-  }, [isAuthenticated])
+    if (isAuthenticated) { setGuestMode(false); resetChat(); setChatMode('agent'); setView('app') }
+  }, [isAuthenticated, resetChat])
 
   useEffect(() => {
     if (!isAuthenticated) setChatMode('qa')
@@ -46,16 +54,24 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated || view !== 'app' || guestMode) return
     setGuestMode(false)
+    resetChat()
     setChatMode('qa')
     setView('lock')
     setSkills([])
-  }, [isAuthenticated, view, guestMode, setSkills])
+  }, [isAuthenticated, view, guestMode, setSkills, resetChat])
 
-  const handleUnmatched = () => { setGuestMode(true); setView('app') }
+  const handleUnmatched = () => { resetChat(); setGuestMode(true); setView('app') }
+
+  const handleChatModeChange = (mode: ChatMode) => {
+    if (mode === chatMode) return
+    resetChat()
+    setChatMode(mode)
+  }
 
   const handleLock = () => {
     logout()
     setGuestMode(false)
+    resetChat()
     setChatMode('qa')
     setView('lock')
     setSkills([])
@@ -161,7 +177,7 @@ export default function App() {
               gap: 2,
             }}>
               <button
-                onClick={() => setChatMode('qa')}
+                onClick={() => handleChatModeChange('qa')}
                 style={{
                   padding: '4px 10px',
                   borderRadius: 4,
@@ -176,7 +192,7 @@ export default function App() {
                 问答
               </button>
               <button
-                onClick={() => setChatMode('agent')}
+                onClick={() => handleChatModeChange('agent')}
                 style={{
                   padding: '4px 10px',
                   borderRadius: 4,
@@ -260,6 +276,7 @@ export default function App() {
             guestMode={guestMode}
             onUpgrade={handleUpgrade}
             chatMode={chatMode}
+            resetKey={chatResetKey}
           />
         </main>
       </div>

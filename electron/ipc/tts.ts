@@ -16,7 +16,7 @@ function createWavHeader(dataLength: number, sampleRate = 16000, numChannels = 1
   header.writeUInt32LE(36 + dataLength, 4)
   header.write('WAVE', 8)
 
-  header.write('fmt', 12)
+  header.write('fmt ', 12)
   header.writeUInt32LE(16, 16)
   header.writeUInt16LE(1, 20)
   header.writeUInt16LE(numChannels, 22)

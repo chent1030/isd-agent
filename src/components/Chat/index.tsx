@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useChatStore } from '../../store/chatStore'
 import { useAuthStore } from '../../store/authStore'
 import MessageList from './MessageList'
@@ -10,19 +10,27 @@ interface Props {
   guestMode: boolean
   onUpgrade: () => void
   chatMode: 'qa' | 'agent'
+  resetKey: number
 }
 
 function splitSentences(text: string): string[] {
   return text.split(/(?<=[。！？\n])/).filter(s => s.trim())
 }
 
-export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUpgrade, chatMode }: Props) {
+export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUpgrade, chatMode, resetKey }: Props) {
   const [input, setInput] = useState('')
   const { messages, isLoading, addMessage, updateMessage, setLoading } = useChatStore()
   const { user } = useAuthStore()
   const touch = useAuthStore(s => s.touch)
   const isSpeakingRef = useRef(false)
   const conversationIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    setInput('')
+    conversationIdRef.current = null
+    isSpeakingRef.current = false
+    setLoading(false)
+  }, [resetKey, setLoading])
 
   const speakNext = useCallback(async (msgId: string, sentences: string[], startIdx: number) => {
     if (!ttsEnabled || startIdx >= sentences.length) {
