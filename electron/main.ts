@@ -13,6 +13,15 @@ for (const p of envPaths) {
   if (fs.existsSync(p)) { dotenv.config({ path: p }); break }
 }
 
+function isEnabledEnv(value: string | undefined) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase())
+}
+
+if (isEnabledEnv(process.env.ALLOW_INSECURE_TLS)) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+  console.warn('[tls] TLS certificate verification is disabled by ALLOW_INSECURE_TLS')
+}
+
 import { registerFaceHandlers } from './ipc/face'
 import { registerSTTHandlers } from './ipc/stt'
 import { registerTTSHandlers } from './ipc/tts'
@@ -42,10 +51,6 @@ function toggleFocusedWindowFullScreen() {
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
   if (!win) return
   win.setFullScreen(!win.isFullScreen())
-}
-
-function isEnabledEnv(value: string | undefined) {
-  return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase())
 }
 
 function createWindow() {
