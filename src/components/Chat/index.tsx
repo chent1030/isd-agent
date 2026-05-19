@@ -86,7 +86,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           .filter(m => !m.isStreaming)
           .map(m => ({ role: m.role, content: m.content }))
 
-        await window.electronAPI.chatStream(
+        const result = await window.electronAPI.chatStream(
           history,
           isAuthenticated,
           user ? { empName: user.empName, empWorkNo: user.empWorkNo } : null,
@@ -97,6 +97,10 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             enqueueSpeech(fullText, false)
           }
         )
+        if (result) {
+          fullText = result
+          updateMessage(assistantId, { content: fullText })
+        }
       } else {
         const difyUser = user?.empWorkNo ?? 'guest'
         const result = await window.electronAPI.difyChat(

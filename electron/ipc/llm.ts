@@ -249,9 +249,11 @@ export function registerLLMHandlers() {
       const finalText = toText(aiMessage?.content).trim() || '没有可返回的内容。'
       win.webContents.send(channel, finalText)
       win.webContents.send(channel, '[DONE]')
+      return finalText
     } catch (e: any) {
       win.webContents.send(channel, `[LLM 错误] ${e?.message ?? String(e)}`)
       win.webContents.send(channel, '[DONE]')
+      return `[LLM 错误] ${e?.message ?? String(e)}`
     }
   })
 }

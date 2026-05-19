@@ -84,6 +84,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
 export default function MessageList({ messages, isLoading }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const hasStreamingAssistant = messages.some(msg => msg.role === 'assistant' && msg.isStreaming)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -113,7 +114,7 @@ export default function MessageList({ messages, isLoading }: Props) {
         </div>
       )}
       {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
-      {isLoading && (
+      {isLoading && !hasStreamingAssistant && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 6, flexShrink: 0,
