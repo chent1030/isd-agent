@@ -23,12 +23,14 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   const { user } = useAuthStore()
   const touch = useAuthStore(s => s.touch)
   const isSpeakingRef = useRef(false)
+  const isSendingRef = useRef(false)
   const conversationIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     setInput('')
     conversationIdRef.current = null
     isSpeakingRef.current = false
+    isSendingRef.current = false
     setLoading(false)
   }, [resetKey, setLoading])
 
@@ -55,13 +57,13 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   }, [ttsEnabled, updateMessage])
 
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isLoading) return
+    if (!text.trim() || isLoading || isSendingRef.current) return
+    isSendingRef.current = true
     touch()
     setInput('')
     addMessage({ role: 'user', content: text })
     setLoading(true)
     const assistantId = addMessage({ role: 'assistant', content: '', isStreaming: true })
-    setLoading(false)
     let fullText = ''
     const speechSentences: string[] = []
     let spokenSentenceCount = 0
@@ -118,8 +120,11 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
       fullText = `[请求失败] ${e?.message ?? String(e)}`
     }
 
-    updateMessage(assistantId, { content: fullText, isStreaming: false })
-    enqueueSpeech(fullText, true)
+    const finalText = fullText.trim() || '未收到模型返回内容，请稍后重试。'
+    updateMessage(assistantId, { content: finalText, isStreaming: false })
+    enqueueSpeech(finalText, true)
+    isSendingRef.current = false
+    setLoading(false)
   }, [isLoading, touch, addMessage, updateMessage, setLoading, ttsEnabled, speakNext, user, isAuthenticated, chatMode])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
