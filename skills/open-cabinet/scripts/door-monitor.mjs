@@ -22,19 +22,18 @@ function buildCommand(cmdCode, boardAddr, lockNumOrData) {
   let payload
   if (cmdCode === CMD_OPEN_SINGLE_LOCK) {
     payload = [cmdCode, boardAddr, lockNumOrData, 0x11]
+  } else if (Array.isArray(lockNumOrData)) {
+    payload = [cmdCode, boardAddr, ...lockNumOrData]
   } else {
-    if (Array.isArray(lockNumOrData)) {
-      payload = [cmdCode, boardAddr, ...lockNumOrData]
-    } else {
-      payload = [cmdCode, boardAddr, lockNumOrData]
-    }
+    payload = [cmdCode, boardAddr, lockNumOrData]
   }
+
   const bcc = calculateBCC(payload)
   return Buffer.concat([
     PROTOCOL_HEADER,
     Buffer.from(payload),
     Buffer.from([bcc]),
-    PROTOCOL_FOOTER
+    PROTOCOL_FOOTER,
   ])
 }
 
@@ -54,7 +53,7 @@ function sendCommand(serverIp, serverPort, commandBytes) {
 
     socket.on('timeout', () => {
       socket.destroy()
-      reject(new Error('连接超时'))
+      reject(new Error('Connection timed out'))
     })
 
     socket.on('error', (err) => {
@@ -73,6 +72,7 @@ function parseLockResponse(response, boardAddr, lockNumber) {
     response[1] === 0x74 &&
     response[2] === 0x61 &&
     response[3] === 0x72
+
   if (!headerMatch) return null
   if (response[4] !== CMD_OPEN_SINGLE_LOCK) return null
   if (response[5] !== boardAddr) return null
@@ -93,7 +93,7 @@ export async function monitorDoorUntilClosed(boardAddr, lockNumber, options = {}
     serverPort = DEFAULT_SERVER_PORT,
     checkInterval = DOOR_CHECK_INTERVAL,
     timeout = DOOR_CHECK_TIMEOUT,
-    onStatusChange = null
+    onStatusChange = null,
   } = options
 
   return new Promise((resolve, reject) => {
@@ -125,19 +125,19 @@ export async function monitorDoorUntilClosed(boardAddr, lockNumber, options = {}
             boardAddr,
             lockNumber,
             status: 'closed',
-            elapsed: Date.now() - startTime
+            elapsed: Date.now() - startTime,
           })
           return
         }
 
         if (Date.now() - startTime > timeout) {
           cleanup()
-          reject(new Error(`监控超时 (${timeout}ms)，柜门未关闭`))
+          reject(new Error(`Monitor timed out (${timeout}ms); door was not closed`))
         }
-      } catch (err) {
+      } catch {
         if (Date.now() - startTime > timeout) {
           cleanup()
-          reject(new Error(`监控超时 (${timeout}ms)，柜门未关闭`))
+          reject(new Error(`Monitor timed out (${timeout}ms); door was not closed`))
         }
       }
     }
@@ -151,33 +151,28 @@ export async function openAndWaitForClose(boardAddr, lockNumber, options = {}) {
   const {
     serverIp = DEFAULT_SERVER_IP,
     serverPort = DEFAULT_SERVER_PORT,
-    checkInterval = DOOR_CHECK_INTERVAL,
-    timeout = DOOR_CHECK_TIMEOUT,
-    onStatusChange = null
+    onStatusChange = null,
   } = options
 
-  console.log(`正在打开柜门: 板 ${boardAddr}, 锁 ${lockNumber}`)
+  console.log(`Opening cabinet door: board ${boardAddr}, lock ${lockNumber}`)
 
   const command = buildCommand(CMD_OPEN_SINGLE_LOCK, boardAddr, lockNumber)
   const response = await sendCommand(serverIp, serverPort, command)
-  if (!response) throw new Error('开门指令未收到响应')
+  if (!response) throw new Error('Open command did not receive a response')
 
   const initialStatus = parseLockResponse(response, boardAddr, lockNumber)
-  console.log(`开门响应: 锁状态 = ${initialStatus || '未知'}`)
+  console.log(`Open response lock status: ${initialStatus || 'unknown'}`)
 
   if (onStatusChange) {
     onStatusChange({ boardAddr, lockNumber, status: initialStatus, phase: 'opened' })
   }
 
-  console.log('等待柜门关闭...')
-  const result = await monitorDoorUntilClosed(boardAddr, lockNumber, {
-    serverIp,
-    serverPort,
-    checkInterval,
-    timeout,
-    onStatusChange
-  })
-
-  console.log(`柜门已关闭，耗时 ${result.elapsed}ms`)
-  return result
+  console.log('Door close monitoring is disabled; skipping wait.')
+  return {
+    boardAddr,
+    lockNumber,
+    status: initialStatus || 'unknown',
+    phase: 'monitor_skipped',
+    elapsed: 0,
+  }
 }
