@@ -3,8 +3,12 @@ node_modules
 # Build outputs
 target/
 dist/
+release/
 release-debug/
 
 # Project build outputs
 cabinet-ledger/backend/target/
 cabinet-ledger/frontend/dist/
+
+
+.env
