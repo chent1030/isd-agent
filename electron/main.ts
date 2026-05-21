@@ -1,4 +1,5 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, session } from 'electron'
+import log from 'electron-log/main'
 import path from 'path'
 import fs from 'fs'
 import * as dotenv from 'dotenv'
@@ -21,6 +22,12 @@ if (isEnabledEnv(process.env.ALLOW_INSECURE_TLS)) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
   console.warn('[tls] TLS certificate verification is disabled by ALLOW_INSECURE_TLS')
 }
+
+log.initialize()
+log.transports.file.level = 'info'
+log.transports.file.fileName = 'isd-agent.log'
+Object.assign(console, log.functions)
+log.info(`[app] log file: ${log.transports.file.getFile().path}`)
 
 import { registerFaceHandlers } from './ipc/face'
 import { registerSTTHandlers } from './ipc/stt'

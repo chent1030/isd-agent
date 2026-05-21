@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react'
 
 interface Props {
   onTranscribed: (text: string) => void
+  onRecordingStart?: () => void
   disabled?: boolean
 }
 
@@ -68,7 +69,7 @@ async function webmToWav(webmBuffer: ArrayBuffer): Promise<ArrayBuffer> {
   }
 }
 
-export default function VoiceInput({ onTranscribed, disabled }: Props) {
+export default function VoiceInput({ onTranscribed, onRecordingStart, disabled }: Props) {
   const [state, setState] = useState<RecordState>('idle')
   const [volume, setVolume] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
@@ -143,6 +144,7 @@ export default function VoiceInput({ onTranscribed, disabled }: Props) {
   const startRecording = async () => {
     if (disabled || startPendingRef.current || state !== 'idle') return
     startPendingRef.current = true
+    onRecordingStart?.()
     setErrorMessage('')
     chunksRef.current = []
     try {

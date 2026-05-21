@@ -14,7 +14,7 @@ interface Props {
 }
 
 function splitSentences(text: string): string[] {
-  return text.split(/(?<=[。！？\n])/).filter(s => s.trim())
+  return text.split(/(?<=[\u3002\uff01\uff1f\n])/).filter(s => s.trim())
 }
 
 export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUpgrade, chatMode, resetKey }: Props) {
@@ -24,17 +24,37 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   const touch = useAuthStore(s => s.touch)
   const isSpeakingRef = useRef(false)
   const isSendingRef = useRef(false)
+  const speechSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const speechContextRef = useRef<AudioContext | null>(null)
+  const speechGenerationRef = useRef(0)
   const conversationIdRef = useRef<string | null>(null)
+
+  const stopSpeech = useCallback(() => {
+    speechGenerationRef.current += 1
+    isSpeakingRef.current = false
+    try { speechSourceRef.current?.stop() } catch {}
+    speechSourceRef.current = null
+    void speechContextRef.current?.close().catch(() => {})
+    speechContextRef.current = null
+    for (const msg of useChatStore.getState().messages) {
+      if (msg.highlightIndex !== undefined) updateMessage(msg.id, { highlightIndex: undefined })
+    }
+  }, [updateMessage])
 
   useEffect(() => {
     setInput('')
     conversationIdRef.current = null
-    isSpeakingRef.current = false
+    stopSpeech()
     isSendingRef.current = false
     setLoading(false)
-  }, [resetKey, setLoading])
+  }, [resetKey, setLoading, stopSpeech])
+
+  useEffect(() => () => {
+    stopSpeech()
+  }, [stopSpeech])
 
   const speakNext = useCallback(async (msgId: string, sentences: string[], startIdx: number) => {
+    const generation = speechGenerationRef.current
     if (!ttsEnabled || startIdx >= sentences.length) {
       isSpeakingRef.current = false
       updateMessage(msgId, { highlightIndex: undefined })
@@ -47,12 +67,23 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
       const ctx = new AudioContext()
       const decoded = await ctx.decodeAudioData(audioBuffer)
       const source = ctx.createBufferSource()
+      if (generation !== speechGenerationRef.current) {
+        await ctx.close()
+        return
+      }
+      speechContextRef.current = ctx
+      speechSourceRef.current = source
       source.buffer = decoded
       source.connect(ctx.destination)
       source.start()
-      source.onended = () => { ctx.close(); speakNext(msgId, sentences, startIdx + 1) }
+      source.onended = () => {
+        if (speechSourceRef.current === source) speechSourceRef.current = null
+        if (speechContextRef.current === ctx) speechContextRef.current = null
+        ctx.close()
+        if (generation === speechGenerationRef.current) speakNext(msgId, sentences, startIdx + 1)
+      }
     } catch {
-      speakNext(msgId, sentences, startIdx + 1)
+      if (generation === speechGenerationRef.current) speakNext(msgId, sentences, startIdx + 1)
     }
   }, [ttsEnabled, updateMessage])
 
@@ -92,6 +123,10 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           user ? { empName: user.empName, empWorkNo: user.empWorkNo } : null,
           (chunk: string) => {
             if (chunk === '[DONE]') return
+            if (chunk === '[SKILL_CALLING]') {
+              updateMessage(assistantId, { content: '\u6b63\u5728\u8c03\u7528\u6280\u80fd...' })
+              return
+            }
             fullText += chunk
             updateMessage(assistantId, { content: fullText })
             enqueueSpeech(fullText, false)
@@ -124,7 +159,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
       fullText = `[请求失败] ${e?.message ?? String(e)}`
     }
 
-    const finalText = fullText.trim() || '未收到模型返回内容，请稍后重试。'
+    const finalText = fullText.trim() || '\u672a\u6536\u5230\u6a21\u578b\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002'
     updateMessage(assistantId, { content: finalText, isStreaming: false })
     enqueueSpeech(finalText, true)
     isSendingRef.current = false
@@ -228,7 +263,11 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           pointerEvents: 'none',
         }}>
           <div style={{ pointerEvents: 'auto' }}>
-            <VoiceInput onTranscribed={text => { void sendMessage(text) }} disabled={isLoading} />
+            <VoiceInput
+              onRecordingStart={stopSpeech}
+              onTranscribed={text => { void sendMessage(text) }}
+              disabled={isLoading}
+            />
           </div>
         </div>
       </div>

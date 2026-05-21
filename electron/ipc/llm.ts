@@ -204,6 +204,7 @@ export function registerLLMHandlers() {
 
       let aiMessage = await modelWithTools.invoke(lcMessages)
       let loop = 0
+      let hasSentSkillStatus = false
       while (loop < 6) {
         const toolCalls: Array<{ id?: string; name: string; args?: unknown }> =
           Array.isArray(aiMessage?.tool_calls) ? aiMessage.tool_calls : []
@@ -216,13 +217,9 @@ export function registerLLMHandlers() {
           const args = call.args && typeof call.args === 'object'
             ? (call.args as Record<string, unknown>)
             : {}
-          const skillName = typeof args.skillName === 'string' ? args.skillName : ''
-          if (call.name === 'load_skill') {
-            win.webContents.send(channel, `\n[加载技能: ${skillName || '(未指定)'}]\n`)
-          } else if (call.name === 'run_skill') {
-            win.webContents.send(channel, `\n[执行技能: ${skillName || '(未指定)'}]\n`)
-          } else {
-            win.webContents.send(channel, `\n[调用工具: ${call.name}]\n`)
+          if ((call.name === 'load_skill' || call.name === 'run_skill') && !hasSentSkillStatus) {
+            win.webContents.send(channel, '[SKILL_CALLING]')
+            hasSentSkillStatus = true
           }
 
           let toolResult = ''
