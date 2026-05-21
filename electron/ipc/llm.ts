@@ -18,6 +18,17 @@ interface OperatorIdentity {
   empWorkNo?: string
 }
 
+interface PendingCabinetAction {
+  skillName: 'open-cabinet'
+  action: 'borrow' | 'receive' | 'return'
+  itemId: string
+  itemName?: string
+  quantity: number
+  operatorNo?: string
+  operatorName?: string
+  createdAt: number
+}
+
 interface LangChainModules {
   ChatOpenAI: any
   HumanMessage: any
@@ -30,6 +41,8 @@ interface LangChainModules {
 
 let langChainModulesPromise: Promise<LangChainModules> | null = null
 const dynamicImport = new Function('modulePath', 'return import(modulePath)') as <T>(modulePath: string) => Promise<T>
+const pendingCabinetActions = new Map<number, PendingCabinetAction>()
+const PENDING_EXPIRE_MS = 10 * 60 * 1000
 
 async function loadLangChainModules(): Promise<LangChainModules> {
   if (!langChainModulesPromise) {
@@ -93,6 +106,74 @@ function normalizeToolName(rawName: string, used: Set<string>): string {
   return name
 }
 
+function getLastUserText(messages: Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]?.role === 'user') return String(messages[i].content ?? '').trim()
+  }
+  return ''
+}
+
+function isConfirmText(text: string): boolean {
+  const normalized = text.replace(/\s+/g, '').toLowerCase()
+  return ['确认', '确定', '是', '是的', '好的', '好', '可以', '没问题', '确认领取', '确认领用', '确认归还', 'ok', 'yes', 'y'].includes(normalized)
+}
+
+function isCancelText(text: string): boolean {
+  const normalized = text.replace(/\s+/g, '').toLowerCase()
+  return ['取消', '不确认', '不要', '不用', '否', '不是', '算了', 'cancel', 'no', 'n'].includes(normalized)
+}
+
+function getValidPendingCabinetAction(webContentsId: number): PendingCabinetAction | null {
+  const pending = pendingCabinetActions.get(webContentsId)
+  if (!pending) return null
+  if (Date.now() - pending.createdAt > PENDING_EXPIRE_MS) {
+    pendingCabinetActions.delete(webContentsId)
+    return null
+  }
+  return pending
+}
+
+function normalizeCabinetAction(action: unknown): PendingCabinetAction['action'] | null {
+  const value = String(action ?? '').trim().toLowerCase()
+  if (value === 'borrow' || value === 'receive' || value === 'return') return value
+  return null
+}
+
+function createPendingCabinetAction(
+  params: Record<string, unknown>,
+  operator?: OperatorIdentity
+): PendingCabinetAction | null {
+  const action = normalizeCabinetAction(params.action || params.command)
+  const itemId = String(params.itemId ?? params.id ?? '').trim()
+  if (!action || !itemId) return null
+
+  const quantity = Number.parseInt(String(params.quantity ?? 1), 10) || 1
+  return {
+    skillName: 'open-cabinet',
+    action,
+    itemId,
+    itemName: typeof params.itemName === 'string' ? params.itemName : undefined,
+    quantity,
+    operatorNo: operator?.empWorkNo,
+    operatorName: operator?.empName,
+    createdAt: Date.now(),
+  }
+}
+
+function summarizeCabinetResult(rawResult: string, pending: PendingCabinetAction): string {
+  try {
+    const parsed = JSON.parse(rawResult)
+    const itemName = parsed?.item?.name || pending.itemName || pending.itemId
+    const quantity = parsed?.quantity || pending.quantity
+    const stock = parsed?.deductResult?.remainingStock ?? parsed?.returnResult?.remainingStock
+    const actionText = pending.action === 'return' ? '归还' : '领用'
+    const stockText = typeof stock === 'number' ? `，剩余库存：${stock}` : ''
+    return `已完成${actionText}操作。物品：${itemName}，数量：${quantity}${stockText}。`
+  } catch {
+    return pending.action === 'return' ? '已完成归还操作。' : '已完成开柜和库存扣减。'
+  }
+}
+
 function buildSystemPrompt(skillsBlock: string, operator?: OperatorIdentity): string {
   const operatorText = operator?.empWorkNo && operator?.empName
     ? `当前已通过摄像头识别的操作人: ${operator.empName} (${operator.empWorkNo})。调用涉及领用、借用、归还、开柜等业务 skill 时，必须传 operatorNo="${operator.empWorkNo}" 和 operatorName="${operator.empName}"，不要使用 skill/admin/guest 作为操作人。`
@@ -105,6 +186,7 @@ function buildSystemPrompt(skillsBlock: string, operator?: OperatorIdentity): st
     '你可以通过工具调用 skills，并采用渐进式披露模式。',
     '流程要求：先调用 load_skill 获取该技能完整说明，再决定是否调用 run_skill。',
     '调用 run_skill 时，参数放在 params 对象中，例如：{"skillName":"query-employee","params":{"keyword":"张三"}}。',
+    'open-cabinet flow: first use run_skill with action="list" to get items and match the user request. After matching an item, call set_pending_cabinet_action with action, itemId, quantity, and itemName, then ask the user for confirmation. Do not execute borrow/receive/return in the same turn as the confirmation request.',
     '拿到工具结果后，给用户清晰、简洁的中文回复。',
   ].filter(Boolean).join('\n\n')
 }
@@ -123,6 +205,44 @@ export function registerLLMHandlers() {
     if (!url) throw new Error('LLM_API_URL not configured')
 
     try {
+      const lastUserText = getLastUserText(messages)
+      const pendingCabinetAction = getValidPendingCabinetAction(event.sender.id)
+      if (pendingCabinetAction) {
+        if (isCancelText(lastUserText)) {
+          pendingCabinetActions.delete(event.sender.id)
+          const finalText = '已取消本次操作。'
+          win.webContents.send(channel, finalText)
+          win.webContents.send(channel, '[DONE]')
+          return finalText
+        }
+
+        if (isConfirmText(lastUserText)) {
+          if (!isAuthenticated || !operator?.empWorkNo || !operator?.empName) {
+            pendingCabinetActions.delete(event.sender.id)
+            const finalText = '请先完成人脸识别后再确认操作。'
+            win.webContents.send(channel, finalText)
+            win.webContents.send(channel, '[DONE]')
+            return finalText
+          }
+
+          win.webContents.send(channel, '[SKILL_CALLING]')
+          const result = await executeSkillScript(pendingCabinetAction.skillName, {
+            action: pendingCabinetAction.action,
+            itemId: pendingCabinetAction.itemId,
+            quantity: pendingCabinetAction.quantity,
+            operatorNo: operator.empWorkNo,
+            operatorName: operator.empName,
+          })
+          pendingCabinetActions.delete(event.sender.id)
+          const finalText = summarizeCabinetResult(typeof result === 'string' ? result : JSON.stringify(result), pendingCabinetAction)
+          win.webContents.send(channel, finalText)
+          win.webContents.send(channel, '[DONE]')
+          return finalText
+        }
+
+        pendingCabinetActions.delete(event.sender.id)
+      }
+
       const {
         ChatOpenAI,
         HumanMessage,
@@ -173,6 +293,13 @@ export function registerLLMHandlers() {
             if (!params.operatorNo) params.operatorNo = operator.empWorkNo
             if (!params.operatorName) params.operatorName = operator.empName
           }
+          if (skillName === 'open-cabinet') {
+            const pending = createPendingCabinetAction(params, operator)
+            if (pending) {
+              pendingCabinetActions.set(event.sender.id, pending)
+              return 'Pending cabinet operation saved. Ask the user to confirm before executing it. Do not call run_skill again for this operation until the user confirms.'
+            }
+          }
           try {
             const result = await executeSkillScript(skillName, params)
             return typeof result === 'string' ? result : JSON.stringify(result)
@@ -182,7 +309,25 @@ export function registerLLMHandlers() {
         },
       })
 
-      const tools = [loadSkillTool, runSkillTool]
+      const setPendingCabinetActionTool = new DynamicStructuredTool({
+        name: normalizeToolName('set_pending_cabinet_action', new Set(['load_skill', 'run_skill'])),
+        description: 'Save a matched open-cabinet operation that is waiting for explicit user confirmation.',
+        schema: z.object({
+          skillName: z.literal('open-cabinet').describe('Must be open-cabinet'),
+          action: z.enum(['borrow', 'receive', 'return']).describe('Cabinet operation to execute after confirmation'),
+          itemId: z.union([z.string(), z.number()]).describe('Matched item id'),
+          itemName: z.string().optional().describe('Matched item name'),
+          quantity: z.number().optional().default(1).describe('Operation quantity'),
+        }),
+        func: async (input: Record<string, unknown>) => {
+          const pending = createPendingCabinetAction(input, operator)
+          if (!pending) return 'Invalid pending cabinet operation. Missing action or itemId.'
+          pendingCabinetActions.set(event.sender.id, pending)
+          return 'Pending cabinet operation saved. Ask the user to confirm.'
+        },
+      })
+
+      const tools = [loadSkillTool, runSkillTool, setPendingCabinetActionTool]
 
       const llm = new ChatOpenAI({
         model,
