@@ -19,8 +19,12 @@ const dynamicImport = new Function('modulePath', 'return import(modulePath)') as
 
 async function load() {
   skillsMap.clear()
-  const skillsDir = path.join(process.cwd(), 'skills')
-  if (!fs.existsSync(skillsDir)) return
+  const skillsDir = [
+    process.resourcesPath ? path.join(process.resourcesPath, 'skills') : '',
+    path.join(process.cwd(), 'skills'),
+  ].find(dir => dir && fs.existsSync(dir))
+
+  if (!skillsDir) return
 
   const entries = fs.readdirSync(skillsDir, { withFileTypes: true })
   for (const entry of entries) {
