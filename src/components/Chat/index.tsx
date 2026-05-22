@@ -124,7 +124,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
           (chunk: string) => {
             if (chunk === '[DONE]') return
             if (chunk === '[SKILL_CALLING]') {
-              updateMessage(assistantId, { content: '\u6b63\u5728\u8c03\u7528\u6280\u80fd...' })
+              updateMessage(assistantId, { content: '正在调用技能...' })
               return
             }
             fullText += chunk
@@ -156,10 +156,10 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
         }
       }
     } catch (e: any) {
-      fullText = `[请求失败] ${e?.message ?? String(e)}`
+      fullText = `[错误] ${e?.message ?? String(e)}`
     }
 
-    const finalText = fullText.trim() || '\u672a\u6536\u5230\u6a21\u578b\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002'
+    const finalText = fullText.trim() || '未收到模型返回内容，请稍后重试。'
     updateMessage(assistantId, { content: finalText, isStreaming: false })
     enqueueSpeech(finalText, true)
     isSendingRef.current = false
@@ -171,97 +171,74 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent' }}>
-      {/* 访客提示横幅 */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'transparent' }}>
       {guestMode && !isAuthenticated && (
         <div style={{
-          padding: '8px 20px',
-          background: 'rgba(255,247,225,0.82)',
-          borderBottom: '1px solid rgba(214,145,0,0.22)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 18px',
+          background: 'rgba(255,170,0,0.08)',
+          borderBottom: '1px solid rgba(255,170,0,0.22)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--amber)', boxShadow: '0 0 6px var(--amber)' }} />
-            <span style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Rajdhani', letterSpacing: '0.1em' }}>
-              访客模式
-            </span>
+            <span className="status-dot amber" />
+            <span style={{ fontSize: 12, color: 'var(--amber)', fontFamily: 'Rajdhani', letterSpacing: '0.12em' }}>GUEST MODE</span>
           </div>
-          <button onClick={onUpgrade}
-            style={{
-              padding: '3px 12px', borderRadius: 3, fontSize: 10,
-              fontFamily: 'Rajdhani', letterSpacing: '0.1em', cursor: 'pointer',
-              background: 'rgba(255,170,0,0.1)', border: '1px solid rgba(255,170,0,0.3)',
-              color: 'var(--amber)', transition: 'all 0.2s',
-            }}>
-            ▶ 人脸识别登录
+          <button onClick={onUpgrade} className="hud-button" style={{ minHeight: 28, fontSize: 11, color: 'var(--amber)' }}>
+            FACE AUTH
           </button>
         </div>
       )}
 
-      <MessageList messages={messages} isLoading={isLoading} />
+      <div className="chat-stage">
+        <MessageList messages={messages} isLoading={isLoading} />
+      </div>
 
-      {/* 输入区 */}
-      <div style={{ padding: '12px 16px 118px', borderTop: '1px solid #c9dfea', position: 'relative', background: 'rgba(255,255,255,0.78)' }}>
-        <div style={{
-          display: 'flex', alignItems: 'flex-end', gap: 8,
-          background: 'rgba(255,255,255,0.94)',
-          border: '1px solid #a8cfdf',
-          borderRadius: 8, padding: '8px 12px',
-          transition: 'border-color 0.2s',
-        }}
-          onFocusCapture={e => (e.currentTarget.style.borderColor = '#57c7e8')}
-          onBlurCapture={e => (e.currentTarget.style.borderColor = '#a8cfdf')}
+      <div className="composer-dock">
+        <button className="hud-button" title="附件" style={{ width: 44, height: 44, minHeight: 44, justifyContent: 'center', padding: 0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 1 1-2.83-2.83l8.49-8.48" />
+          </svg>
+        </button>
+
+        <div
+          className="input-shell"
+          onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(0,212,255,0.62)')}
+          onBlurCapture={e => (e.currentTarget.style.borderColor = 'rgba(0,212,255,0.24)')}
         >
           <textarea
             value={input}
             onChange={e => { setInput(e.target.value); touch() }}
             onKeyDown={handleKeyDown}
-            placeholder="输入消息，Enter 发送，Shift+Enter 换行..."
+            placeholder="Type your message..."
             rows={1}
-            style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              color: '#102033', fontSize: 15, lineHeight: 1.6, resize: 'none',
-              fontFamily: 'Noto Sans SC', minHeight: 36, maxHeight: 120,
-            }}
+            className="sci-textarea"
             onInput={e => {
               const el = e.currentTarget
               el.style.height = 'auto'
-              el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+              el.style.height = Math.min(el.scrollHeight, 116) + 'px'
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2 }}>
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isLoading}
-              style={{
-                width: 34, height: 34, borderRadius: 6, cursor: 'pointer',
-                background: input.trim() && !isLoading
-                  ? 'linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,102,255,0.2))'
-                  : 'transparent',
-                border: `1px solid ${input.trim() && !isLoading ? 'var(--cyan-glow)' : 'var(--border)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: input.trim() && !isLoading ? 'var(--cyan)' : 'var(--text-muted)',
-                transition: 'all 0.2s',
-                boxShadow: input.trim() && !isLoading ? '0 0 12px var(--cyan-dim)' : 'none',
-              }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={() => sendMessage(input)}
+            disabled={!input.trim() || isLoading}
+            className="hud-button"
+            style={{ width: 42, height: 42, minHeight: 42, justifyContent: 'center', padding: 0, color: input.trim() && !isLoading ? 'var(--cyan)' : 'var(--text-muted)' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
         </div>
-        <div style={{ display: 'none' }}>
-          ENTER 发送 · SHIFT+ENTER 换行 · 点击麦克风语音输入
+
+        <div className="composer-wave">
+          {Array.from({ length: 96 }, (_, i) => (
+            <span key={i} style={{ height: 4 + (Math.sin(i * 0.38) + 1) * 12 }} />
+          ))}
         </div>
-        <div style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 8,
-          display: 'flex',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-        }}>
+
+        <div className="voice-slot" style={{ pointerEvents: 'none' }}>
           <div style={{ pointerEvents: 'auto' }}>
             <VoiceInput
               onRecordingStart={stopSpeech}

@@ -22,9 +22,7 @@ export interface ElectronAPI {
     skipFaceAuth: boolean
     skipFaceAuthUser: { empName: string; empWorkNo: string }
   }>
-  minimizeWindow: () => void
   toggleFullScreen: () => void
-  closeWindow: () => void
 }
 
 declare global {

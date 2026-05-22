@@ -224,18 +224,17 @@ export default function VoiceInput({ onTranscribed, onRecordingStart, disabled }
       {errorMessage && (
         <div style={{
           position: 'absolute',
-          bottom: 116,
+          bottom: 104,
           left: '50%',
           transform: 'translateX(-50%)',
           whiteSpace: 'nowrap',
           padding: '7px 12px',
-          borderRadius: 6,
-          background: '#fff3f5',
-          border: '1px solid #ff9aad',
-          color: '#b4233f',
-          fontSize: 14,
+          background: 'rgba(60,8,16,0.96)',
+          border: '1px solid rgba(255,68,102,0.5)',
+          color: '#ff9aad',
+          fontSize: 12,
           fontWeight: 600,
-          boxShadow: '0 8px 22px rgba(180,35,63,0.16)',
+          boxShadow: '0 0 18px rgba(255,68,102,0.22)',
           pointerEvents: 'none',
         }}>
           {errorMessage}
@@ -250,32 +249,40 @@ export default function VoiceInput({ onTranscribed, onRecordingStart, disabled }
         title={isRecording ? labels.stopTitle : labels.startTitle}
         style={{
           position: 'relative',
-          width: 108,
-          height: 108,
+          width: 92,
+          height: 92,
           borderRadius: '50%',
           cursor: disabled || isProcessing ? 'not-allowed' : 'pointer',
           background: isRecording
-            ? 'linear-gradient(135deg, #ff6b82, #ff335f)'
-            : 'linear-gradient(135deg, #ffffff, #d5f4ff)',
-          border: `2px solid ${isRecording ? 'rgba(255,255,255,0.8)' : '#57c7e8'}`,
+            ? 'radial-gradient(circle, rgba(255,68,102,0.35), rgba(90,8,24,0.96) 62%, #05080c 64%)'
+            : 'radial-gradient(circle, rgba(0,212,255,0.28), rgba(0,65,92,0.92) 58%, #041018 62%)',
+          border: `2px solid ${isRecording ? 'rgba(255,68,102,0.85)' : 'rgba(0,212,255,0.9)'}`,
           display: 'inline-flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 6,
-          color: isRecording ? '#ffffff' : '#07111f',
+          gap: 3,
+          color: isRecording ? '#ffffff' : 'var(--cyan)',
           transition: 'all 0.2s',
           opacity: disabled ? 0.4 : 1,
           overflow: 'hidden',
           boxShadow: isRecording
-            ? '0 10px 28px rgba(255,68,102,0.35)'
-            : '0 12px 30px rgba(24,144,180,0.24), inset 0 2px 0 rgba(255,255,255,0.95)',
-          fontSize: 14,
+            ? '0 0 22px rgba(255,68,102,0.45), inset 0 0 24px rgba(255,255,255,0.08)'
+            : '0 0 28px rgba(0,212,255,0.46), inset 0 0 28px rgba(0,212,255,0.18)',
+          fontSize: 10,
           fontWeight: 700,
-          letterSpacing: 0,
+          letterSpacing: '0.08em',
           userSelect: 'none',
           touchAction: 'none',
         }}>
+        <div style={{
+          position: 'absolute',
+          inset: 6,
+          borderRadius: '50%',
+          border: `1px dashed ${isRecording ? 'rgba(255,255,255,0.45)' : 'rgba(0,212,255,0.5)'}`,
+          animation: 'rotate-ring 8s linear infinite',
+          pointerEvents: 'none',
+        }} />
         {isRecording && (
           <div style={{
             position: 'absolute',
@@ -290,17 +297,17 @@ export default function VoiceInput({ onTranscribed, onRecordingStart, disabled }
           <div style={{
             width: 22,
             height: 22,
-            border: '2px solid rgba(7,17,31,0.2)',
-            borderTop: '2px solid #07111f',
+            border: '2px solid rgba(0,212,255,0.2)',
+            borderTop: '2px solid var(--cyan)',
             borderRadius: '50%',
             animation: 'rotate-ring 0.8s linear infinite',
           }} />
         ) : (
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', zIndex: 1 }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', zIndex: 1, filter: 'drop-shadow(0 0 8px currentColor)' }}>
             <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm-1 14.93V20H9v2h6v-2h-2v-2.07A7 7 0 0 0 19 11h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93z" />
           </svg>
         )}
-        <span style={{ position: 'relative', zIndex: 1 }}>
+        <span style={{ position: 'relative', zIndex: 1, fontFamily: 'Rajdhani', textTransform: 'uppercase' }}>
           {isProcessing ? labels.processing : isRecording ? labels.recording : labels.idle}
         </span>
       </button>

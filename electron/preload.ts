@@ -39,7 +39,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppConfig: () => ipcRenderer.invoke('app:get-config'),
 
   // 窗口控制
-  minimizeWindow: () => ipcRenderer.send('window:minimize'),
   toggleFullScreen: () => ipcRenderer.send('window:toggle-fullscreen'),
-  closeWindow: () => ipcRenderer.send('window:close'),
 })

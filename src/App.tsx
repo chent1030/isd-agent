@@ -14,6 +14,7 @@ export default function App() {
   const [guestMode, setGuestMode] = useState(false)
   const [chatMode, setChatMode] = useState<ChatMode>('qa')
   const [chatResetKey, setChatResetKey] = useState(0)
+  const [now, setNow] = useState(new Date())
 
   const { user, isAuthenticated, login, logout } = useAuthStore()
   const setSkills = useSkillsStore(s => s.setSkills)
@@ -23,6 +24,11 @@ export default function App() {
     clearMessages()
     setChatResetKey(key => key + 1)
   }, [clearMessages])
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     window.electronAPI.getAppConfig()
@@ -77,9 +83,7 @@ export default function App() {
     setSkills([])
   }
 
-  // 访客 → 识别（在主界面内触发识别，不跳回锁屏）
   const handleUpgrade = () => {
-    // 触发人脸识别流程：直接跳回锁屏让用户识别
     handleLock()
   }
 
@@ -87,189 +91,59 @@ export default function App() {
     return <FaceAuth onUnmatched={handleUnmatched} />
   }
 
+  const timeText = now.toLocaleTimeString('zh-CN', { hour12: false })
+  const dateText = now.toLocaleDateString('zh-CN')
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      background: 'linear-gradient(180deg, #f7fbff 0%, #eaf7ff 52%, #f9fdff 100%)',
-      color: '#102033',
-      position: 'relative',
-      overflow: 'hidden',
-      ['--surface' as any]: '#f7fbff',
-      ['--surface-2' as any]: '#ffffff',
-      ['--surface-3' as any]: '#e7f4fb',
-      ['--border' as any]: '#c9dfea',
-      ['--border-bright' as any]: '#a8cfdf',
-      ['--text' as any]: '#102033',
-      ['--text-dim' as any]: '#526b7d',
-      ['--text-muted' as any]: '#7f95a4',
-    }}>
-
-      {/* 背景网格 */}
-      {/* 顶部光晕 */}
-      <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)', width: 800, height: 200, background: 'radial-gradient(ellipse, rgba(52,164,205,0.16) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-
-      {/* ── 顶部栏 ── */}
-      <header className="glass" style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 20px', height: 52,
-        borderLeft: 'none', borderRight: 'none', borderTop: 'none',
-        background: 'rgba(12,20,34,0.96)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--border)',
-        ['--border' as any]: '#1a2d4a',
-        ['--border-bright' as any]: '#1e3a5f',
-        ['--text' as any]: '#c8dff5',
-        ['--text-dim' as any]: '#4a6a8a',
-        ['--text-muted' as any]: '#2a4060',
-      }}>
-        {/* 左：Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 6,
-            background: 'linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,102,255,0.2))',
-            border: '1px solid var(--cyan-glow)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 12px var(--cyan-dim)',
-          }}>
-            <span style={{ fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.05em' }}>ISD</span>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'Rajdhani', fontWeight: 600, fontSize: 14, letterSpacing: '0.15em', color: 'var(--text)' }}>INTELLIGENT ASSISTANT</div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: -2 }}>智能助手系统 v1.0</div>
-          </div>
+    <div className="sci-shell clean-console" style={{ display: 'flex', flexDirection: 'column' }}>
+      <header className="top-console-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 300 }}>
+          <div className="isd-wordmark">ISD</div>
+          <div className="sci-title" style={{ fontSize: 20, letterSpacing: '0.06em' }}>INTELLIGENT ASSISTANT</div>
         </div>
 
-        {/* 中：模式指示 + 聊天模式切换 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="hud-chip" style={{ color: 'var(--green)' }}>
+            <span className="status-dot" />
+            ONLINE
+          </div>
+
           {isAuthenticated && user ? (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '4px 14px', borderRadius: 4,
-              background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)',
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)' }} />
-              <span style={{ fontFamily: 'Rajdhani', fontSize: 13, color: 'var(--green)', letterSpacing: '0.1em' }}>{user.empName}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{user.empWorkNo}</span>
+            <div className="hud-chip">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-dim)' }}>
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              </svg>
+              {user.empName || 'OPERATOR'} <span style={{ color: 'var(--text-muted)' }}>{user.empWorkNo}</span>
             </div>
           ) : (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '4px 14px', borderRadius: 4,
-              background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.2)',
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)', boxShadow: '0 0 6px var(--amber)' }} />
-              <span style={{ fontFamily: 'Rajdhani', fontSize: 13, color: 'var(--amber)', letterSpacing: '0.1em' }}>访客模式</span>
-            </div>
-          )}
-
-          {isAuthenticated && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: 2,
-              borderRadius: 6,
-              border: '1px solid var(--border)',
-              background: 'rgba(8,14,26,0.7)',
-              gap: 2,
-            }}>
-              <button
-                onClick={() => handleChatModeChange('qa')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  fontFamily: 'Rajdhani',
-                  letterSpacing: '0.08em',
-                  background: chatMode === 'qa' ? 'rgba(0,212,255,0.16)' : 'transparent',
-                  color: chatMode === 'qa' ? 'var(--cyan)' : 'var(--text-dim)',
-                }}>
-                问答
-              </button>
-              <button
-                onClick={() => handleChatModeChange('agent')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  fontFamily: 'Rajdhani',
-                  letterSpacing: '0.08em',
-                  background: chatMode === 'agent' ? 'rgba(0,255,136,0.14)' : 'transparent',
-                  color: chatMode === 'agent' ? 'var(--green)' : 'var(--text-dim)',
-                }}>
-                智能体
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 右：操作按钮 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* 访客升级 / 用户切换访客 */}
-          {!isAuthenticated ? (
-            <button onClick={handleUpgrade} className="btn-primary"
-              style={{ padding: '5px 14px', borderRadius: 4, fontSize: 11 }}>
-              ▶ 人脸识别登录
-            </button>
-          ) : (
-            <button onClick={handleLock} className="btn-ghost"
-              style={{ padding: '5px 14px', borderRadius: 4, fontSize: 11 }}>
-              切换账号
+            <button onClick={handleUpgrade} className="hud-button" style={{ color: 'var(--amber)' }}>
+              <span className="status-dot amber" />
+              GUEST
             </button>
           )}
 
-          {/* TTS 开关 */}
-          <button onClick={() => setTtsEnabled(v => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 12px', borderRadius: 4, fontSize: 11,
-              fontFamily: 'Rajdhani', letterSpacing: '0.08em', cursor: 'pointer',
-              background: ttsEnabled ? 'rgba(0,212,255,0.08)' : 'transparent',
-              border: `1px solid ${ttsEnabled ? 'var(--cyan-dim)' : 'var(--border)'}`,
-              color: ttsEnabled ? 'var(--cyan)' : 'var(--text-dim)',
-              transition: 'all 0.2s',
-            }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              {ttsEnabled
-                ? <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                : <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-              }
-            </svg>
-            {ttsEnabled ? 'VOICE ON' : 'VOICE OFF'}
-          </button>
-
-          {/* 锁定 */}
-          <button onClick={handleLock}
-            style={{
-              width: 32, height: 32, borderRadius: 4, cursor: 'pointer',
-              background: 'transparent', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--text-dim)', transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--red)'; (e.currentTarget as HTMLElement).style.color = 'var(--red)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)' }}
-            title="锁定">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <button onClick={handleLock} className="hud-button" title="锁定" style={{ width: 44, justifyContent: 'center', padding: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
             </svg>
           </button>
         </div>
       </header>
 
-      {/* ── 主体 ── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+      <section className="console-body">
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, gap: 14 }}>
+          <div className="hud-segment qa-agent-segment">
+            <button className={chatMode === 'qa' ? 'active' : ''} onClick={() => handleChatModeChange('qa')}>QA</button>
+            <button className={chatMode === 'agent' ? 'active' : ''} onClick={() => handleChatModeChange('agent')} disabled={!isAuthenticated}>AGENT</button>
+          </div>
 
-        {/* 左侧 Skills 面板（仅智能体模式） */}
-        {/* Skills 折叠按钮（仅智能体模式） */}
-        {/* 对话区 */}
-        <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <button onClick={() => setTtsEnabled(v => !v)} className="hud-button voice-toggle" style={{ color: ttsEnabled ? 'var(--cyan)' : 'var(--text-dim)' }}>
+            {ttsEnabled ? 'VOICE ON' : 'VOICE OFF'}
+            <span className={ttsEnabled ? 'toggle-led active' : 'toggle-led'} />
+          </button>
+        </div>
+
+        <main className="chat-console clean-chat-frame">
           <ChatPanel
             ttsEnabled={ttsEnabled}
             isAuthenticated={isAuthenticated}
@@ -279,22 +153,17 @@ export default function App() {
             resetKey={chatResetKey}
           />
         </main>
-      </div>
+      </section>
 
-      {/* 底部状态栏 */}
-      <div style={{
-        position: 'relative', zIndex: 10, height: 24,
-        borderTop: '1px solid var(--border)',
-        background: 'rgba(255,255,255,0.84)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 16px',
-        fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em',
-        fontFamily: 'Rajdhani',
-      }}>
-        <span>ISD ROBOT SYSTEM</span>
-        <span style={{ color: 'var(--cyan-dim)' }}>● ONLINE</span>
-        <span>{isAuthenticated ? `AUTH: ${user?.empWorkNo}` : 'GUEST MODE'}</span>
-      </div>
+      <footer className="footer-strip bottom-console-bar">
+        <span>SECURE LINK <strong>ONLINE</strong></span>
+        <span>ENCRYPTION: <strong>AES-256</strong></span>
+        <span>NODE: ISD-MAIN-01</span>
+        <span>REGION: LOCAL</span>
+        <span>VERSION: 2.4.1</span>
+        <span>{timeText}</span>
+        <span>{dateText}</span>
+      </footer>
     </div>
   )
 }
