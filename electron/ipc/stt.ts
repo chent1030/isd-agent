@@ -4,6 +4,11 @@ import FormData from 'form-data'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
+function normalizeTranscribedText(text: unknown) {
+  if (typeof text !== 'string') return ''
+  return text.trim().replace(/[。.]\s*$/, '').trim()
+}
+
 export function registerSTTHandlers() {
   ipcMain.handle('stt:transcribe', async (_event, audioBuffer: ArrayBuffer) => {
     const url = process.env.STT_API_URL
@@ -31,7 +36,7 @@ export function registerSTTHandlers() {
 
     const data = response.data ?? {}
     return {
-      text: typeof data.text === 'string' ? data.text : '',
+      text: normalizeTranscribedText(data.text),
       task: typeof data.task === 'string' ? data.task : undefined,
       language: typeof data.language === 'string' ? data.language : undefined,
       duration: data.duration ?? null,
