@@ -139,11 +139,21 @@ function normalizeCabinetAction(action: unknown): PendingCabinetAction['action']
   return null
 }
 
+function inferCabinetActionFromText(text: string): PendingCabinetAction['action'] | null {
+  const normalized = text.replace(/\s+/g, '').toLowerCase()
+  if (!normalized) return null
+  if (/(归还|还回|退还|return)/.test(normalized)) return 'return'
+  if (/(借用|借出|borrow)/.test(normalized)) return 'borrow'
+  if (/(领用|领取|领|取用|拿取|拿|receive)/.test(normalized)) return 'receive'
+  return null
+}
+
 function createPendingCabinetAction(
   params: Record<string, unknown>,
-  operator?: OperatorIdentity
+  operator?: OperatorIdentity,
+  preferredAction?: PendingCabinetAction['action'] | null
 ): PendingCabinetAction | null {
-  const action = normalizeCabinetAction(params.action || params.command)
+  const action = preferredAction || normalizeCabinetAction(params.action || params.command)
   const itemId = String(params.itemId ?? params.id ?? '').trim()
   if (!action || !itemId) return null
 
@@ -196,6 +206,7 @@ function buildSystemPrompt(skillsBlock: string, operator?: OperatorIdentity): st
     '你是一个智能助手。',
     operatorText,
     skillsBlock,
+    'Cabinet action mapping is strict: receive = 领用/领取/取用/拿取 and does not require return; borrow = 借用 and must be returned later; return = 归还. Never use borrow for 领用 or 领取.',
     '你可以通过工具调用 skills，并采用渐进式披露模式。',
     '流程要求：先调用 load_skill 获取该技能完整说明，再决定是否调用 run_skill。',
     '调用 run_skill 时，参数放在 params 对象中，例如：{"skillName":"query-employee","params":{"keyword":"张三"}}。',
@@ -238,16 +249,18 @@ export function registerLLMHandlers() {
             return finalText
           }
 
+          const confirmedAction = inferCabinetActionFromText(lastUserText) || pendingCabinetAction.action
+          const actionToExecute = { ...pendingCabinetAction, action: confirmedAction }
           win.webContents.send(channel, '[SKILL_CALLING]')
-          const result = await executeSkillScript(pendingCabinetAction.skillName, {
-            action: pendingCabinetAction.action,
-            itemId: pendingCabinetAction.itemId,
-            quantity: pendingCabinetAction.quantity,
+          const result = await executeSkillScript(actionToExecute.skillName, {
+            action: actionToExecute.action,
+            itemId: actionToExecute.itemId,
+            quantity: actionToExecute.quantity,
             operatorNo: operator.empWorkNo,
             operatorName: operator.empName,
           })
           pendingCabinetActions.delete(event.sender.id)
-          const finalText = summarizeCabinetResult(typeof result === 'string' ? result : JSON.stringify(result), pendingCabinetAction)
+          const finalText = summarizeCabinetResult(typeof result === 'string' ? result : JSON.stringify(result), actionToExecute)
           win.webContents.send(channel, finalText)
           win.webContents.send(channel, '[DONE]')
           return finalText
@@ -307,7 +320,8 @@ export function registerLLMHandlers() {
             if (!params.operatorName) params.operatorName = operator.empName
           }
           if (skillName === 'open-cabinet') {
-            const pending = createPendingCabinetAction(params, operator)
+            const intentAction = inferCabinetActionFromText(lastUserText)
+            const pending = createPendingCabinetAction(params, operator, intentAction)
             if (pending) {
               pendingCabinetActions.set(event.sender.id, pending)
               return 'Pending cabinet operation saved. Ask the user to confirm before executing it. Do not call run_skill again for this operation until the user confirms.'
@@ -336,7 +350,8 @@ export function registerLLMHandlers() {
           quantity: z.number().positive().describe('Operation quantity. Required; ask the user first if missing.'),
         }),
         func: async (input: Record<string, unknown>) => {
-          const pending = createPendingCabinetAction(input, operator)
+          const intentAction = inferCabinetActionFromText(lastUserText)
+          const pending = createPendingCabinetAction(input, operator, intentAction)
           if (!pending) return 'Invalid pending cabinet operation. Missing action, itemId, or positive quantity. Ask the user for the missing value before saving.'
           pendingCabinetActions.set(event.sender.id, pending)
           return 'Pending cabinet operation saved. Ask the user to confirm.'
