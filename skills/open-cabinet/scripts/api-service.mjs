@@ -97,6 +97,31 @@ export async function deductInventory(itemId, quantity = 1, options = {}) {
 }
 
 /**
+ * 借用物品，生成需要归还的借用记录。
+ * @param {string|number} itemId - 物品 ID
+ * @param {number} quantity - 借用数量，默认为 1
+ * @param {{operatorNo?: string, operatorName?: string, borrower?: string, remark?: string}} options
+ * @returns {Promise<object>}
+ */
+export async function createBorrowRecord(itemId, quantity = 1, options = {}) {
+  const operator = resolveOperatorIdentity(options)
+  return requestJson('/cabinet/borrow/borrow', {
+    method: 'POST',
+    headers: {
+      'X-Operator': operator.operatorNo
+    },
+    body: JSON.stringify({
+      itemId,
+      quantity,
+      borrower: options.borrower || operator.operatorNo,
+      operatorNo: operator.operatorNo,
+      operatorName: operator.operatorName,
+      remark: options.remark || `语音借用：${operator.operatorName}`
+    })
+  })
+}
+
+/**
  * 归还库存（归还物品时使用）
  * @param {string|number} itemId - 物品 ID
  * @param {number} quantity - 归还数量，默认为 1

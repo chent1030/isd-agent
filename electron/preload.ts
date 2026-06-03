@@ -23,19 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     })
   },
 
-  // Dify Chat
-  difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => {
-    const channel = `dify:chunk:${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const handler = (_e: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk)
-    ipcRenderer.on(channel, handler)
-    return ipcRenderer
-      .invoke('dify:chat', { query, conversationId, channel, user })
-      .finally(() => ipcRenderer.removeListener(channel, handler))
-  },
-
   // Skills
   getSkills: (isAuthenticated: boolean) => ipcRenderer.invoke('skills:list', { isAuthenticated }),
   loadSkill: (name: string) => ipcRenderer.invoke('skills:load', { name }),
+  getRecentBorrowItems: (operator: object, limit?: number) =>
+    ipcRenderer.invoke('cabinet:recent-borrow-items', { operator, limit }),
   getAppConfig: () => ipcRenderer.invoke('app:get-config'),
 
   // 窗口控制

@@ -161,6 +161,18 @@ function createPendingCabinetAction(
 }
 
 function summarizeCabinetResult(rawResult: string, pending: PendingCabinetAction): string {
+  const normalizedActionText = pending.action === 'return' ? '归还' : pending.action === 'borrow' ? '借用' : '领用'
+  try {
+    const parsed = JSON.parse(rawResult)
+    const itemName = parsed?.item?.name || pending.itemName || pending.itemId
+    const quantity = parsed?.quantity || pending.quantity
+    const stock = parsed?.deductResult?.remainingStock ?? parsed?.returnResult?.remainingStock
+    const stockText = typeof stock === 'number' ? `，剩余库存：${stock}` : ''
+    return `已完成${normalizedActionText}操作。物品：${itemName}，数量：${quantity}${stockText}。`
+  } catch {
+    return `已完成${normalizedActionText}操作。`
+  }
+
   try {
     const parsed = JSON.parse(rawResult)
     const itemName = parsed?.item?.name || pending.itemName || pending.itemId

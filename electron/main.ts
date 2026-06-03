@@ -33,8 +33,8 @@ import { registerFaceHandlers } from './ipc/face'
 import { registerSTTHandlers } from './ipc/stt'
 import { registerTTSHandlers } from './ipc/tts'
 import { registerLLMHandlers } from './ipc/llm'
-import { registerDifyHandlers } from './ipc/dify'
 import { registerSkillHandlers, loadSkills } from './ipc/skills'
+import { registerCabinetHandlers } from './ipc/cabinet'
 
 function isDebugBuild() {
   if (process.env.ISD_DEBUG === 'true') return true
@@ -66,6 +66,7 @@ function createWindow() {
     height: 800,
     minWidth: 1024,
     minHeight: 680,
+    fullscreen: true,
     frame: false,
     titleBarStyle: 'hidden',
     webPreferences: {
@@ -109,8 +110,8 @@ app.whenReady().then(async () => {
   registerSTTHandlers()
   registerTTSHandlers()
   registerLLMHandlers()
-  registerDifyHandlers()
   registerSkillHandlers()
+  registerCabinetHandlers()
 
   ipcMain.on('window:toggle-fullscreen', event => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow()

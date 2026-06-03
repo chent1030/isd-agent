@@ -1,15 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useChatStore } from '../../store/chatStore'
 import { useAuthStore } from '../../store/authStore'
+import type { RecentBorrowItem } from '../../types/electron'
 import MessageList from './MessageList'
 import VoiceInput from '../VoiceInput'
 
 interface Props {
   ttsEnabled: boolean
   isAuthenticated: boolean
-  guestMode: boolean
-  onUpgrade: () => void
-  chatMode: 'qa' | 'agent'
   resetKey: number
 }
 
@@ -17,8 +15,9 @@ function splitSentences(text: string): string[] {
   return text.split(/(?<=[\u3002\uff01\uff1f\n])/).filter(s => s.trim())
 }
 
-export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUpgrade, chatMode, resetKey }: Props) {
+export default function ChatPanel({ ttsEnabled, isAuthenticated, resetKey }: Props) {
   const [input, setInput] = useState('')
+  const [recentBorrowItems, setRecentBorrowItems] = useState<RecentBorrowItem[]>([])
   const { messages, isLoading, addMessage, updateMessage, setLoading } = useChatStore()
   const { user } = useAuthStore()
   const touch = useAuthStore(s => s.touch)
@@ -27,7 +26,6 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   const speechSourceRef = useRef<AudioBufferSourceNode | null>(null)
   const speechContextRef = useRef<AudioContext | null>(null)
   const speechGenerationRef = useRef(0)
-  const conversationIdRef = useRef<string | null>(null)
 
   const stopSpeech = useCallback(() => {
     speechGenerationRef.current += 1
@@ -43,11 +41,31 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
 
   useEffect(() => {
     setInput('')
-    conversationIdRef.current = null
     stopSpeech()
     isSendingRef.current = false
     setLoading(false)
   }, [resetKey, setLoading, stopSpeech])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!isAuthenticated || !user?.empWorkNo || !user?.empName) {
+      setRecentBorrowItems([])
+      return
+    }
+
+    window.electronAPI.getRecentBorrowItems({ empName: user.empName, empWorkNo: user.empWorkNo }, 5)
+      .then(items => {
+        if (!cancelled) setRecentBorrowItems(items)
+      })
+      .catch(error => {
+        console.error('Get recent borrow items failed:', error)
+        if (!cancelled) setRecentBorrowItems([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user?.empName, user?.empWorkNo, resetKey])
 
   useEffect(() => () => {
     stopSpeech()
@@ -88,7 +106,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
   }, [ttsEnabled, updateMessage])
 
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isLoading || isSendingRef.current) return
+    if (!text.trim() || isLoading || isSendingRef.current || !isAuthenticated) return
     isSendingRef.current = true
     touch()
     setInput('')
@@ -98,6 +116,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
     let fullText = ''
     const speechSentences: string[] = []
     let spokenSentenceCount = 0
+
     const enqueueSpeech = (textToSpeak: string, includeLastSentence: boolean) => {
       if (!ttsEnabled) return
       const sentences = splitSentences(textToSpeak)
@@ -110,50 +129,30 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
       spokenSentenceCount += newSentences.length
       if (!isSpeakingRef.current) speakNext(assistantId, speechSentences, startIdx)
     }
-    const useAgentMode = isAuthenticated && chatMode === 'agent'
-    try {
-      if (useAgentMode) {
-        const history = useChatStore.getState().messages
-          .filter(m => !m.isStreaming)
-          .map(m => ({ role: m.role, content: m.content }))
 
-        const result = await window.electronAPI.chatStream(
-          history,
-          isAuthenticated,
-          user ? { empName: user.empName, empWorkNo: user.empWorkNo } : null,
-          (chunk: string) => {
-            if (chunk === '[DONE]') return
-            if (chunk === '[SKILL_CALLING]') {
-              updateMessage(assistantId, { content: '正在调用技能...' })
-              return
-            }
-            fullText += chunk
-            updateMessage(assistantId, { content: fullText })
-            enqueueSpeech(fullText, false)
+    try {
+      const history = useChatStore.getState().messages
+        .filter(m => !m.isStreaming)
+        .map(m => ({ role: m.role, content: m.content }))
+
+      const result = await window.electronAPI.chatStream(
+        history,
+        true,
+        user ? { empName: user.empName, empWorkNo: user.empWorkNo } : null,
+        (chunk: string) => {
+          if (chunk === '[DONE]') return
+          if (chunk === '[SKILL_CALLING]') {
+            updateMessage(assistantId, { content: '正在调用技能，请稍候...' })
+            return
           }
-        )
-        if (result) {
-          fullText = result
+          fullText += chunk
           updateMessage(assistantId, { content: fullText })
+          enqueueSpeech(fullText, false)
         }
-      } else {
-        const difyUser = user?.empWorkNo ?? 'guest'
-        const result = await window.electronAPI.difyChat(
-          text,
-          conversationIdRef.current,
-          difyUser,
-          (chunk: string) => {
-            if (chunk === '[DONE]') return
-            fullText = chunk
-            updateMessage(assistantId, { content: fullText })
-            enqueueSpeech(fullText, false)
-          }
-        )
-        conversationIdRef.current = result.conversationId
-        if (result.answer) {
-          fullText = result.answer
-          updateMessage(assistantId, { content: fullText })
-        }
+      )
+      if (result) {
+        fullText = result
+        updateMessage(assistantId, { content: fullText })
       }
     } catch (e: any) {
       fullText = `[错误] ${e?.message ?? String(e)}`
@@ -164,56 +163,64 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
     enqueueSpeech(finalText, true)
     isSendingRef.current = false
     setLoading(false)
-  }, [isLoading, touch, addMessage, updateMessage, setLoading, ttsEnabled, speakNext, user, isAuthenticated, chatMode])
+  }, [isLoading, isAuthenticated, touch, addMessage, updateMessage, setLoading, ttsEnabled, speakNext, user])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      void sendMessage(input)
+    }
+  }
+
+  const handleQuickBorrow = (item: RecentBorrowItem) => {
+    const actionText = item.action === 'borrow' ? '借用' : '领用'
+    const specText = item.spec ? `，规格：${item.spec}` : ''
+    void sendMessage(`帮我${actionText}${item.itemName}${specText}，物品ID为${item.itemId}，数量1`)
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'transparent' }}>
-      {guestMode && !isAuthenticated && (
-        <div style={{
-          padding: '9px 18px',
-          background: 'rgba(255,170,0,0.08)',
-          borderBottom: '1px solid rgba(255,170,0,0.22)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="status-dot amber" />
-            <span style={{ fontSize: 12, color: 'var(--amber)', fontFamily: 'Rajdhani', letterSpacing: '0.12em' }}>GUEST MODE</span>
-          </div>
-          <button onClick={onUpgrade} className="hud-button" style={{ minHeight: 28, fontSize: 11, color: 'var(--amber)' }}>
-            FACE AUTH
-          </button>
-        </div>
-      )}
-
+    <div className="chat-panel">
       <div className="chat-stage">
         <MessageList messages={messages} isLoading={isLoading} />
       </div>
 
       <div className="composer-dock">
-        <button className="hud-button" title="附件" style={{ width: 44, height: 44, minHeight: 44, justifyContent: 'center', padding: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 1 1-2.83-2.83l8.49-8.48" />
-          </svg>
-        </button>
+        {recentBorrowItems.length > 0 && (
+          <div className="quick-borrow-bar" aria-label="物品快捷操作">
+            <span className="quick-borrow-label">
+              {recentBorrowItems.some(item => item.source === 'personal') ? '我的常用' : '热门领用'}
+            </span>
+            <div className="quick-borrow-list">
+              {recentBorrowItems.map(item => (
+                <button
+                  key={`${item.action}-${item.itemId}`}
+                  type="button"
+                  className="quick-borrow-button"
+                  onClick={() => handleQuickBorrow(item)}
+                  disabled={isLoading}
+                  title={`${item.action === 'borrow' ? '借用' : '领用'}${item.itemName}`}
+                >
+                  <span className={`quick-borrow-action quick-borrow-action-${item.action}`}>
+                    {item.action === 'borrow' ? '借' : '领'}
+                  </span>
+                  <span className="quick-borrow-name">{item.itemName}</span>
+                  {item.spec && <span className="quick-borrow-spec">{item.spec}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <div
-          className="input-shell"
-          onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(0,212,255,0.62)')}
-          onBlurCapture={e => (e.currentTarget.style.borderColor = 'rgba(0,212,255,0.24)')}
-        >
+        <div className="input-shell">
           <textarea
             value={input}
             onChange={e => { setInput(e.target.value); touch() }}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
+            placeholder="按住语音开始物品领用流程"
+            readOnly
             rows={1}
             className="sci-textarea"
+            aria-label="输入指令"
             onInput={e => {
               const el = e.currentTarget
               el.style.height = 'auto'
@@ -221,21 +228,16 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, guestMode, onUp
             }}
           />
           <button
-            onClick={() => sendMessage(input)}
+            onClick={() => void sendMessage(input)}
             disabled={!input.trim() || isLoading}
-            className="hud-button"
-            style={{ width: 42, height: 42, minHeight: 42, justifyContent: 'center', padding: 0, color: input.trim() && !isLoading ? 'var(--cyan)' : 'var(--text-muted)' }}
+            className="hud-button send-button"
+            title="发送"
+            aria-label="发送"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </button>
-        </div>
-
-        <div className="composer-wave">
-          {Array.from({ length: 96 }, (_, i) => (
-            <span key={i} style={{ height: 4 + (Math.sin(i * 0.38) + 1) * 12 }} />
-          ))}
         </div>
 
         <div className="voice-slot" style={{ pointerEvents: 'none' }}>

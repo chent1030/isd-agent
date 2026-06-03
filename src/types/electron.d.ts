@@ -1,5 +1,18 @@
 import { SkillManifest } from './index'
 
+export interface RecentBorrowItem {
+  itemId: string
+  itemName: string
+  action: 'borrow' | 'receive'
+  source: 'personal' | 'popular'
+  category?: string
+  spec?: string
+  useType?: number
+  quantity?: number
+  count?: number
+  lastUsedAt?: string
+}
+
 export interface ElectronAPI {
   recognizeFace: (imageBase64: string) => Promise<{ empName: string; empWorkNo: string } | null>
   transcribeAudio: (audioBuffer: ArrayBuffer) => Promise<{
@@ -15,9 +28,12 @@ export interface ElectronAPI {
     operator: { empName: string; empWorkNo: string } | null,
     onChunk: (chunk: string) => void
   ) => Promise<string>
-  difyChat: (query: string, conversationId: string | null, user: string, onChunk: (chunk: string) => void) => Promise<{ conversationId: string; answer: string }>
   getSkills: (isAuthenticated: boolean) => Promise<SkillManifest[]>
   loadSkill: (name: string) => Promise<string>
+  getRecentBorrowItems: (
+    operator: { empName: string; empWorkNo: string },
+    limit?: number
+  ) => Promise<RecentBorrowItem[]>
   getAppConfig: () => Promise<{
     skipFaceAuth: boolean
     skipFaceAuthUser: { empName: string; empWorkNo: string }

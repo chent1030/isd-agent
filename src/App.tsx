@@ -5,14 +5,8 @@ import { useChatStore } from './store/chatStore'
 import FaceAuth from './components/FaceAuth'
 import ChatPanel from './components/Chat'
 
-type View = 'lock' | 'app'
-type ChatMode = 'qa' | 'agent'
-
 export default function App() {
-  const [view, setView] = useState<View>('lock')
   const [ttsEnabled, setTtsEnabled] = useState(true)
-  const [guestMode, setGuestMode] = useState(false)
-  const [chatMode, setChatMode] = useState<ChatMode>('qa')
   const [chatResetKey, setChatResetKey] = useState(0)
   const [now, setNow] = useState(new Date())
 
@@ -46,49 +40,25 @@ export default function App() {
   }, [login])
 
   useEffect(() => {
-    window.electronAPI.getSkills(isAuthenticated).then(setSkills).catch(console.error)
+    if (!isAuthenticated) {
+      setSkills([])
+      return
+    }
+    window.electronAPI.getSkills(true).then(setSkills).catch(console.error)
   }, [isAuthenticated, setSkills])
 
   useEffect(() => {
-    if (isAuthenticated) { setGuestMode(false); resetChat(); setChatMode('agent'); setView('app') }
+    if (isAuthenticated) resetChat()
   }, [isAuthenticated, resetChat])
-
-  useEffect(() => {
-    if (!isAuthenticated) setChatMode('qa')
-  }, [isAuthenticated])
-
-  useEffect(() => {
-    if (isAuthenticated || view !== 'app' || guestMode) return
-    setGuestMode(false)
-    resetChat()
-    setChatMode('qa')
-    setView('lock')
-    setSkills([])
-  }, [isAuthenticated, view, guestMode, setSkills, resetChat])
-
-  const handleUnmatched = () => { resetChat(); setGuestMode(true); setView('app') }
-
-  const handleChatModeChange = (mode: ChatMode) => {
-    if (mode === chatMode) return
-    resetChat()
-    setChatMode(mode)
-  }
 
   const handleLock = () => {
     logout()
-    setGuestMode(false)
     resetChat()
-    setChatMode('qa')
-    setView('lock')
     setSkills([])
   }
 
-  const handleUpgrade = () => {
-    handleLock()
-  }
-
-  if (view === 'lock') {
-    return <FaceAuth onUnmatched={handleUnmatched} />
+  if (!isAuthenticated) {
+    return <FaceAuth />
   }
 
   const timeText = now.toLocaleTimeString('zh-CN', { hour12: false })
@@ -97,32 +67,27 @@ export default function App() {
   return (
     <div className="sci-shell clean-console" style={{ display: 'flex', flexDirection: 'column' }}>
       <header className="top-console-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 300 }}>
-          <div className="isd-wordmark">ISD</div>
-          <div className="sci-title" style={{ fontSize: 20, letterSpacing: '0.06em' }}>INTELLIGENT ASSISTANT</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 260 }}>
+          <div className="isd-wordmark">行小助</div>
+          <div className="sci-title app-title" style={{ fontSize: 20, letterSpacing: 0 }}>智能体助手</div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className="hud-chip" style={{ color: 'var(--green)' }}>
+          <div className="hud-chip status-chip">
             <span className="status-dot" />
-            ONLINE
+            在线
           </div>
 
-          {isAuthenticated && user ? (
+          {user && (
             <div className="hud-chip">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-dim)' }}>
                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
               </svg>
-              {user.empName || 'OPERATOR'} <span style={{ color: 'var(--text-muted)' }}>{user.empWorkNo}</span>
+              {user.empName || '操作员'} <span style={{ color: 'var(--text-muted)' }}>{user.empWorkNo}</span>
             </div>
-          ) : (
-            <button onClick={handleUpgrade} className="hud-button" style={{ color: 'var(--amber)' }}>
-              <span className="status-dot amber" />
-              GUEST
-            </button>
           )}
 
-          <button onClick={handleLock} className="hud-button" title="锁定" style={{ width: 44, justifyContent: 'center', padding: 0 }}>
+          <button onClick={handleLock} className="hud-button icon-button" title="锁定" aria-label="锁定">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
             </svg>
@@ -132,13 +97,10 @@ export default function App() {
 
       <section className="console-body">
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, gap: 14 }}>
-          <div className="hud-segment qa-agent-segment">
-            <button className={chatMode === 'qa' ? 'active' : ''} onClick={() => handleChatModeChange('qa')}>QA</button>
-            <button className={chatMode === 'agent' ? 'active' : ''} onClick={() => handleChatModeChange('agent')} disabled={!isAuthenticated}>AGENT</button>
-          </div>
+          <div className="mode-label">智能体模式</div>
 
-          <button onClick={() => setTtsEnabled(v => !v)} className="hud-button voice-toggle" style={{ color: ttsEnabled ? 'var(--cyan)' : 'var(--text-dim)' }}>
-            {ttsEnabled ? 'VOICE ON' : 'VOICE OFF'}
+          <button onClick={() => setTtsEnabled(v => !v)} className={ttsEnabled ? 'hud-button voice-toggle is-on' : 'hud-button voice-toggle'}>
+            {ttsEnabled ? '语音开启' : '语音关闭'}
             <span className={ttsEnabled ? 'toggle-led active' : 'toggle-led'} />
           </button>
         </div>
@@ -147,20 +109,12 @@ export default function App() {
           <ChatPanel
             ttsEnabled={ttsEnabled}
             isAuthenticated={isAuthenticated}
-            guestMode={guestMode}
-            onUpgrade={handleUpgrade}
-            chatMode={chatMode}
             resetKey={chatResetKey}
           />
         </main>
       </section>
 
       <footer className="footer-strip bottom-console-bar">
-        <span>SECURE LINK <strong>ONLINE</strong></span>
-        <span>ENCRYPTION: <strong>AES-256</strong></span>
-        <span>NODE: ISD-MAIN-01</span>
-        <span>REGION: LOCAL</span>
-        <span>VERSION: 2.4.1</span>
         <span>{timeText}</span>
         <span>{dateText}</span>
       </footer>

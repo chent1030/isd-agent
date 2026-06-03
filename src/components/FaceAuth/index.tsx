@@ -1,18 +1,14 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { useAuthStore } from '../../store/authStore'
-import faceHologram from '../../assets/face-hologram.png'
 
 type FaceAuthState = 'idle' | 'camera' | 'recognizing' | 'success' | 'failed' | 'unmatched'
-
-interface Props {
-  onUnmatched: () => void
-}
 
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 200
 
 function Clock() {
   const [time, setTime] = useState(new Date())
+
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(t)
@@ -24,83 +20,34 @@ function Clock() {
   const date = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 
   return (
-    <div className="auth-clock-block">
-      <div className="lock-clock">{hh}:{mm}:{ss}</div>
-      <div className="sci-subtitle" style={{ fontSize: 13, marginTop: 8 }}>{date}</div>
+    <div className="login-clock">
+      <div className="login-clock-time">{hh}:{mm}:{ss}</div>
+      <div className="login-clock-date">{date}</div>
     </div>
   )
 }
 
-function ParticleCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const canvas = canvasRef.current!
-    const ctx = canvas.getContext('2d')!
-    const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = []
-    for (let i = 0; i < 100; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.18,
-        r: Math.random() * 1.5 + 0.4,
-        a: Math.random() * 0.8 + 0.2,
-      })
-    }
-
-    let raf: number
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      particles.forEach(p => {
-        p.x += p.vx
-        p.y += p.vy
-        if (p.x < 0) p.x = canvas.width
-        if (p.x > canvas.width) p.x = 0
-        if (p.y < 0) p.y = canvas.height
-        if (p.y > canvas.height) p.y = 0
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(0,170,255,${p.a * 0.45})`
-        ctx.fill()
-      })
-      raf = requestAnimationFrame(draw)
-    }
-    draw()
-
-    return () => {
-      window.removeEventListener('resize', resize)
-      cancelAnimationFrame(raf)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
-}
-
-function FaceHologram({ state }: { state: FaceAuthState }) {
-  const isScanning = state === 'recognizing'
-  const isSuccess = state === 'success'
-  const isFailed = state === 'failed' || state === 'unmatched'
-  const color = isSuccess ? '#00ff88' : isFailed ? '#ff4466' : '#00d4ff'
-
+function FacePreview({ state }: { state: FaceAuthState }) {
   return (
-    <div className="lock-face-ring">
-      <div className="lock-face-radar" style={{ borderColor: `${color}66` }} />
-      <div className="lock-face-radar reverse" style={{ borderColor: `${color}44` }} />
-      <img className="face-hologram-img" src={faceHologram} alt="人脸识别全息图" />
-      <div className="scan-corners lock-scan-corners"><span /><span /><span /><span /></div>
-      {isScanning && <div className="lock-eye-scan" />}
+    <div className={`login-face-preview login-face-${state}`} role="img" aria-label="身份识别状态">
+      <div className="login-face-ring" />
+      <div className="login-face-ring login-face-ring-inner" />
+      <div className="login-identity-visual" aria-hidden="true">
+        <span className="login-orbit-line" />
+        <span className="login-orbit-dot login-orbit-dot-top" />
+        <span className="login-orbit-dot login-orbit-dot-right" />
+        <span className="login-orbit-dot login-orbit-dot-bottom" />
+        <span className="login-orbit-dot login-orbit-dot-left" />
+        <span className="login-identity-core">
+          <span className="login-core-mark" />
+        </span>
+      </div>
+      <span className="login-scan-line" />
     </div>
   )
 }
 
-export default function FaceAuth({ onUnmatched }: Props) {
+export default function FaceAuth() {
   const [state, setState] = useState<FaceAuthState>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -204,74 +151,72 @@ export default function FaceAuth({ onUnmatched }: Props) {
   }
 
   const statusText: Record<FaceAuthState, string> = {
-    idle: '请将面部置于识别框内',
-    camera: '摄像头已打开，准备识别',
+    idle: '请将面部置于识别区域内',
+    camera: '摄像头已开启，准备识别',
     recognizing: '正在扫描身份信息',
     success: '身份认证通过',
     failed: errorMsg || '认证模块异常',
-    unmatched: '未匹配到授权身份',
+    unmatched: '未匹配到授权身份，请重新识别',
+  }
+
+  const stateLabel: Record<FaceAuthState, string> = {
+    idle: '等待认证',
+    camera: '摄像头已开启',
+    recognizing: '识别中',
+    success: '认证通过',
+    failed: '认证异常',
+    unmatched: '认证未通过',
   }
 
   const showVideo = state === 'camera' || state === 'recognizing'
+  const canStart = state === 'idle'
+  const canRetry = state === 'unmatched' || state === 'failed'
 
   return (
-    <div className="sci-shell lock-shell">
-      <ParticleCanvas />
-      <section className="lock-window hud-frame">
-        
-
-        <div className="lock-content">
+    <div className="login-shell">
+      <section className="login-card" aria-label="身份认证">
+        <div className="login-brand-panel">
+          <div className="login-brand">行小助</div>
+          <h1>身份认证</h1>
+          <p>完成认证后进入行小助物品领用。</p>
           <Clock />
-          <div className="sci-title" style={{ color: 'var(--cyan)', fontSize: 18, marginTop: 18 }}>身份认证</div>
+        </div>
+
+        <div className="login-auth-panel">
+          <div className="login-status-pill">{stateLabel[state]}</div>
 
           {showVideo ? (
-            <div className="lock-video-frame">
+            <div className={`login-video-frame ${state === 'recognizing' ? 'is-scanning' : ''}`}>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'contrast(1.12) saturate(0.75)' }}
               />
-              {state === 'recognizing' && <div className="lock-eye-scan" />}
-              <div className="scan-corners lock-scan-corners"><span /><span /><span /><span /></div>
+              <span className="login-scan-line" />
             </div>
           ) : (
-            <FaceHologram state={state} />
+            <FacePreview state={state} />
           )}
 
-          <div style={{ minHeight: 42, textAlign: 'center' }}>
-            <div className="sci-title" style={{
-              color: state === 'success' ? 'var(--green)' : state === 'failed' || state === 'unmatched' ? 'var(--amber)' : 'var(--cyan)',
-              fontSize: 13,
-            }}>
-              {state === 'idle' ? '就绪' : state === 'camera' ? '摄像头已开启' : state === 'recognizing' ? '识别中' : state === 'success' ? '认证通过' : '需要处理'}
-            </div>
-            <div style={{ color: 'var(--text-dim)', fontSize: 13, marginTop: 8 }}>{statusText[state]}</div>
+          <div className="login-status-copy">
+            <strong>{stateLabel[state]}</strong>
+            <span>{statusText[state]}</span>
           </div>
 
-          <div className="auth-action-row">
-            {state === 'idle' && (
-              <button type="button" onClick={startCamera} className="hud-button lock-primary">
+          <div className="login-actions">
+            {canStart && (
+              <button type="button" onClick={startCamera} className="login-primary-button">
                 开始识别
               </button>
             )}
-            {(state === 'unmatched' || state === 'failed') && (
-              <>
-                <button type="button" onClick={reset} className="hud-button lock-secondary">重新识别</button>
-                <button type="button" onClick={onUnmatched} className="hud-button lock-secondary guest">访客进入</button>
-              </>
-            )}
-            {state !== 'failed' && state !== 'unmatched' && (
-              <button type="button" onClick={onUnmatched} className="hud-button lock-secondary guest">访客进入</button>
+            {canRetry && (
+              <button type="button" onClick={reset} className="login-secondary-button">
+                重新识别
+              </button>
             )}
           </div>
         </div>
-
-        <footer className="footer-strip lock-footer">
-          <span>系统安全</span>
-          <span>网络: <strong>在线</strong></span>
-        </footer>
       </section>
     </div>
   )
