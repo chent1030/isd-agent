@@ -175,7 +175,7 @@ export default function ChatPanel({ ttsEnabled, isAuthenticated, resetKey }: Pro
   const handleQuickBorrow = (item: RecentBorrowItem) => {
     const actionText = item.action === 'borrow' ? '借用' : '领用'
     const specText = item.spec ? `，规格：${item.spec}` : ''
-    void sendMessage(`帮我${actionText}${item.itemName}${specText}，物品ID为${item.itemId}，数量1`)
+    void sendMessage(`我想${actionText}${item.itemName}${specText}，物品ID为${item.itemId}。请先询问我需要的数量。`)
   }
 
   return (

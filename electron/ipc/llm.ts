@@ -147,7 +147,8 @@ function createPendingCabinetAction(
   const itemId = String(params.itemId ?? params.id ?? '').trim()
   if (!action || !itemId) return null
 
-  const quantity = Number.parseInt(String(params.quantity ?? 1), 10) || 1
+  const quantity = Number.parseInt(String(params.quantity ?? ''), 10)
+  if (!Number.isInteger(quantity) || quantity <= 0) return null
   return {
     skillName: 'open-cabinet',
     action,
@@ -198,7 +199,7 @@ function buildSystemPrompt(skillsBlock: string, operator?: OperatorIdentity): st
     '你可以通过工具调用 skills，并采用渐进式披露模式。',
     '流程要求：先调用 load_skill 获取该技能完整说明，再决定是否调用 run_skill。',
     '调用 run_skill 时，参数放在 params 对象中，例如：{"skillName":"query-employee","params":{"keyword":"张三"}}。',
-    'open-cabinet flow: first use run_skill with action="list" to get items and match the user request. After matching an item, call set_pending_cabinet_action with action, itemId, quantity, and itemName, then ask the user for confirmation. Do not execute borrow/receive/return in the same turn as the confirmation request.',
+    'open-cabinet flow: first use run_skill with action="list" to get items and match the user request. If the user has not provided quantity, ask for quantity first. After matching an item and getting quantity, call set_pending_cabinet_action with action, itemId, quantity, and itemName, then ask the user for confirmation. Do not execute borrow/receive/return in the same turn as the confirmation request.',
     '拿到工具结果后，给用户清晰、简洁的中文回复。',
   ].filter(Boolean).join('\n\n')
 }
@@ -311,6 +312,9 @@ export function registerLLMHandlers() {
               pendingCabinetActions.set(event.sender.id, pending)
               return 'Pending cabinet operation saved. Ask the user to confirm before executing it. Do not call run_skill again for this operation until the user confirms.'
             }
+            if (normalizeCabinetAction(params.action || params.command) && (params.itemId || params.id) && !params.quantity) {
+              return 'Quantity is required before saving a pending cabinet operation. Ask the user how many items they need.'
+            }
           }
           try {
             const result = await executeSkillScript(skillName, params)
@@ -329,11 +333,11 @@ export function registerLLMHandlers() {
           action: z.enum(['borrow', 'receive', 'return']).describe('Cabinet operation to execute after confirmation'),
           itemId: z.union([z.string(), z.number()]).describe('Matched item id'),
           itemName: z.string().optional().describe('Matched item name'),
-          quantity: z.number().optional().default(1).describe('Operation quantity'),
+          quantity: z.number().positive().describe('Operation quantity. Required; ask the user first if missing.'),
         }),
         func: async (input: Record<string, unknown>) => {
           const pending = createPendingCabinetAction(input, operator)
-          if (!pending) return 'Invalid pending cabinet operation. Missing action or itemId.'
+          if (!pending) return 'Invalid pending cabinet operation. Missing action, itemId, or positive quantity. Ask the user for the missing value before saving.'
           pendingCabinetActions.set(event.sender.id, pending)
           return 'Pending cabinet operation saved. Ask the user to confirm.'
         },
