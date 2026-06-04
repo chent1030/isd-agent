@@ -67,7 +67,7 @@ const fetchData = async () => {
   loading.value = true
   try {
     const res = await getAdminUserList()
-    tableData.value = res.data || []
+    tableData.value = res || []
   } finally {
     loading.value = false
   }
@@ -80,7 +80,7 @@ const openDialog = (row) => {
 
 const handleSave = async () => {
   const res = await saveAdminUser(form.value)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchData()

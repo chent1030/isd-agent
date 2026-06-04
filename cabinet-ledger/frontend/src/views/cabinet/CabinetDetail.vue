@@ -31,7 +31,13 @@
       </template>
 
       <div v-loading="loading" class="cabinet-shell">
-        <div class="slot-grid" :style="{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }">
+        <div
+          class="slot-grid"
+          :style="{
+            gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${rowCount}, 112px)`
+          }"
+        >
           <button
             v-for="slot in physicalSlots"
             :key="slot.slotNo"
@@ -139,12 +145,12 @@ const physicalSlots = computed(() => {
 
 const fetchDetail = async () => {
   const res = await getCabinetDetail(route.params.id)
-  detail.value = res.data || {}
+  detail.value = res || {}
 }
 
 const fetchItems = async () => {
   const res = await getItemList()
-  itemOptions.value = res.data || []
+  itemOptions.value = res || []
 }
 
 const fetchSlots = async () => {
@@ -152,7 +158,7 @@ const fetchSlots = async () => {
   try {
     const res = await getCabinetSlots(route.params.id)
     const items = itemOptions.value
-    slots.value = (res.data || []).map(slot => ({
+    slots.value = (res || []).map(slot => ({
       ...slot,
       itemName: items.find(item => item.id === slot.itemId)?.name || '',
       itemQuantity: items.find(item => item.id === slot.itemId)?.quantity ?? null
@@ -171,7 +177,7 @@ const openSlotDialog = (row) => {
 
 const saveSlot = async () => {
   const res = await saveCabinetSlot(slotForm.value)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('保存成功')
     slotDialogVisible.value = false
     fetchSlots()
@@ -184,7 +190,7 @@ const clearSlot = async () => {
     itemId: null,
     status: 0
   })
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('格口已清空')
     slotDialogVisible.value = false
     fetchSlots()
@@ -258,13 +264,14 @@ onMounted(async () => {
 
 .slot-grid {
   display: grid;
+  grid-auto-flow: column;
   gap: 12px;
   max-width: 960px;
   margin: 0 auto;
 }
 
 .slot-card {
-  height: 112px;
+  height: 100%;
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   background: #fff;

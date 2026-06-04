@@ -73,8 +73,8 @@ const fetchData = async () => {
       size: pagination.value.pageSize
     }
     const res = await getLogList(params)
-    tableData.value = res.data?.content || []
-    pagination.value.total = res.data?.totalElements || 0
+    tableData.value = res.content || []
+    pagination.value.total = res.totalElements || 0
   } catch (error) {
     console.error(error)
   } finally {

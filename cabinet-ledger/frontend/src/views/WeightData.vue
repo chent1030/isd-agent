@@ -62,8 +62,8 @@ const queryForm = ref({
 const fetchCabinetOptions = async () => {
   try {
     const res = await getCabinetList()
-    if (res.code === 200) {
-      cabinetOptions.value = (res.data || []).map(item => ({
+    if (res) {
+      cabinetOptions.value = (res || []).map(item => ({
         value: item.id,
         label: `${item.name} (${item.id})`
       }))
@@ -78,7 +78,7 @@ const fetchData = async () => {
   loading.value = true
   try {
     const res = await getWeightList(queryForm.value.cabinetId)
-    tableData.value = res.data || []
+    tableData.value = res || []
   } catch (error) {
     console.error(error)
   } finally {

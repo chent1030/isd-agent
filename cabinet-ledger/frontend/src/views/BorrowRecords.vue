@@ -206,8 +206,8 @@ const fetchData = async () => {
       page: pagination.value.page,
       size: pagination.value.pageSize
     })
-    tableData.value = res.data?.content || []
-    pagination.value.total = res.data?.totalElements || 0
+    tableData.value = res.content || []
+    pagination.value.total = res.totalElements || 0
   } finally {
     loading.value = false
   }
@@ -255,7 +255,7 @@ const openBorrowDialog = () => {
 
 const handleBorrow = async () => {
   const res = await borrowItem(borrowForm.value)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('借用成功')
     borrowDialogVisible.value = false
     fetchItems()
@@ -278,7 +278,7 @@ const openReturnDialog = (row) => {
 
 const handleReturn = async () => {
   const res = await returnItem(returnForm.value)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('归还成功')
     returnDialogVisible.value = false
     fetchItems()

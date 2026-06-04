@@ -40,7 +40,7 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const res = await login(form.value)
-    localStorage.setItem('cabinet-ledger-user', JSON.stringify(res.data))
+    localStorage.setItem('cabinet-ledger-user', JSON.stringify(res))
     ElMessage.success('登录成功')
     router.replace('/dashboard')
   } finally {

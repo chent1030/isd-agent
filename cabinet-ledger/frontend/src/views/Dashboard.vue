@@ -97,13 +97,13 @@ const fetchData = async () => {
       getCabinetList(),
       getLogList({ page: 0, size: 5 })
     ])
-    if (cabinetRes.code === 200) {
-      cabinetList.value = cabinetRes.data || []
+    if (cabinetRes) {
+      cabinetList.value = cabinetRes || []
       stats.value.cabinetCount = cabinetList.value.length
       stats.value.abnormalCount = cabinetList.value.filter(item => item.status !== 1).length
     }
-    if (logRes.code === 200) {
-      recentLogs.value = logRes.data || []
+    if (logRes) {
+      recentLogs.value = logRes.content || []
     }
   } catch (error) {
     console.error(error)

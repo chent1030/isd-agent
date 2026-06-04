@@ -256,8 +256,8 @@ const fetchLedgerData = async () => {
       size: pagination.value.pageSize
     }
     const res = await getLedgerList(params)
-    ledgerData.value = res.data?.content || []
-    pagination.value.total = res.data?.totalElements || 0
+    ledgerData.value = res.content || []
+    pagination.value.total = res.totalElements || 0
   } catch (error) {
     console.error(error)
   } finally {
@@ -269,7 +269,7 @@ const fetchItemData = async () => {
   itemLoading.value = true
   try {
     const res = await getItemList()
-    itemData.value = res.data || []
+    itemData.value = res || []
   } finally {
     itemLoading.value = false
   }
@@ -278,8 +278,8 @@ const fetchItemData = async () => {
 const fetchCabinetOptions = async () => {
   try {
     const res = await getCabinetList()
-    if (res.code === 200) {
-      cabinetOptions.value = (res.data || []).map(item => ({
+    if (res) {
+      cabinetOptions.value = (res || []).map(item => ({
         value: item.id,
         label: `${item.name}（柜号 ${item.cabinetNo}）`
       }))
@@ -358,7 +358,7 @@ const handleItemFileChange = async (event) => {
   if (!file) return
   try {
     const res = await importItem(file)
-    if (res.code === 200) {
+    if (res) {
       ElMessage.success(res.data || '导入成功')
       fetchItemData()
       fetchLedgerData()
@@ -379,7 +379,7 @@ const openItemDialog = (row) => {
 
 const handleSaveItem = async () => {
   const res = await saveItem(itemForm.value)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('保存成功')
     itemDialogVisible.value = false
     fetchItemData()

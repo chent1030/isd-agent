@@ -82,8 +82,8 @@ const slotOptions = ref([])
 const fetchCabinetOptions = async () => {
   try {
     const res = await getCabinetList()
-    if (res.code === 200) {
-      cabinetOptions.value = (res.data || []).map(item => ({
+    if (res) {
+      cabinetOptions.value = (res || []).map(item => ({
         value: item.id,
         label: `${item.name} (${item.id})`
       }))
@@ -100,7 +100,7 @@ const fetchSlotOptions = async (cabinetId) => {
   }
   try {
     const res = await getCabinetSlots(cabinetId)
-    slotOptions.value = (res.data || []).map(item => ({
+    slotOptions.value = (res || []).map(item => ({
       value: item.id,
       label: `格口 ${item.slotNo}`
     }))
@@ -130,7 +130,7 @@ const handleCheck = async () => {
       slotId: form.value.slotId,
       actualWeight: form.value.actualWeight || null
     })
-    if (res.code === 200) {
+    if (res) {
       result.value = res.data
       ElMessage.success('盘点完成')
     }

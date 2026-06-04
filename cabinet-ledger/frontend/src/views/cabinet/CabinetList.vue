@@ -92,7 +92,7 @@ const fetchData = async () => {
   loading.value = true
   try {
     const res = await getCabinetList()
-    tableData.value = res.data || []
+    tableData.value = res || []
   } catch (error) {
     console.error(error)
   } finally {
@@ -118,7 +118,7 @@ const openDialog = (row) => {
 
 const handleSave = async () => {
   const res = await saveCabinet(form.value)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchData()
@@ -128,7 +128,7 @@ const handleSave = async () => {
 const toggleStatus = async (row) => {
   const nextStatus = row.status === 1 ? 0 : 1
   const res = await updateCabinetStatus(row.id, nextStatus)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success(nextStatus === 1 ? '已启用' : '已停用')
     fetchData()
   }
@@ -145,7 +145,7 @@ const handleDelete = async (row) => {
     type: 'warning'
   })
   const res = await deleteCabinet(row.id)
-  if (res.code === 200) {
+  if (res) {
     ElMessage.success('删除成功')
     fetchData()
   }
