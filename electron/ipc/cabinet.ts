@@ -22,10 +22,16 @@ interface AvailableItem {
 const DEFAULT_CABINET_API_BASE_URL = 'https://cshzeroapi.uabcbattery.com/unify/v1/1'
 const DEFAULT_LOCK_SERVER_IP = '10.134.231.111'
 const DEFAULT_LOCK_SERVER_PORT = 10123
+const DEFAULT_TWIN_LEFT_CABINET_NO = '1'
+const DEFAULT_TWIN_RIGHT_CABINET_NO = '2'
 const LOCK_SOCKET_TIMEOUT = 3000
 const PROTOCOL_HEADER = Buffer.from([0x73, 0x74, 0x61, 0x72])
 const PROTOCOL_FOOTER = Buffer.from([0x65, 0x6e, 0x64, 0x6f])
 const CMD_OPEN_SINGLE_LOCK = 0x9a
+
+function firstDefined(...values: unknown[]) {
+  return values.find(value => value !== undefined && value !== null && value !== '')
+}
 
 function getCabinetApiBaseUrl() {
   return (process.env.CABINET_LEDGER_API_BASE_URL || DEFAULT_CABINET_API_BASE_URL).replace(/\/+$/, '')
@@ -38,6 +44,22 @@ function getLockServerIp() {
 function getLockServerPort() {
   const value = Number(process.env.CABINET_LOCK_SERVER_PORT || process.env.CABINET_SERVER_PORT)
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_LOCK_SERVER_PORT
+}
+
+function getTwinCabinetDefinitions() {
+  const leftCabinetNo = normalizeCabinetNo(
+    firstDefined(process.env.CABINET_TWIN_LEFT_CABINET_NO, process.env.CABINET_LEFT_CABINET_NO),
+    DEFAULT_TWIN_LEFT_CABINET_NO,
+  )
+  const rightCabinetNo = normalizeCabinetNo(
+    firstDefined(process.env.CABINET_TWIN_RIGHT_CABINET_NO, process.env.CABINET_RIGHT_CABINET_NO),
+    DEFAULT_TWIN_RIGHT_CABINET_NO,
+  )
+
+  return [
+    { cabinetNo: leftCabinetNo, name: '双排柜', columnCount: 2, rowCount: 6 },
+    { cabinetNo: rightCabinetNo, name: '三排柜', columnCount: 3, rowCount: 6 },
+  ]
 }
 
 function getPageRecords(payload: any): any[] {
@@ -96,7 +118,9 @@ function normalizeCabinetNo(value: unknown, fallback: string) {
 }
 
 function normalizeAvailableItem(item: any): AvailableItem {
-  const stock = toNumber(item?.stock ?? item?.quantity ?? item?.itemQuantity, 0)
+  const stock = toNumber(firstDefined(item?.stock, item?.quantity, item?.itemQuantity, item?.availableQuantity), 0)
+  const rawCabinetNo = firstDefined(item?.cabinetNo, item?.cabinetId, item?.cabinetCode, item?.lockerNo)
+  const rawSlotNo = firstDefined(item?.slotNo, item?.gridNo, item?.cellNo, item?.doorNo, item?.lockNo)
   return {
     id: String(item?.id ?? '').trim(),
     name: String(item?.name ?? item?.itemName ?? '').trim(),
@@ -104,22 +128,16 @@ function normalizeAvailableItem(item: any): AvailableItem {
     spec: typeof item?.spec === 'string' ? item.spec : undefined,
     useType: Number.isFinite(Number(item?.useType)) ? Number(item.useType) : undefined,
     stock,
-    cabinetNo: normalizeCabinetNo(item?.cabinetNo ?? item?.cabinetId, '1'),
+    cabinetNo: normalizeCabinetNo(rawCabinetNo, ''),
     cabinetName: typeof item?.cabinetName === 'string' ? item.cabinetName : undefined,
-    slotNo: Number.isFinite(Number(item?.slotNo)) ? Number(item.slotNo) : undefined,
+    slotNo: Number.isFinite(Number(rawSlotNo)) ? Number(rawSlotNo) : undefined,
     minQuantity: Number.isFinite(Number(item?.minQuantity)) ? Number(item.minQuantity) : undefined,
   }
 }
 
 function buildTwinCabinets(items: AvailableItem[]) {
-  const defaults = [
-    { cabinetNo: '1', name: '双排柜', columnCount: 2, rowCount: 6 },
-    { cabinetNo: '2', name: '三排柜', columnCount: 3, rowCount: 6 },
-  ]
-
-  const actualCabinetNos = Array.from(new Set(items.map(item => item.cabinetNo || '').filter(Boolean))).sort()
-  const cabinets = defaults.map((cabinet, index) => {
-    const cabinetNo = actualCabinetNos[index] || cabinet.cabinetNo
+  const cabinets = getTwinCabinetDefinitions().map(cabinet => {
+    const cabinetNo = cabinet.cabinetNo
     const itemWithName = items.find(item => item.cabinetNo === cabinetNo && item.cabinetName)
     const totalSlots = cabinet.columnCount * cabinet.rowCount
     return {
