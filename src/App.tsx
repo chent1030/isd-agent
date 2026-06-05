@@ -450,6 +450,8 @@ function CabinetScene({
         if (mesh.geometry instanceof THREE.BoxGeometry) {
           mesh.scale.z = THREE.MathUtils.lerp(mesh.scale.z, active ? 1.55 : 1, 0.1)
           mesh.position.z = THREE.MathUtils.lerp(mesh.position.z, active ? 0.72 : 0.52, 0.1)
+        } else if (mesh.geometry instanceof THREE.PlaneGeometry) {
+          mesh.position.z = THREE.MathUtils.lerp(mesh.position.z, active ? 0.86 : 0.625, 0.1)
         }
       }
       renderer.render(scene, camera)
