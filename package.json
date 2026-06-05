@@ -25,14 +25,9 @@
     },
     "files": [
       "dist/**/*",
-      "skills/**/*",
       "node_modules/**/*"
     ],
     "extraResources": [
-      {
-        "from": "skills",
-        "to": "skills"
-      },
       {
         "from": ".env.example",
         "to": ".env.example"
@@ -63,23 +58,13 @@
     "wait-on": "^9.0.4"
   },
   "dependencies": {
-    "@langchain/core": "^0.3.80",
-    "@langchain/openai": "^0.6.17",
+    "@types/three": "^0.184.1",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
     "electron-log": "^5.4.4",
     "form-data": "^4.0.5",
-    "gray-matter": "^4.0.3",
-    "katex": "^0.16.39",
-    "mermaid": "^11.13.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-markdown": "^10.1.0",
-    "rehype-katex": "^7.0.1",
-    "rehype-mermaid": "^3.0.0",
-    "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0",
-    "zod": "^3.25.76",
-    "zustand": "^5.0.12"
+    "three": "^0.184.0"
   }
 }

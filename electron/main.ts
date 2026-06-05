@@ -30,10 +30,6 @@ Object.assign(console, log.functions)
 log.info(`[app] log file: ${log.transports.file.getFile().path}`)
 
 import { registerFaceHandlers } from './ipc/face'
-import { registerSTTHandlers } from './ipc/stt'
-import { registerTTSHandlers } from './ipc/tts'
-import { registerLLMHandlers } from './ipc/llm'
-import { registerSkillHandlers, loadSkills } from './ipc/skills'
 import { registerCabinetHandlers } from './ipc/cabinet'
 
 function isDebugBuild() {
@@ -104,13 +100,7 @@ app.whenReady().then(async () => {
     }
   })
 
-  await loadSkills()
-
   registerFaceHandlers()
-  registerSTTHandlers()
-  registerTTSHandlers()
-  registerLLMHandlers()
-  registerSkillHandlers()
   registerCabinetHandlers()
 
   ipcMain.on('window:toggle-fullscreen', event => {

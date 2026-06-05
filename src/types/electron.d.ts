@@ -1,39 +1,69 @@
-import { SkillManifest } from './index'
+export type CabinetSlotStatus = 'available' | 'low' | 'depleted' | 'empty' | 'fault'
 
-export interface RecentBorrowItem {
-  itemId: string
+export interface CabinetTwinSlot {
+  cabinetNo: string
+  slotNo: number
+  itemId: string | null
   itemName: string
-  action: 'borrow' | 'receive'
-  source: 'personal' | 'popular'
   category?: string
   spec?: string
-  useType?: number
-  quantity?: number
-  count?: number
-  lastUsedAt?: string
+  useType: number | null
+  quantity: number
+  minQuantity: number
+  status: CabinetSlotStatus
+}
+
+export interface CabinetTwinCabinet {
+  cabinetNo: string
+  name: string
+  columnCount: number
+  rowCount: number
+  slots: CabinetTwinSlot[]
+}
+
+export interface CabinetTwinData {
+  cabinets: CabinetTwinCabinet[]
+  updatedAt: string
+}
+
+export interface BorrowRecord {
+  id: string | number
+  itemId: string | number
+  itemName: string
+  category?: string
+  spec?: string
+  cabinetName?: string
+  cabinetNo?: string | number
+  slotNo?: number
+  quantity: number
+  returnedQuantity: number
+  pendingQuantity: number
+  borrowTime?: string
+  expectedReturnTime?: string
+  remark?: string
+}
+
+export interface CabinetOperationPayload {
+  action: 'receive' | 'borrow'
+  itemId: string | number
+  quantity: number
+  operator: { empName: string; empWorkNo: string }
+}
+
+export interface CabinetReturnPayload {
+  borrowRecordId: string | number
+  itemId: string | number
+  quantity: number
+  operator: { empName: string; empWorkNo: string }
+  remark?: string
 }
 
 export interface ElectronAPI {
   recognizeFace: (imageBase64: string) => Promise<{ empName: string; empWorkNo: string } | null>
-  transcribeAudio: (audioBuffer: ArrayBuffer) => Promise<{
-    text: string
-    task?: string
-    language?: string
-    duration?: number | null
-  }>
-  synthesizeSpeech: (text: string) => Promise<ArrayBuffer>
-  chatStream: (
-    messages: Array<{ role: string; content: string }>,
-    isAuthenticated: boolean,
-    operator: { empName: string; empWorkNo: string } | null,
-    onChunk: (chunk: string) => void
-  ) => Promise<string>
-  getSkills: (isAuthenticated: boolean) => Promise<SkillManifest[]>
-  loadSkill: (name: string) => Promise<string>
-  getRecentBorrowItems: (
-    operator: { empName: string; empWorkNo: string },
-    limit?: number
-  ) => Promise<RecentBorrowItem[]>
+  getCabinetTwinData: (operator?: { empName: string; empWorkNo: string }) => Promise<CabinetTwinData>
+  operateCabinetSlot: (payload: CabinetOperationPayload) => Promise<unknown>
+  getOpenBorrowRecords: (operator: { empName: string; empWorkNo: string }) => Promise<BorrowRecord[]>
+  returnBorrowRecord: (payload: CabinetReturnPayload) => Promise<unknown>
   getAppConfig: () => Promise<{
     skipFaceAuth: boolean
     skipFaceAuthUser: { empName: string; empWorkNo: string }

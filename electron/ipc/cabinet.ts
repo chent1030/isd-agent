@@ -1,11 +1,10 @@
 import { ipcMain } from 'electron'
+import net from 'net'
 
 interface OperatorIdentity {
   empName?: string
   empWorkNo?: string
 }
-
-type QuickAction = 'borrow' | 'receive'
 
 interface AvailableItem {
   id: string
@@ -14,25 +13,31 @@ interface AvailableItem {
   spec?: string
   useType?: number
   stock?: number
-}
-
-interface QuickAccessItem {
-  itemId: string
-  itemName: string
-  action: QuickAction
-  source: 'personal' | 'popular'
-  category?: string
-  spec?: string
-  useType?: number
-  quantity?: number
-  count?: number
-  lastUsedAt?: string
+  cabinetNo?: string
+  cabinetName?: string
+  slotNo?: number
+  minQuantity?: number
 }
 
 const DEFAULT_CABINET_API_BASE_URL = 'https://cshzeroapi.uabcbattery.com/unify/v1/1'
+const DEFAULT_LOCK_SERVER_IP = '10.134.231.111'
+const DEFAULT_LOCK_SERVER_PORT = 10123
+const LOCK_SOCKET_TIMEOUT = 3000
+const PROTOCOL_HEADER = Buffer.from([0x73, 0x74, 0x61, 0x72])
+const PROTOCOL_FOOTER = Buffer.from([0x65, 0x6e, 0x64, 0x6f])
+const CMD_OPEN_SINGLE_LOCK = 0x9a
 
 function getCabinetApiBaseUrl() {
   return (process.env.CABINET_LEDGER_API_BASE_URL || DEFAULT_CABINET_API_BASE_URL).replace(/\/+$/, '')
+}
+
+function getLockServerIp() {
+  return process.env.CABINET_LOCK_SERVER_IP || process.env.CABINET_SERVER_IP || DEFAULT_LOCK_SERVER_IP
+}
+
+function getLockServerPort() {
+  const value = Number(process.env.CABINET_LOCK_SERVER_PORT || process.env.CABINET_SERVER_PORT)
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_LOCK_SERVER_PORT
 }
 
 function getPageRecords(payload: any): any[] {
@@ -45,15 +50,23 @@ function getPageRecords(payload: any): any[] {
   return []
 }
 
-async function requestCabinet(path: string, params?: Record<string, string | number>, operator?: OperatorIdentity) {
+async function requestCabinet(
+  path: string,
+  params?: Record<string, string | number | undefined | null>,
+  operator?: OperatorIdentity,
+  init?: RequestInit,
+) {
   const url = new URL(`${getCabinetApiBaseUrl()}${path}`)
   for (const [key, value] of Object.entries(params || {})) {
+    if (value === undefined || value === null || value === '') continue
     url.searchParams.set(key, String(value))
   }
 
   const response = await fetch(url, {
+    ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(init?.headers || {}),
       'X-Operator': operator?.empWorkNo || operator?.empName || '',
     },
   })
@@ -69,172 +82,352 @@ async function requestCabinet(path: string, params?: Record<string, string | num
 async function fetchAvailableItems(operator?: OperatorIdentity): Promise<AvailableItem[]> {
   const payload = await requestCabinet('/cabinet/item/available', undefined, operator)
   const records = getPageRecords(payload)
-  return records.map(item => ({
+  return records.map(normalizeAvailableItem).filter(item => item.id && item.name)
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function normalizeCabinetNo(value: unknown, fallback: string) {
+  const text = String(value ?? '').trim()
+  return text || fallback
+}
+
+function normalizeAvailableItem(item: any): AvailableItem {
+  const stock = toNumber(item?.stock ?? item?.quantity ?? item?.itemQuantity, 0)
+  return {
     id: String(item?.id ?? '').trim(),
-    name: String(item?.name ?? '').trim(),
+    name: String(item?.name ?? item?.itemName ?? '').trim(),
     category: typeof item?.category === 'string' ? item.category : undefined,
     spec: typeof item?.spec === 'string' ? item.spec : undefined,
     useType: Number.isFinite(Number(item?.useType)) ? Number(item.useType) : undefined,
-    stock: Number.isFinite(Number(item?.stock)) ? Number(item.stock) : undefined,
-  })).filter(item => item.id && item.name)
+    stock,
+    cabinetNo: normalizeCabinetNo(item?.cabinetNo ?? item?.cabinetId, '1'),
+    cabinetName: typeof item?.cabinetName === 'string' ? item.cabinetName : undefined,
+    slotNo: Number.isFinite(Number(item?.slotNo)) ? Number(item.slotNo) : undefined,
+    minQuantity: Number.isFinite(Number(item?.minQuantity)) ? Number(item.minQuantity) : undefined,
+  }
 }
 
-function itemKey(name?: unknown, spec?: unknown) {
-  return `${String(name ?? '').trim()}::${String(spec ?? '').trim()}`
+function buildTwinCabinets(items: AvailableItem[]) {
+  const defaults = [
+    { cabinetNo: '1', name: '双排柜', columnCount: 2, rowCount: 6 },
+    { cabinetNo: '2', name: '三排柜', columnCount: 3, rowCount: 6 },
+  ]
+
+  const actualCabinetNos = Array.from(new Set(items.map(item => item.cabinetNo || '').filter(Boolean))).sort()
+  const cabinets = defaults.map((cabinet, index) => {
+    const cabinetNo = actualCabinetNos[index] || cabinet.cabinetNo
+    const itemWithName = items.find(item => item.cabinetNo === cabinetNo && item.cabinetName)
+    const totalSlots = cabinet.columnCount * cabinet.rowCount
+    return {
+      ...cabinet,
+      cabinetNo,
+      name: itemWithName?.cabinetName || cabinet.name,
+      slots: Array.from({ length: totalSlots }, (_, slotIndex) => {
+        const slotNo = slotIndex + 1
+        const item = items.find(current => current.cabinetNo === cabinetNo && current.slotNo === slotNo)
+        const quantity = item?.stock ?? 0
+        const minQuantity = item?.minQuantity ?? 2
+        const status = !item
+          ? 'empty'
+          : quantity <= 0
+            ? 'depleted'
+            : quantity <= minQuantity
+              ? 'low'
+              : 'available'
+
+        return {
+          cabinetNo,
+          slotNo,
+          itemId: item?.id || null,
+          itemName: item?.name || '',
+          category: item?.category || '',
+          spec: item?.spec || '',
+          useType: item?.useType ?? null,
+          quantity,
+          minQuantity,
+          status,
+        }
+      }),
+    }
+  })
+
+  return {
+    cabinets,
+    updatedAt: new Date().toISOString(),
+  }
 }
 
-function findAvailableByRecord(record: any, availableItems: AvailableItem[]) {
-  const itemId = String(record?.itemId ?? '').trim()
-  if (itemId) {
-    const byId = availableItems.find(item => item.id === itemId)
-    if (byId) return byId
+function normalizeOperator(operator?: OperatorIdentity) {
+  const empWorkNo = String(operator?.empWorkNo || '').trim()
+  const empName = String(operator?.empName || '').trim()
+  if (!empWorkNo || !empName) throw new Error('缺少操作人身份信息，请先完成人脸认证')
+  return { empWorkNo, empName }
+}
+
+function normalizeAction(action: unknown) {
+  const value = String(action || '').trim()
+  if (value !== 'receive' && value !== 'borrow' && value !== 'return') {
+    throw new Error('不支持的柜体操作')
+  }
+  return value
+}
+
+function calculateBCC(dataList: number[]) {
+  let checksum = 0
+  for (const byte of dataList) checksum ^= byte
+  return checksum
+}
+
+function buildOpenLockCommand(boardAddr: number, lockNumber: number) {
+  const payload = [CMD_OPEN_SINGLE_LOCK, boardAddr, lockNumber, 0x11]
+  return Buffer.concat([
+    PROTOCOL_HEADER,
+    Buffer.from(payload),
+    Buffer.from([calculateBCC(payload)]),
+    PROTOCOL_FOOTER,
+  ])
+}
+
+function sendLockCommand(commandBytes: Buffer) {
+  return new Promise<Buffer>((resolve, reject) => {
+    const socket = new net.Socket()
+    socket.setTimeout(LOCK_SOCKET_TIMEOUT)
+
+    socket.on('connect', () => {
+      socket.write(commandBytes)
+    })
+
+    socket.on('data', data => {
+      socket.destroy()
+      resolve(Buffer.isBuffer(data) ? data : Buffer.from(data))
+    })
+
+    socket.on('timeout', () => {
+      socket.destroy()
+      reject(new Error('锁控板连接超时，未收到响应'))
+    })
+
+    socket.on('error', error => {
+      socket.destroy()
+      reject(error)
+    })
+
+    socket.connect(getLockServerPort(), getLockServerIp())
+  })
+}
+
+function parseOpenLockResponse(response: Buffer, boardAddr: number, lockNumber: number) {
+  if (response.length < 10) throw new Error('锁控板响应长度不足')
+  const headerMatched =
+    response[0] === PROTOCOL_HEADER[0] &&
+    response[1] === PROTOCOL_HEADER[1] &&
+    response[2] === PROTOCOL_HEADER[2] &&
+    response[3] === PROTOCOL_HEADER[3]
+  if (!headerMatched) throw new Error('锁控板响应头不匹配')
+  if (response[4] !== CMD_OPEN_SINGLE_LOCK) throw new Error('锁控板响应命令码不匹配')
+  if (response[5] !== boardAddr) throw new Error('锁控板地址不匹配')
+  if (response[6] !== lockNumber) throw new Error('锁号不匹配')
+
+  return {
+    boardAddr,
+    lockNumber,
+    status: response[7] === 0x00 ? 'closed' : 'open',
+  }
+}
+
+function parseHardwareByte(value: unknown, fieldName: string) {
+  if (typeof value === 'number') return validateHardwareByte(value, fieldName, value)
+  const text = String(value ?? '').trim()
+  let parsed = NaN
+
+  if (/^0x[0-9a-f]+$/i.test(text)) {
+    parsed = Number.parseInt(text, 16)
+  } else if (/^\d+$/.test(text)) {
+    parsed = Number.parseInt(text, 10)
+  } else if (/^[0-9a-f]{1,2}$/i.test(text) && /[a-f]/i.test(text)) {
+    parsed = Number.parseInt(text, 16)
+  } else {
+    const suffix = text.match(/(\d+)$/)
+    if (suffix) parsed = Number.parseInt(suffix[1], 10)
   }
 
-  const byNameAndSpec = availableItems.find(item => itemKey(item.name, item.spec) === itemKey(record?.itemName, record?.spec))
-  if (byNameAndSpec) return byNameAndSpec
-
-  return availableItems.find(item => item.name === String(record?.itemName ?? '').trim())
+  return validateHardwareByte(parsed, fieldName, value)
 }
 
-function canReceive(item?: AvailableItem) {
-  return item?.useType !== 1 && (item?.stock ?? 0) > 0
+function validateHardwareByte(parsed: number, fieldName: string, rawValue: unknown) {
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 255) {
+    throw new Error(`${fieldName}无法转换为锁控协议数值: ${rawValue}`)
+  }
+  return parsed
 }
 
-function canBorrow(item?: AvailableItem) {
-  return item?.useType === 1 || item?.useType === 2
+async function openSlotDoor(item: AvailableItem) {
+  const boardAddr = parseHardwareByte(item.cabinetNo, '柜号')
+  const lockNumber = parseHardwareByte(item.slotNo, '格口号')
+  const response = await sendLockCommand(buildOpenLockCommand(boardAddr, lockNumber))
+  return parseOpenLockResponse(response, boardAddr, lockNumber)
 }
 
-function pushUnique(items: QuickAccessItem[], seen: Set<string>, item: QuickAccessItem, limit: number) {
-  const key = `${item.action}:${item.itemId}`
-  if (seen.has(key)) return
-  seen.add(key)
-  items.push(item)
-  if (items.length > limit) items.length = limit
+async function findAvailableItem(itemId: string | number, operator: OperatorIdentity) {
+  const items = await fetchAvailableItems(operator)
+  const item = items.find(current => String(current.id) === String(itemId))
+  if (!item) throw new Error(`未找到物品: ${itemId}`)
+  if (!item.slotNo || !item.cabinetNo) throw new Error(`物品 ${item.name} 未绑定柜体格口`)
+  return item
 }
 
-async function fetchPersonalBorrowItems(operator: OperatorIdentity, availableItems: AvailableItem[]) {
-  const borrowers = [operator.empWorkNo, operator.empName].map(v => String(v || '').trim()).filter(Boolean)
+async function executeCabinetAction(params: {
+  action: 'receive' | 'borrow' | 'return'
+  itemId: string | number
+  quantity?: number
+  operator?: OperatorIdentity
+}) {
+  const operator = normalizeOperator(params.operator)
+  const quantity = Math.max(Number.parseInt(String(params.quantity ?? 1), 10) || 1, 1)
+  const item = await findAvailableItem(params.itemId, operator)
+
+  if (params.action === 'receive' && item.useType === 1) {
+    throw new Error(`物品 ${item.name} 仅支持借用，不能领用`)
+  }
+  if (params.action === 'borrow' && item.useType === 0) {
+    throw new Error(`物品 ${item.name} 仅支持领用，不能借用`)
+  }
+  if (params.action !== 'return' && (item.stock ?? 0) < quantity) {
+    throw new Error(`库存不足: ${item.name} 当前库存 ${item.stock ?? 0}, 请求数量 ${quantity}`)
+  }
+
+  const doorResult = await openSlotDoor(item)
+
+  if (params.action === 'receive') {
+    const stock = await requestCabinet('/cabinet/item/receive', undefined, operator, {
+      method: 'POST',
+      body: JSON.stringify({
+        itemId: item.id,
+        quantity,
+        operatorNo: operator.empWorkNo,
+        operatorName: operator.empName,
+        remark: `终端领用：${operator.empName} ${item.name}`,
+      }),
+    })
+    return { item, doorResult, deductResult: { success: true, remainingStock: stock?.quantity ?? 0 }, quantity }
+  }
+
+  if (params.action === 'borrow') {
+    const borrowRecord = await requestCabinet('/cabinet/borrow/borrow', undefined, operator, {
+      method: 'POST',
+      body: JSON.stringify({
+        itemId: item.id,
+        quantity,
+        borrower: operator.empWorkNo,
+        operatorNo: operator.empWorkNo,
+        operatorName: operator.empName,
+        remark: `终端借用：${operator.empName} ${item.name}`,
+      }),
+    })
+    return { item, doorResult, borrowRecord, quantity }
+  }
+
+  return { item, doorResult, quantity }
+}
+
+async function fetchOpenBorrowRecords(operator: OperatorIdentity) {
+  const safeOperator = normalizeOperator(operator)
   const records: any[] = []
-
-  for (const borrower of Array.from(new Set(borrowers))) {
+  for (const borrower of Array.from(new Set([safeOperator.empWorkNo, safeOperator.empName]))) {
     const payload = await requestCabinet('/cabinet/borrow/list', {
       borrower,
+      status: 0,
       page: 1,
-      size: 20,
-    }, operator)
+      size: 80,
+    }, safeOperator)
     records.push(...getPageRecords(payload))
   }
 
-  const items: QuickAccessItem[] = []
-  for (const record of records) {
-    const item = findAvailableByRecord(record, availableItems)
-    if (!item || !canBorrow(item)) continue
-    items.push({
-      itemId: item.id,
-      itemName: item.name,
-      action: 'borrow',
-      source: 'personal',
-      category: item.category,
-      spec: item.spec,
-      useType: item.useType,
-      quantity: Number.isFinite(Number(record?.quantity)) ? Number(record.quantity) : undefined,
-      lastUsedAt: typeof record?.borrowTime === 'string' ? record.borrowTime : undefined,
+  const seen = new Set<string>()
+  return records
+    .filter(record => toNumber(record?.pendingQuantity ?? record?.quantity, 0) > 0)
+    .filter(record => {
+      const id = String(record?.id ?? record?.borrowRecordId ?? '')
+      if (!id || seen.has(id)) return false
+      seen.add(id)
+      return true
     })
-  }
-  return items
-}
-
-async function fetchReceiveLedgers(operator: OperatorIdentity | undefined, pageSize: number) {
-  const payload = await requestCabinet('/cabinet/ledger/list', {
-    operationType: 1,
-    page: 0,
-    size: pageSize,
-  }, operator)
-  return getPageRecords(payload)
-}
-
-async function fetchPersonalReceiveItems(operator: OperatorIdentity, availableItems: AvailableItem[]) {
-  const records = await fetchReceiveLedgers(operator, 80)
-  const empWorkNo = String(operator.empWorkNo || '').trim()
-  const empName = String(operator.empName || '').trim()
-
-  const items: QuickAccessItem[] = []
-  for (const record of records) {
-    const operatorNo = String(record?.operatorNo || '').trim()
-    const operatorName = String(record?.operatorName || '').trim()
-    const isCurrentOperator = (empWorkNo && operatorNo === empWorkNo) || (empName && operatorName === empName)
-    if (!isCurrentOperator) continue
-
-    const item = findAvailableByRecord(record, availableItems)
-    if (!item || !canReceive(item)) continue
-    items.push({
-      itemId: item.id,
-      itemName: item.name,
-      action: 'receive',
-      source: 'personal',
-      category: item.category,
-      spec: item.spec,
-      useType: item.useType,
-      quantity: Number.isFinite(Number(record?.quantity)) ? Number(record.quantity) : undefined,
-      lastUsedAt: typeof record?.storedAt === 'string' ? record.storedAt : undefined,
-    })
-  }
-  return items
-}
-
-async function fetchPopularReceiveItems(operator: OperatorIdentity | undefined, availableItems: AvailableItem[], limit: number) {
-  const records = await fetchReceiveLedgers(operator, 120)
-  const counts = new Map<string, { item: AvailableItem; count: number; lastUsedAt?: string }>()
-
-  for (const record of records) {
-    const item = findAvailableByRecord(record, availableItems)
-    if (!item || !canReceive(item)) continue
-    const current = counts.get(item.id) || { item, count: 0, lastUsedAt: undefined }
-    current.count += Number.isFinite(Number(record?.quantity)) ? Math.max(Number(record.quantity), 1) : 1
-    if (!current.lastUsedAt && typeof record?.storedAt === 'string') current.lastUsedAt = record.storedAt
-    counts.set(item.id, current)
-  }
-
-  return Array.from(counts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit)
-    .map(({ item, count, lastUsedAt }) => ({
-      itemId: item.id,
-      itemName: item.name,
-      action: 'receive' as const,
-      source: 'popular' as const,
-      category: item.category,
-      spec: item.spec,
-      useType: item.useType,
-      count,
-      lastUsedAt,
+    .map(record => ({
+      id: record?.id ?? record?.borrowRecordId,
+      itemId: record?.itemId,
+      itemName: record?.itemName || record?.name || '',
+      category: record?.category || '',
+      spec: record?.spec || '',
+      cabinetName: record?.cabinetName || '',
+      cabinetNo: record?.cabinetNo,
+      slotNo: record?.slotNo,
+      quantity: toNumber(record?.quantity, 0),
+      returnedQuantity: toNumber(record?.returnedQuantity, 0),
+      pendingQuantity: toNumber(record?.pendingQuantity ?? record?.quantity, 0),
+      borrowTime: record?.borrowTime || '',
+      expectedReturnTime: record?.expectedReturnTime || '',
+      remark: record?.remark || '',
     }))
 }
 
-async function fetchQuickAccessItems(operator: OperatorIdentity, limit: number): Promise<QuickAccessItem[]> {
-  const availableItems = await fetchAvailableItems(operator)
-  const personalItems = [
-    ...(await fetchPersonalBorrowItems(operator, availableItems)),
-    ...(await fetchPersonalReceiveItems(operator, availableItems)),
-  ].sort((a, b) => String(b.lastUsedAt || '').localeCompare(String(a.lastUsedAt || '')))
-
-  const items: QuickAccessItem[] = []
-  const seen = new Set<string>()
-  for (const item of personalItems) pushUnique(items, seen, item, limit)
-
-  if (items.length > 0) return items
-  return fetchPopularReceiveItems(operator, availableItems, limit)
-}
-
 export function registerCabinetHandlers() {
-  ipcMain.handle('cabinet:recent-borrow-items', async (_event, {
+  ipcMain.handle('cabinet:twin-data', async (_event, { operator }: { operator?: OperatorIdentity } = {}) => {
+    const items = await fetchAvailableItems(operator)
+    return buildTwinCabinets(items)
+  })
+
+  ipcMain.handle('cabinet:operate-slot', async (_event, {
+    action,
+    itemId,
+    quantity = 1,
     operator,
-    limit = 5,
   }: {
+    action: 'receive' | 'borrow'
+    itemId: string | number
+    quantity?: number
     operator?: OperatorIdentity
-    limit?: number
   }) => {
-    const safeLimit = Math.min(Math.max(Number(limit) || 5, 1), 8)
-    return fetchQuickAccessItems(operator || {}, safeLimit)
+    const normalizedAction = normalizeAction(action)
+    if (normalizedAction === 'return') throw new Error('归还请使用借用记录归还接口')
+    if (!itemId) throw new Error('缺少物品 ID')
+    return executeCabinetAction({ action: normalizedAction, itemId, quantity, operator })
+  })
+
+  ipcMain.handle('cabinet:open-borrow-records', async (_event, { operator }: { operator?: OperatorIdentity }) => {
+    return fetchOpenBorrowRecords(operator || {})
+  })
+
+  ipcMain.handle('cabinet:return-record', async (_event, {
+    borrowRecordId,
+    itemId,
+    quantity = 1,
+    operator,
+    remark,
+  }: {
+    borrowRecordId: string | number
+    itemId?: string | number
+    quantity?: number
+    operator?: OperatorIdentity
+    remark?: string
+  }) => {
+    const safeOperator = normalizeOperator(operator)
+    if (!borrowRecordId) throw new Error('缺少借用记录 ID')
+    if (!itemId) throw new Error('缺少归还物品 ID')
+
+    await executeCabinetAction({ action: 'return', itemId, quantity, operator: safeOperator })
+    return requestCabinet('/cabinet/borrow/return', undefined, safeOperator, {
+      method: 'POST',
+      body: JSON.stringify({
+        borrowRecordId,
+        quantity,
+        operatorNo: safeOperator.empWorkNo,
+        operatorName: safeOperator.empName,
+        remark: remark || `终端归还：${safeOperator.empName}`,
+      }),
+    })
   })
 }

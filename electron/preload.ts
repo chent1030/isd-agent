@@ -5,29 +5,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   recognizeFace: (imageBase64: string) =>
     ipcRenderer.invoke('face:recognize', imageBase64),
 
-  // STT
-  transcribeAudio: (audioBuffer: ArrayBuffer) =>
-    ipcRenderer.invoke('stt:transcribe', audioBuffer),
-
-  // TTS
-  synthesizeSpeech: (text: string) =>
-    ipcRenderer.invoke('tts:synthesize', text),
-
-  // LLM（含 skills 注入）
-  chatStream: (messages: object[], isAuthenticated: boolean, operator: object | null, onChunk: (chunk: string) => void) => {
-    const channel = `llm:chunk:${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const handler = (_e: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk)
-    ipcRenderer.on(channel, handler)
-    return ipcRenderer.invoke('llm:chat', { messages, channel, isAuthenticated, operator }).finally(() => {
-      ipcRenderer.removeListener(channel, handler)
-    })
-  },
-
-  // Skills
-  getSkills: (isAuthenticated: boolean) => ipcRenderer.invoke('skills:list', { isAuthenticated }),
-  loadSkill: (name: string) => ipcRenderer.invoke('skills:load', { name }),
-  getRecentBorrowItems: (operator: object, limit?: number) =>
-    ipcRenderer.invoke('cabinet:recent-borrow-items', { operator, limit }),
+  getCabinetTwinData: (operator?: object) =>
+    ipcRenderer.invoke('cabinet:twin-data', { operator }),
+  operateCabinetSlot: (payload: object) =>
+    ipcRenderer.invoke('cabinet:operate-slot', payload),
+  getOpenBorrowRecords: (operator: object) =>
+    ipcRenderer.invoke('cabinet:open-borrow-records', { operator }),
+  returnBorrowRecord: (payload: object) =>
+    ipcRenderer.invoke('cabinet:return-record', payload),
   getAppConfig: () => ipcRenderer.invoke('app:get-config'),
 
   // 窗口控制
