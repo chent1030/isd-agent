@@ -771,6 +771,89 @@ function FaceGate({
   )
 }
 
+function clampQuantity(value: number, maxQuantity: number) {
+  const max = Math.max(Math.floor(maxQuantity) || 1, 1)
+  return Math.min(Math.max(Math.floor(value) || 1, 1), max)
+}
+
+function QuantityPicker({
+  label,
+  value,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  max: number
+  onChange: (value: number) => void
+}) {
+  const safeMax = Math.max(Math.floor(max) || 1, 1)
+  const quickValues = safeMax <= 6
+    ? Array.from({ length: safeMax }, (_, index) => index + 1)
+    : [1, 2, 3, 5].filter(item => item <= safeMax)
+  const showKeypad = safeMax > 6
+  const displayValue = clampQuantity(value, safeMax)
+
+  const setQuantity = (nextValue: number) => onChange(clampQuantity(nextValue, safeMax))
+  const appendDigit = (digit: number) => {
+    const nextText = `${displayValue === 0 ? '' : displayValue}${digit}`
+    setQuantity(Number(nextText))
+  }
+  const removeDigit = () => setQuantity(Math.floor(displayValue / 10) || 1)
+
+  return (
+    <div className="twin-touch-quantity" aria-label={label}>
+      <div className="twin-touch-quantity-label">
+        <span>{label}</span>
+        <em>最多 {safeMax}</em>
+      </div>
+
+      <div className="twin-touch-stepper">
+        <button type="button" disabled={displayValue <= 1} onClick={() => setQuantity(displayValue - 1)} aria-label="减少数量">
+          -
+        </button>
+        <output>{displayValue}</output>
+        <button type="button" disabled={displayValue >= safeMax} onClick={() => setQuantity(displayValue + 1)} aria-label="增加数量">
+          +
+        </button>
+      </div>
+
+      <div className="twin-touch-quick-values">
+        {quickValues.map(item => (
+          <button
+            type="button"
+            key={item}
+            className={displayValue === item ? 'is-active' : ''}
+            onClick={() => setQuantity(item)}
+          >
+            {item}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={displayValue === safeMax ? 'is-active' : ''}
+          onClick={() => setQuantity(safeMax)}
+        >
+          全部
+        </button>
+      </div>
+
+      {showKeypad && (
+        <div className="twin-touch-keypad">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
+            <button type="button" key={item} onClick={() => appendDigit(item)}>
+              {item}
+            </button>
+          ))}
+          <button type="button" onClick={() => setQuantity(1)}>清空</button>
+          <button type="button" onClick={() => appendDigit(0)}>0</button>
+          <button type="button" onClick={removeDigit}>删除</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SlotDialog({
   slot,
   operating,
@@ -868,17 +951,12 @@ function SlotDialog({
                   </button>
                 </div>
 
-                <label className="twin-quantity-field twin-quantity-field-large">
-                  <span>输入数量</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={maxQuantity}
-                    value={quantity}
-                    autoFocus
-                    onChange={event => setQuantity(Math.min(Math.max(Number(event.target.value) || 1, 1), maxQuantity))}
-                  />
-                </label>
+                <QuantityPicker
+                  label="选择数量"
+                  value={quantity}
+                  max={maxQuantity}
+                  onChange={setQuantity}
+                />
               </>
             ) : (
               <FaceGate onAuthenticated={handleAuthenticated} />
@@ -981,19 +1059,12 @@ function ReturnDialog({
 
                 {selected && (
                   <div className="twin-return-form">
-                    <label className="twin-quantity-field">
-                      <span>归还数量</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={selected.pendingQuantity || 1}
-                        value={quantity}
-                        onChange={event => {
-                          const max = selected.pendingQuantity || 1
-                          setQuantity(Math.min(Math.max(Number(event.target.value) || 1, 1), max))
-                        }}
-                      />
-                    </label>
+                    <QuantityPicker
+                      label="归还数量"
+                      value={quantity}
+                      max={selected.pendingQuantity || 1}
+                      onChange={setQuantity}
+                    />
                     <div className="twin-dialog-actions">
                       <button type="button" className="twin-secondary-action" onClick={onClose}>取消</button>
                       <button

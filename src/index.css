@@ -2985,6 +2985,115 @@ body {
   font-weight: 700;
 }
 
+.twin-touch-quantity {
+  display: grid;
+  gap: 14px;
+}
+
+.twin-touch-quantity-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.twin-touch-quantity-label span {
+  color: #667f8e;
+  font-size: 13px;
+}
+
+.twin-touch-quantity-label em {
+  color: #217493;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.twin-touch-stepper {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 88px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.twin-touch-stepper button,
+.twin-touch-quick-values button,
+.twin-touch-keypad button {
+  min-height: 64px;
+  border: 1px solid rgba(89, 139, 165, 0.32);
+  border-radius: 8px;
+  color: #183545;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.twin-touch-stepper button {
+  color: #ffffff;
+  background: linear-gradient(180deg, #4f9a6e, #33784f);
+  font-size: 42px;
+  line-height: 1;
+}
+
+.twin-touch-stepper button:disabled,
+.twin-touch-quick-values button:disabled,
+.twin-touch-keypad button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.twin-touch-stepper button:not(:disabled):active,
+.twin-touch-quick-values button:not(:disabled):active,
+.twin-touch-keypad button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.twin-touch-stepper output {
+  min-width: 0;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(49, 150, 182, 0.24);
+  border-radius: 8px;
+  color: #183545;
+  background: linear-gradient(180deg, #ffffff, #eef7f1);
+  font-family: Rajdhani, sans-serif;
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+.twin-touch-quick-values {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.twin-touch-quick-values button.is-active,
+.twin-touch-keypad button:focus-visible,
+.twin-touch-quick-values button:focus-visible {
+  color: #ffffff;
+  border-color: rgba(49, 150, 182, 0.82);
+  background: #3196b6;
+}
+
+.twin-touch-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.twin-touch-keypad button {
+  min-height: 58px;
+  font-size: 21px;
+}
+
 .twin-face-gate {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
