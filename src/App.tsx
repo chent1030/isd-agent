@@ -38,6 +38,63 @@ function createFallbackSlots(cabinetNo: string, columnCount: number, rowCount: n
   }))
 }
 
+function toPositiveInteger(value: unknown, fallback: number) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function normalizeSlotStatus(value: unknown): CabinetSlotStatus {
+  return value === 'available' || value === 'low' || value === 'depleted' || value === 'empty' || value === 'fault'
+    ? value
+    : 'empty'
+}
+
+function normalizeSlot(rawSlot: Partial<CabinetTwinSlot> | undefined, cabinetNo: string, slotNo: number): CabinetTwinSlot {
+  return {
+    cabinetNo,
+    slotNo,
+    itemId: rawSlot?.itemId ? String(rawSlot.itemId) : null,
+    itemName: String(rawSlot?.itemName || ''),
+    category: String(rawSlot?.category || ''),
+    spec: String(rawSlot?.spec || ''),
+    useType: rawSlot?.useType === null || rawSlot?.useType === undefined ? null : Number(rawSlot.useType),
+    quantity: toPositiveInteger(rawSlot?.quantity, 0),
+    minQuantity: toPositiveInteger(rawSlot?.minQuantity, 2),
+    status: normalizeSlotStatus(rawSlot?.status),
+  }
+}
+
+function normalizeTwinData(value: unknown): CabinetTwinData {
+  const rawData = value as Partial<CabinetTwinData> | null | undefined
+  const rawCabinets = Array.isArray(rawData?.cabinets) ? rawData.cabinets : []
+  const cabinets = fallbackTwinData.cabinets.map((fallbackCabinet, index) => {
+    const rawCabinet = rawCabinets[index] as Partial<CabinetTwinCabinet> | undefined
+    const cabinetNo = String(rawCabinet?.cabinetNo || fallbackCabinet.cabinetNo)
+    const columnCount = toPositiveInteger(rawCabinet?.columnCount, fallbackCabinet.columnCount)
+    const rowCount = toPositiveInteger(rawCabinet?.rowCount, fallbackCabinet.rowCount)
+    const rawSlots = Array.isArray(rawCabinet?.slots) ? rawCabinet.slots : []
+    const totalSlots = columnCount * rowCount
+    const slots = Array.from({ length: totalSlots }, (_, slotIndex) => {
+      const slotNo = slotIndex + 1
+      const rawSlot = rawSlots.find(slot => Number(slot?.slotNo) === slotNo) as Partial<CabinetTwinSlot> | undefined
+      return normalizeSlot(rawSlot, cabinetNo, slotNo)
+    })
+
+    return {
+      cabinetNo,
+      name: String(rawCabinet?.name || fallbackCabinet.name),
+      columnCount,
+      rowCount,
+      slots,
+    }
+  })
+
+  return {
+    cabinets,
+    updatedAt: typeof rawData?.updatedAt === 'string' ? rawData.updatedAt : new Date().toISOString(),
+  }
+}
+
 function useClock() {
   const [now, setNow] = useState(new Date())
 
@@ -163,6 +220,7 @@ function CabinetScene({
   onSelectSlot: (slot: CabinetTwinSlot) => void
 }) {
   const mountRef = useRef<HTMLDivElement>(null)
+  const [renderError, setRenderError] = useState('')
   const sceneStateRef = useRef<{
     renderer: THREE.WebGLRenderer
     scene: THREE.Scene
@@ -193,6 +251,9 @@ function CabinetScene({
     const mount = mountRef.current
     if (!mount) return
 
+    setRenderError('')
+    let renderer: THREE.WebGLRenderer | null = null
+
     const scene = new THREE.Scene()
     scene.background = null
     const cabinetGroup = new THREE.Group()
@@ -204,7 +265,14 @@ function CabinetScene({
     camera.position.set(cabinet.columnCount === 3 ? 0.46 : 0.34, 0.24, 8.8)
     camera.lookAt(0, 0.04, -0.16)
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    } catch (error) {
+      console.error('[cabinet-3d] WebGL renderer initialization failed', error)
+      setRenderError('当前设备无法初始化 3D 渲染，已切换为备用柜体视图。')
+      return
+    }
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -487,9 +555,62 @@ function CabinetScene({
     }
   }, [cabinet])
 
+  if (renderError) {
+    return (
+      <CabinetFallbackGrid
+        cabinet={cabinet}
+        selectedSlot={selectedSlot}
+        message={renderError}
+        onSelectSlot={onSelectSlot}
+      />
+    )
+  }
+
   return (
     <div className="twin-3d-viewport">
       <div ref={mountRef} className="twin-3d-canvas" />
+    </div>
+  )
+}
+
+function CabinetFallbackGrid({
+  cabinet,
+  selectedSlot,
+  message,
+  onSelectSlot,
+}: {
+  cabinet: CabinetTwinCabinet
+  selectedSlot: CabinetTwinSlot | null
+  message?: string
+  onSelectSlot: (slot: CabinetTwinSlot) => void
+}) {
+  return (
+    <div className="twin-fallback-cabinet">
+      {message && <div className="twin-fallback-notice">{message}</div>}
+      <div
+        className="twin-fallback-grid"
+        style={{
+          gridTemplateColumns: `repeat(${cabinet.columnCount}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${cabinet.rowCount}, minmax(0, 1fr))`,
+        }}
+      >
+        {cabinet.slots.map(slot => {
+          const isActive = selectedSlot?.cabinetNo === slot.cabinetNo && selectedSlot.slotNo === slot.slotNo
+          return (
+            <button
+              type="button"
+              key={`${slot.cabinetNo}-${slot.slotNo}`}
+              className={`twin-fallback-slot twin-fallback-slot-${slot.status}${isActive ? ' is-active' : ''}`}
+              onClick={() => onSelectSlot(slot)}
+            >
+              <span>{slot.slotNo}</span>
+              <strong>{slot.itemName || '未绑定'}</strong>
+              <em>{slot.spec || slotStatusLabel(slot.status)}</em>
+              <b>剩余 {slot.quantity}</b>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -912,7 +1033,7 @@ export default function App() {
     setLoading(true)
     try {
       const data = await window.electronAPI.getCabinetTwinData(operator)
-      setTwinData(data)
+      setTwinData(normalizeTwinData(data))
       setMessage('柜体数据已同步。')
     } catch (error) {
       console.error(error)

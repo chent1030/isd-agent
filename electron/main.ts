@@ -18,10 +18,55 @@ function isEnabledEnv(value: string | undefined) {
   return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase())
 }
 
+function normalizeGraphicsMode(value: string | undefined) {
+  return String(value ?? 'auto').trim().toLowerCase()
+}
+
+function applyGraphicsMode() {
+  const mode = normalizeGraphicsMode(process.env.ISD_GRAPHICS_MODE)
+  const ignoreGpuBlocklist = isEnabledEnv(process.env.ISD_IGNORE_GPU_BLOCKLIST)
+
+  if (ignoreGpuBlocklist) {
+    app.commandLine.appendSwitch('ignore-gpu-blocklist')
+  }
+
+  if (mode === 'auto' || mode === '') {
+    console.info('[graphics] using Chromium default graphics mode')
+    return
+  }
+
+  if (mode === 'swiftshader') {
+    app.commandLine.appendSwitch('use-gl', 'angle')
+    app.commandLine.appendSwitch('use-angle', 'swiftshader')
+    app.commandLine.appendSwitch('enable-unsafe-swiftshader')
+    console.info('[graphics] forced ANGLE SwiftShader software rendering')
+    return
+  }
+
+  if (mode === 'swiftshader-webgl') {
+    app.commandLine.appendSwitch('use-gl', 'angle')
+    app.commandLine.appendSwitch('use-angle', 'swiftshader-webgl')
+    app.commandLine.appendSwitch('enable-unsafe-swiftshader')
+    console.info('[graphics] forced SwiftShader WebGL fallback')
+    return
+  }
+
+  if (mode === 'd3d11' || mode === 'd3d9' || mode === 'gl' || mode === 'vulkan') {
+    app.commandLine.appendSwitch('use-gl', 'angle')
+    app.commandLine.appendSwitch('use-angle', mode)
+    console.info(`[graphics] forced ANGLE backend: ${mode}`)
+    return
+  }
+
+  console.warn(`[graphics] unknown ISD_GRAPHICS_MODE=${mode}, using Chromium default graphics mode`)
+}
+
 if (isEnabledEnv(process.env.ALLOW_INSECURE_TLS)) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
   console.warn('[tls] TLS certificate verification is disabled by ALLOW_INSECURE_TLS')
 }
+
+applyGraphicsMode()
 
 log.initialize()
 log.transports.file.level = 'info'
