@@ -15,6 +15,7 @@ import com.cabinet.service.OperationLogService;
 import com.cabinet.util.WeightUnitUtil;
 import com.cabinet.vo.AvailableItemVO;
 import com.cabinet.vo.CabinetOperationVO;
+import com.cabinet.vo.ItemStockReminderVO;
 import com.cabinet.vo.ItemStockVO;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -54,6 +55,11 @@ public class ItemController {
     @GetMapping("/list")
     public Result<List<ItemStockVO>> list() {
         return Result.success(itemMapper.selectItemStockList());
+    }
+
+    @GetMapping("/reminders/stock")
+    public Result<List<ItemStockReminderVO>> stockReminders() {
+        return Result.success(itemMapper.selectStockReminders());
     }
 
     @GetMapping("/available")
@@ -155,6 +161,8 @@ public class ItemController {
         item.setWarningQuantity(dto.getWarningQuantity());
         item.setMaxQuantity(dto.getMaxQuantity());
         item.setAuthRequired(dto.getAuthRequired());
+        item.setBorrowerReminderHours(dto.getBorrowerReminderHours());
+        item.setAdminReminderHours(dto.getAdminReminderHours());
         return item;
     }
 
@@ -174,6 +182,12 @@ public class ItemController {
         if (item.getAuthRequired() == null) {
             item.setAuthRequired(0);
         }
+        if (item.getBorrowerReminderHours() == null) {
+            item.setBorrowerReminderHours(24);
+        }
+        if (item.getAdminReminderHours() == null) {
+            item.setAdminReminderHours(48);
+        }
         if (item.getWarningQuantity() < 0) {
             throw new IllegalArgumentException("预警数量不能为负数");
         }
@@ -185,6 +199,12 @@ public class ItemController {
         }
         if (item.getAuthRequired() < 0 || item.getAuthRequired() > 1) {
             throw new IllegalArgumentException("授权开关不正确");
+        }
+        if (item.getBorrowerReminderHours() < 0) {
+            throw new IllegalArgumentException("借用人提醒周期不能为负数");
+        }
+        if (item.getAdminReminderHours() < 0) {
+            throw new IllegalArgumentException("管理员提醒周期不能为负数");
         }
     }
 

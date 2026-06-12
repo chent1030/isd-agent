@@ -55,6 +55,8 @@
         <el-table-column prop="returnOperatorName" label="归还姓名" width="120" />
         <el-table-column prop="borrowTime" label="借用时间" width="170" />
         <el-table-column prop="expectedReturnTime" label="预计归还" width="170" />
+        <el-table-column prop="borrowerReminderHours" label="借用人提醒(h)" width="130" />
+        <el-table-column prop="adminReminderHours" label="管理员提醒(h)" width="130" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)">
@@ -122,6 +124,14 @@
             placeholder="请选择时间"
             style="width: 240px"
           />
+        </el-form-item>
+        <el-form-item label="借用人提醒">
+          <el-input-number v-model="borrowForm.borrowerReminderHours" :precision="0" :step="1" :min="0" />
+          <span class="unit">小时</span>
+        </el-form-item>
+        <el-form-item label="管理员提醒">
+          <el-input-number v-model="borrowForm.adminReminderHours" :precision="0" :step="1" :min="0" />
+          <span class="unit">小时</span>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="borrowForm.remark" type="textarea" :rows="3" />
@@ -215,7 +225,7 @@ const fetchData = async () => {
 
 const fetchItems = async () => {
   const res = await getItemList()
-  itemOptions.value = res.data || []
+  itemOptions.value = res || []
 }
 
 const handleQuery = () => {
@@ -248,6 +258,8 @@ const openBorrowDialog = () => {
     operatorNo: '',
     operatorName: '',
     expectedReturnTime: null,
+    borrowerReminderHours: 24,
+    adminReminderHours: 48,
     remark: ''
   }
   borrowDialogVisible.value = true
@@ -322,5 +334,9 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.unit {
+  margin-left: 8px;
 }
 </style>

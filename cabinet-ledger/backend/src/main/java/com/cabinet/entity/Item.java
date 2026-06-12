@@ -13,6 +13,8 @@ public class Item {
     private Integer warningQuantity;
     private Integer maxQuantity;
     private Integer authRequired;
+    private Integer borrowerReminderHours;
+    private Integer adminReminderHours;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer deleted;
@@ -35,6 +37,10 @@ public class Item {
     public void setMaxQuantity(Integer maxQuantity) { this.maxQuantity = maxQuantity; }
     public Integer getAuthRequired() { return authRequired; }
     public void setAuthRequired(Integer authRequired) { this.authRequired = authRequired; }
+    public Integer getBorrowerReminderHours() { return borrowerReminderHours; }
+    public void setBorrowerReminderHours(Integer borrowerReminderHours) { this.borrowerReminderHours = borrowerReminderHours; }
+    public Integer getAdminReminderHours() { return adminReminderHours; }
+    public void setAdminReminderHours(Integer adminReminderHours) { this.adminReminderHours = adminReminderHours; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

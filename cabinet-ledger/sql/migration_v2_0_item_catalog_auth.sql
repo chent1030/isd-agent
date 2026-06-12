@@ -6,6 +6,10 @@
 ALTER TABLE item
     ADD COLUMN auth_required TINYINT DEFAULT 0 COMMENT '是否需要人员授权：0-不需要 1-需要' AFTER max_quantity;
 
+ALTER TABLE item
+    ADD COLUMN borrower_reminder_hours INT DEFAULT 24 COMMENT '借用人超时提醒周期（小时），0表示不提醒' AFTER auth_required,
+    ADD COLUMN admin_reminder_hours INT DEFAULT 48 COMMENT '管理员超时提醒周期（小时），0表示不提醒' AFTER borrower_reminder_hours;
+
 ALTER TABLE cabinet_slot
     ADD COLUMN item_quantity INT DEFAULT 0 COMMENT '当前格口分配物品数量' AFTER weight_limit;
 
@@ -29,3 +33,12 @@ CREATE TABLE IF NOT EXISTS item_authorization (
     KEY idx_employee_no (employee_no),
     KEY idx_valid_time (valid_from, valid_to)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物品人员授权表';
+
+ALTER TABLE item_borrow_record
+    ADD COLUMN borrower_reminder_hours INT DEFAULT 24 COMMENT '借用人超时提醒周期（小时），0表示不提醒' AFTER expected_return_time,
+    ADD COLUMN admin_reminder_hours INT DEFAULT 48 COMMENT '管理员超时提醒周期（小时），0表示不提醒' AFTER borrower_reminder_hours,
+    ADD COLUMN borrower_reminded_at DATETIME DEFAULT NULL COMMENT '最近一次提醒借用人时间' AFTER admin_reminder_hours,
+    ADD COLUMN admin_reminded_at DATETIME DEFAULT NULL COMMENT '最近一次提醒管理员时间' AFTER borrower_reminded_at,
+    ADD INDEX idx_expected_return_time (expected_return_time),
+    ADD INDEX idx_borrower_reminded_at (borrower_reminded_at),
+    ADD INDEX idx_admin_reminded_at (admin_reminded_at);

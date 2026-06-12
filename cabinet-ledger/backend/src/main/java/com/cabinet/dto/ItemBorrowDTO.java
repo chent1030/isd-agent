@@ -10,6 +10,8 @@ public class ItemBorrowDTO {
     private String operatorNo;
     private String operatorName;
     private LocalDateTime expectedReturnTime;
+    private Integer borrowerReminderHours;
+    private Integer adminReminderHours;
     private String remark;
 
     public Long getItemId() { return itemId; }
@@ -26,6 +28,10 @@ public class ItemBorrowDTO {
     public void setOperatorName(String operatorName) { this.operatorName = operatorName; }
     public LocalDateTime getExpectedReturnTime() { return expectedReturnTime; }
     public void setExpectedReturnTime(LocalDateTime expectedReturnTime) { this.expectedReturnTime = expectedReturnTime; }
+    public Integer getBorrowerReminderHours() { return borrowerReminderHours; }
+    public void setBorrowerReminderHours(Integer borrowerReminderHours) { this.borrowerReminderHours = borrowerReminderHours; }
+    public Integer getAdminReminderHours() { return adminReminderHours; }
+    public void setAdminReminderHours(Integer adminReminderHours) { this.adminReminderHours = adminReminderHours; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
 }

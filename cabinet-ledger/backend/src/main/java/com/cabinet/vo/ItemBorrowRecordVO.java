@@ -25,6 +25,12 @@ public class ItemBorrowRecordVO {
     private String returnOperatorName;
     private LocalDateTime borrowTime;
     private LocalDateTime expectedReturnTime;
+    private Integer borrowerReminderHours;
+    private Integer adminReminderHours;
+    private LocalDateTime borrowerRemindedAt;
+    private LocalDateTime adminRemindedAt;
+    private LocalDateTime nextBorrowerReminderTime;
+    private LocalDateTime nextAdminReminderTime;
     private LocalDateTime returnTime;
     private Integer status;
     private String remark;
@@ -73,6 +79,18 @@ public class ItemBorrowRecordVO {
     public void setBorrowTime(LocalDateTime borrowTime) { this.borrowTime = borrowTime; }
     public LocalDateTime getExpectedReturnTime() { return expectedReturnTime; }
     public void setExpectedReturnTime(LocalDateTime expectedReturnTime) { this.expectedReturnTime = expectedReturnTime; }
+    public Integer getBorrowerReminderHours() { return borrowerReminderHours; }
+    public void setBorrowerReminderHours(Integer borrowerReminderHours) { this.borrowerReminderHours = borrowerReminderHours; }
+    public Integer getAdminReminderHours() { return adminReminderHours; }
+    public void setAdminReminderHours(Integer adminReminderHours) { this.adminReminderHours = adminReminderHours; }
+    public LocalDateTime getBorrowerRemindedAt() { return borrowerRemindedAt; }
+    public void setBorrowerRemindedAt(LocalDateTime borrowerRemindedAt) { this.borrowerRemindedAt = borrowerRemindedAt; }
+    public LocalDateTime getAdminRemindedAt() { return adminRemindedAt; }
+    public void setAdminRemindedAt(LocalDateTime adminRemindedAt) { this.adminRemindedAt = adminRemindedAt; }
+    public LocalDateTime getNextBorrowerReminderTime() { return nextBorrowerReminderTime; }
+    public void setNextBorrowerReminderTime(LocalDateTime nextBorrowerReminderTime) { this.nextBorrowerReminderTime = nextBorrowerReminderTime; }
+    public LocalDateTime getNextAdminReminderTime() { return nextAdminReminderTime; }
+    public void setNextAdminReminderTime(LocalDateTime nextAdminReminderTime) { this.nextAdminReminderTime = nextAdminReminderTime; }
     public LocalDateTime getReturnTime() { return returnTime; }
     public void setReturnTime(LocalDateTime returnTime) { this.returnTime = returnTime; }
     public Integer getStatus() { return status; }

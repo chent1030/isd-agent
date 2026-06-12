@@ -2,6 +2,7 @@ package com.cabinet.mapper;
 
 import com.cabinet.entity.Item;
 import com.cabinet.vo.AvailableItemVO;
+import com.cabinet.vo.ItemStockReminderVO;
 import com.cabinet.vo.ItemStockVO;
 import org.apache.ibatis.annotations.Param;
 
@@ -22,7 +23,13 @@ public interface ItemMapper {
 
     int decreaseStock(@Param("itemId") Long itemId, @Param("quantity") Integer quantity);
 
+    int decreaseStockAndIncreaseBorrowed(@Param("itemId") Long itemId, @Param("quantity") Integer quantity);
+
+    int increaseStockAndDecreaseBorrowed(@Param("itemId") Long itemId, @Param("quantity") Integer quantity);
+
     List<ItemStockVO> selectItemStockList();
+
+    List<ItemStockReminderVO> selectStockReminders();
 
     List<AvailableItemVO> selectAvailableItems(@Param("operatorNo") String operatorNo);
 }

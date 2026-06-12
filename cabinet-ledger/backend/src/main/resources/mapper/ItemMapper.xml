@@ -11,6 +11,8 @@
         <result column="standard_weight" property="standardWeight"/>
         <result column="use_type" property="useType"/>
         <result column="auth_required" property="authRequired"/>
+        <result column="borrower_reminder_hours" property="borrowerReminderHours"/>
+        <result column="admin_reminder_hours" property="adminReminderHours"/>
         <result column="quantity" property="quantity"/>
         <result column="slot_quantity" property="slotQuantity"/>
         <result column="borrowed_quantity" property="borrowedQuantity"/>
@@ -27,6 +29,23 @@
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
+    <resultMap id="ItemStockReminderResultMap" type="com.cabinet.vo.ItemStockReminderVO">
+        <result column="reminder_type" property="reminderType"/>
+        <result column="item_id" property="itemId"/>
+        <result column="item_name" property="itemName"/>
+        <result column="category" property="category"/>
+        <result column="spec" property="spec"/>
+        <result column="quantity" property="quantity"/>
+        <result column="warning_quantity" property="warningQuantity"/>
+        <result column="cabinet_id" property="cabinetId"/>
+        <result column="cabinet_no" property="cabinetNo"/>
+        <result column="cabinet_name" property="cabinetName"/>
+        <result column="slot_id" property="slotId"/>
+        <result column="slot_no" property="slotNo"/>
+        <result column="slot_quantity" property="slotQuantity"/>
+        <result column="message" property="message"/>
+    </resultMap>
+
     <resultMap id="AvailableItemResultMap" type="com.cabinet.vo.AvailableItemVO">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
@@ -39,6 +58,8 @@
         <result column="cabinet_quantity" property="cabinetQuantity"/>
         <result column="auth_required" property="authRequired"/>
         <result column="authorized" property="authorized"/>
+        <result column="borrower_reminder_hours" property="borrowerReminderHours"/>
+        <result column="admin_reminder_hours" property="adminReminderHours"/>
         <result column="cabinet_no" property="cabinetNo"/>
         <result column="cabinet_name" property="cabinetName"/>
         <result column="slot_no" property="slotNo"/>
@@ -81,9 +102,11 @@
 
     <insert id="insert" parameterType="com.cabinet.entity.Item" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO item
-        (name, category, spec, standard_weight, use_type, warning_quantity, max_quantity, auth_required, created_at, updated_at, deleted)
+        (name, category, spec, standard_weight, use_type, warning_quantity, max_quantity, auth_required,
+         borrower_reminder_hours, admin_reminder_hours, created_at, updated_at, deleted)
         VALUES
-        (#{name}, #{category}, #{spec}, #{standardWeight}, #{useType}, #{warningQuantity}, #{maxQuantity}, #{authRequired}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+        (#{name}, #{category}, #{spec}, #{standardWeight}, #{useType}, #{warningQuantity}, #{maxQuantity}, #{authRequired},
+         #{borrowerReminderHours}, #{adminReminderHours}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
     </insert>
 
     <update id="updateById" parameterType="com.cabinet.entity.Item">
@@ -96,6 +119,8 @@
             warning_quantity = #{warningQuantity},
             max_quantity = #{maxQuantity},
             auth_required = #{authRequired},
+            borrower_reminder_hours = #{borrowerReminderHours},
+            admin_reminder_hours = #{adminReminderHours},
             created_at = #{createdAt},
             updated_at = #{updatedAt}
         WHERE id = #{id} AND deleted = 0
@@ -110,6 +135,25 @@
           AND COALESCE(quantity, 0) >= #{quantity}
     </update>
 
+    <update id="decreaseStockAndIncreaseBorrowed">
+        UPDATE item_stock
+        SET quantity = quantity - #{quantity},
+            borrowed_quantity = COALESCE(borrowed_quantity, 0) + #{quantity},
+            updated_at = NOW()
+        WHERE item_id = #{itemId}
+          AND deleted = 0
+          AND COALESCE(quantity, 0) >= #{quantity}
+    </update>
+
+    <update id="increaseStockAndDecreaseBorrowed">
+        UPDATE item_stock
+        SET quantity = COALESCE(quantity, 0) + #{quantity},
+            borrowed_quantity = GREATEST(COALESCE(borrowed_quantity, 0) - #{quantity}, 0),
+            updated_at = NOW()
+        WHERE item_id = #{itemId}
+          AND deleted = 0
+    </update>
+
     <select id="selectAvailableItems" resultMap="AvailableItemResultMap">
         SELECT
             i.id,
@@ -122,6 +166,8 @@
             COALESCE(cs.item_quantity, 0) AS slot_quantity,
             COALESCE(cs.item_quantity, 0) AS cabinet_quantity,
             COALESCE(i.auth_required, 0) = 1 AS auth_required,
+            COALESCE(i.borrower_reminder_hours, 24) AS borrower_reminder_hours,
+            COALESCE(i.admin_reminder_hours, 48) AS admin_reminder_hours,
             CASE
                 WHEN COALESCE(i.auth_required, 0) = 0 THEN TRUE
                 WHEN #{operatorNo} IS NULL OR #{operatorNo} = '' THEN FALSE
@@ -164,6 +210,8 @@
             i.standard_weight,
             i.use_type,
             COALESCE(i.auth_required, 0) AS auth_required,
+            COALESCE(i.borrower_reminder_hours, 24) AS borrower_reminder_hours,
+            COALESCE(i.admin_reminder_hours, 48) AS admin_reminder_hours,
             COALESCE(s.quantity, 0) AS quantity,
             COALESCE(cs.item_quantity, 0) AS slot_quantity,
             COALESCE(s.borrowed_quantity, 0) AS borrowed_quantity,
@@ -184,6 +232,52 @@
         LEFT JOIN cabinet c ON c.id = cs.cabinet_id AND c.deleted = 0
         WHERE i.deleted = 0
         ORDER BY i.updated_at DESC
+    </select>
+
+    <select id="selectStockReminders" resultMap="ItemStockReminderResultMap">
+        SELECT
+            'ITEM_STOCK_WARNING' AS reminder_type,
+            i.id AS item_id,
+            i.name AS item_name,
+            i.category,
+            i.spec,
+            COALESCE(s.quantity, 0) AS quantity,
+            COALESCE(s.warning_quantity, i.warning_quantity, 0) AS warning_quantity,
+            NULL AS cabinet_id,
+            NULL AS cabinet_no,
+            NULL AS cabinet_name,
+            NULL AS slot_id,
+            NULL AS slot_no,
+            NULL AS slot_quantity,
+            CONCAT('物品库存已达到预警值：', i.name, '，当前库存 ', COALESCE(s.quantity, 0), '，预警值 ', COALESCE(s.warning_quantity, i.warning_quantity, 0)) AS message
+        FROM item i
+        LEFT JOIN item_stock s ON s.item_id = i.id AND s.deleted = 0
+        WHERE i.deleted = 0
+          AND COALESCE(s.warning_quantity, i.warning_quantity, 0) > 0
+          AND COALESCE(s.quantity, 0) <= COALESCE(s.warning_quantity, i.warning_quantity, 0)
+        UNION ALL
+        SELECT
+            'SLOT_QUANTITY_LOW' AS reminder_type,
+            i.id AS item_id,
+            i.name AS item_name,
+            i.category,
+            i.spec,
+            COALESCE(s.quantity, 0) AS quantity,
+            COALESCE(s.warning_quantity, i.warning_quantity, 0) AS warning_quantity,
+            cs.cabinet_id,
+            c.cabinet_no,
+            c.name AS cabinet_name,
+            cs.id AS slot_id,
+            cs.slot_no,
+            COALESCE(cs.item_quantity, 0) AS slot_quantity,
+            CONCAT('格口物品数量为1：', c.name, ' ', cs.slot_no, '号格口，物品 ', i.name) AS message
+        FROM cabinet_slot cs
+        INNER JOIN item i ON i.id = cs.item_id AND i.deleted = 0
+        LEFT JOIN item_stock s ON s.item_id = i.id AND s.deleted = 0
+        LEFT JOIN cabinet c ON c.id = cs.cabinet_id AND c.deleted = 0
+        WHERE cs.deleted = 0
+          AND COALESCE(cs.item_quantity, 0) = 1
+        ORDER BY reminder_type ASC, item_name ASC, cabinet_no ASC, slot_no ASC
     </select>
 
 </mapper>

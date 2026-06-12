@@ -53,6 +53,8 @@ export interface CabinetCatalogItem {
   restricted: boolean
   authorized: boolean
   authRequired: boolean
+  borrowerReminderHours?: number
+  adminReminderHours?: number
   locations: CabinetItemLocation[]
 }
 

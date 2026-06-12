@@ -12,6 +12,8 @@ public class ItemSaveDTO {
     private Integer warningQuantity;
     private Integer maxQuantity;
     private Integer authRequired;
+    private Integer borrowerReminderHours;
+    private Integer adminReminderHours;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -31,4 +33,8 @@ public class ItemSaveDTO {
     public void setMaxQuantity(Integer maxQuantity) { this.maxQuantity = maxQuantity; }
     public Integer getAuthRequired() { return authRequired; }
     public void setAuthRequired(Integer authRequired) { this.authRequired = authRequired; }
+    public Integer getBorrowerReminderHours() { return borrowerReminderHours; }
+    public void setBorrowerReminderHours(Integer borrowerReminderHours) { this.borrowerReminderHours = borrowerReminderHours; }
+    public Integer getAdminReminderHours() { return adminReminderHours; }
+    public void setAdminReminderHours(Integer adminReminderHours) { this.adminReminderHours = adminReminderHours; }
 }

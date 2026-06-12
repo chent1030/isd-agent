@@ -4,6 +4,10 @@ export const getItemList = () => {
   return request.get('/cabinet/item/list')
 }
 
+export const getItemStockReminders = () => {
+  return request.get('/cabinet/item/reminders/stock')
+}
+
 export const saveItem = (data) => {
   return request.post('/cabinet/item/save', data)
 }

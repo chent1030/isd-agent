@@ -9,11 +9,10 @@ import com.cabinet.entity.ItemLedger;
 import com.cabinet.entity.ItemStock;
 import com.cabinet.mapper.CabinetSlotMapper;
 import com.cabinet.mapper.ItemBorrowRecordMapper;
+import com.cabinet.mapper.ItemLedgerMapper;
 import com.cabinet.mapper.ItemMapper;
 import com.cabinet.mapper.ItemStockMapper;
 import com.cabinet.service.ItemBorrowRecordService;
-import com.cabinet.service.ItemLedgerService;
-import com.cabinet.service.ItemStockService;
 import com.cabinet.util.WeightUnitUtil;
 import com.cabinet.vo.ItemBorrowRecordVO;
 import io.choerodon.core.domain.Page;
@@ -21,6 +20,7 @@ import io.choerodon.mybatis.pagehelper.PageHelper;
 import io.choerodon.mybatis.pagehelper.domain.PageRequest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -31,21 +31,18 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
     private final ItemMapper itemMapper;
     private final CabinetSlotMapper cabinetSlotMapper;
     private final ItemStockMapper itemStockMapper;
-    private final ItemStockService itemStockService;
-    private final ItemLedgerService itemLedgerService;
+    private final ItemLedgerMapper itemLedgerMapper;
 
     public ItemBorrowRecordServiceImpl(ItemBorrowRecordMapper borrowRecordMapper,
                                        ItemMapper itemMapper,
                                        CabinetSlotMapper cabinetSlotMapper,
                                        ItemStockMapper itemStockMapper,
-                                       ItemStockService itemStockService,
-                                       ItemLedgerService itemLedgerService) {
+                                       ItemLedgerMapper itemLedgerMapper) {
         this.borrowRecordMapper = borrowRecordMapper;
         this.itemMapper = itemMapper;
         this.cabinetSlotMapper = cabinetSlotMapper;
         this.itemStockMapper = itemStockMapper;
-        this.itemStockService = itemStockService;
-        this.itemLedgerService = itemLedgerService;
+        this.itemLedgerMapper = itemLedgerMapper;
     }
 
     @Override
@@ -77,6 +74,10 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         if (available < quantity) {
             throw new IllegalArgumentException("可借库存不足");
         }
+        int slotQuantity = slot.getItemQuantity() == null ? 0 : slot.getItemQuantity();
+        if (slotQuantity < quantity) {
+            throw new IllegalArgumentException("格口库存不足");
+        }
 
         LocalDateTime now = LocalDateTime.now();
         ItemBorrowRecord record = new ItemBorrowRecord();
@@ -91,13 +92,21 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         record.setBorrowOperatorName(resolveOperatorName(dto.getOperatorName(), operator));
         record.setBorrowTime(now);
         record.setExpectedReturnTime(dto.getExpectedReturnTime());
+        record.setBorrowerReminderHours(resolveReminderHours(dto.getBorrowerReminderHours(), item.getBorrowerReminderHours()));
+        record.setAdminReminderHours(resolveReminderHours(dto.getAdminReminderHours(), item.getAdminReminderHours()));
         record.setStatus(0);
         record.setRemark(dto.getRemark());
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
         borrowRecordMapper.insert(record);
 
-        itemStockService.applyLedger(createLedger(item, slot, quantity, 2, 1, operator, dto.getOperatorNo(), dto.getOperatorName(), now, "借用记录：" + record.getId()));
+        if (itemMapper.decreaseStockAndIncreaseBorrowed(dto.getItemId(), quantity) <= 0) {
+            throw new IllegalArgumentException("可借库存不足");
+        }
+        if (cabinetSlotMapper.decreaseItemQuantity(slot.getId(), quantity) <= 0) {
+            throw new IllegalArgumentException("格口库存不足");
+        }
+        itemLedgerMapper.insert(createLedger(item, slot, quantity, 2, 1, operator, dto.getOperatorNo(), dto.getOperatorName(), now, "借用记录：" + record.getId()));
         return getRecord(record.getId());
     }
 
@@ -137,7 +146,13 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
 
         Item item = itemMapper.selectById(record.getItemId());
         CabinetSlot slot = cabinetSlotMapper.selectById(record.getSlotId());
-        itemStockService.applyLedger(createLedger(item, slot, quantity, 3, 0, operator, dto.getOperatorNo(), dto.getOperatorName(), now, "归还借用记录：" + record.getId()));
+        if (itemMapper.increaseStockAndDecreaseBorrowed(record.getItemId(), quantity) <= 0) {
+            throw new IllegalArgumentException("物品库存更新失败");
+        }
+        if (cabinetSlotMapper.increaseItemQuantity(record.getSlotId(), quantity) <= 0) {
+            throw new IllegalArgumentException("格口库存更新失败");
+        }
+        itemLedgerMapper.insert(createLedger(item, slot, quantity, 3, 0, operator, dto.getOperatorNo(), dto.getOperatorName(), now, "归还记录：" + record.getId()));
         return getRecord(record.getId());
     }
 
@@ -147,6 +162,24 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
         int pageSize = size <= 0 ? 20 : size;
         return PageHelper.doPage(new PageRequest(current - 1, pageSize),
                 () -> borrowRecordMapper.selectBorrowRecordList(status, itemId, borrower));
+    }
+
+    @Override
+    public List<ItemBorrowRecordVO> getDueReminders(String reminderType) {
+        String normalized = normalizeReminderType(reminderType);
+        return borrowRecordMapper.selectDueReminders(normalized);
+    }
+
+    @Override
+    public boolean markReminder(Long borrowRecordId, String reminderType) {
+        if (borrowRecordId == null) {
+            throw new IllegalArgumentException("借用记录ID不能为空");
+        }
+        String normalized = normalizeReminderType(reminderType);
+        if ("admin".equals(normalized)) {
+            return borrowRecordMapper.updateAdminRemindedAt(borrowRecordId) > 0;
+        }
+        return borrowRecordMapper.updateBorrowerRemindedAt(borrowRecordId) > 0;
     }
 
     private ItemBorrowRecordVO getRecord(Long id) {
@@ -176,6 +209,9 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
             ledger.setRemovedBy(operator);
             ledger.setRemovedAt(now);
         }
+        ledger.setCreatedAt(now);
+        ledger.setUpdatedAt(now);
+        ledger.setDeleted(0);
         return ledger;
     }
 
@@ -192,5 +228,26 @@ public class ItemBorrowRecordServiceImpl implements ItemBorrowRecordService {
             throw new IllegalArgumentException("数量必须大于0");
         }
         return quantity;
+    }
+
+    private Integer resolveReminderHours(Integer requestHours, Integer itemHours) {
+        Integer hours = requestHours == null ? itemHours : requestHours;
+        if (hours == null) {
+            return null;
+        }
+        if (hours < 0) {
+            throw new IllegalArgumentException("提醒周期不能为负数");
+        }
+        return hours;
+    }
+
+    private String normalizeReminderType(String reminderType) {
+        if ("admin".equals(reminderType)) {
+            return "admin";
+        }
+        if ("borrower".equals(reminderType) || reminderType == null || reminderType.trim().isEmpty()) {
+            return "borrower";
+        }
+        throw new IllegalArgumentException("不支持的提醒类型");
     }
 }

@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS item (
     warning_quantity INT DEFAULT 0 COMMENT '库存预警数量',
     max_quantity     INT DEFAULT 0 COMMENT '最大库存数量',
     auth_required    TINYINT DEFAULT 0 COMMENT '是否需要人员授权：0-不需要 1-需要',
+    borrower_reminder_hours INT DEFAULT 24 COMMENT '借用人超时提醒周期（小时），0表示不提醒',
+    admin_reminder_hours    INT DEFAULT 48 COMMENT '管理员超时提醒周期（小时），0表示不提醒',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted         TINYINT DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
@@ -163,6 +165,10 @@ CREATE TABLE IF NOT EXISTS item_borrow_record (
     return_operator_name VARCHAR(64) DEFAULT NULL COMMENT '归还操作人姓名',
     borrow_time          DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '借用时间',
     expected_return_time DATETIME DEFAULT NULL COMMENT '预计归还时间',
+    borrower_reminder_hours INT DEFAULT 24 COMMENT '借用人超时提醒周期（小时），0表示不提醒',
+    admin_reminder_hours    INT DEFAULT 48 COMMENT '管理员超时提醒周期（小时），0表示不提醒',
+    borrower_reminded_at    DATETIME DEFAULT NULL COMMENT '最近一次提醒借用人时间',
+    admin_reminded_at       DATETIME DEFAULT NULL COMMENT '最近一次提醒管理员时间',
     return_time          DATETIME DEFAULT NULL COMMENT '实际全部归还时间',
     status               TINYINT DEFAULT 0 COMMENT '状态：0-借用中 1-已归还 2-部分归还',
     remark               TEXT COMMENT '备注',
@@ -174,7 +180,10 @@ CREATE TABLE IF NOT EXISTS item_borrow_record (
     KEY idx_cabinet_slot (cabinet_id, slot_id),
     KEY idx_borrower (borrower),
     KEY idx_status (status),
-    KEY idx_borrow_time (borrow_time)
+    KEY idx_borrow_time (borrow_time),
+    KEY idx_expected_return_time (expected_return_time),
+    KEY idx_borrower_reminded_at (borrower_reminded_at),
+    KEY idx_admin_reminded_at (admin_reminded_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物品借用记录表';
 
 -- 操作日志表

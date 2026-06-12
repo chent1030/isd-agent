@@ -1,12 +1,14 @@
 package com.cabinet.controller;
 
 import com.cabinet.common.Result;
+import com.cabinet.dto.BorrowReminderMarkDTO;
 import com.cabinet.dto.ItemBorrowDTO;
 import com.cabinet.dto.ItemReturnDTO;
 import com.cabinet.service.ItemBorrowRecordService;
 import com.cabinet.service.OperationLogService;
 import com.cabinet.vo.ItemBorrowRecordVO;
 import io.choerodon.core.domain.Page;
+import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +38,24 @@ public class ItemBorrowRecordController {
                                                  @RequestParam(defaultValue = "1") int page,
                                                  @RequestParam(defaultValue = "20") int size) {
         return Result.success(borrowRecordService.getBorrowRecordList(status, itemId, borrower, page, size));
+    }
+
+    @GetMapping("/reminders/due")
+    public Result<List<ItemBorrowRecordVO>> dueReminders(@RequestParam(defaultValue = "borrower") String reminderType) {
+        return Result.success(borrowRecordService.getDueReminders(reminderType));
+    }
+
+    @PostMapping("/reminders/mark")
+    public Result<Boolean> markReminder(@RequestBody BorrowReminderMarkDTO dto,
+                                        @RequestHeader(value = "X-Operator", required = false) String operator,
+                                        HttpServletRequest request) {
+        boolean success = borrowRecordService.markReminder(dto == null ? null : dto.getBorrowRecordId(),
+                dto == null ? null : dto.getReminderType());
+        if (success) {
+            operationLogService.record(null, operatorOrDefault(operator), "BORROW_REMINDER_MARK",
+                    "标记借用提醒：" + dto.getReminderType() + "，记录：" + dto.getBorrowRecordId(), request.getRemoteAddr());
+        }
+        return Result.success(success);
     }
 
     @PostMapping("/borrow")

@@ -17,6 +17,8 @@ interface AvailableItem {
   restricted?: boolean
   authorized?: boolean
   authRequired?: boolean
+  borrowerReminderHours?: number
+  adminReminderHours?: number
   cabinetNo?: string
   cabinetName?: string
   slotNo?: number
@@ -47,6 +49,8 @@ interface CabinetCatalogItem {
   restricted: boolean
   authorized: boolean
   authRequired: boolean
+  borrowerReminderHours?: number
+  adminReminderHours?: number
   locations: CabinetItemLocation[]
 }
 
@@ -168,6 +172,8 @@ function normalizeAvailableItem(item: any): AvailableItem {
     restricted: authRequired,
     authRequired,
     authorized: authorized === undefined ? !authRequired : Boolean(authorized),
+    borrowerReminderHours: toNumber(firstDefined(item?.borrowerReminderHours, item?.borrower_reminder_hours), 24),
+    adminReminderHours: toNumber(firstDefined(item?.adminReminderHours, item?.admin_reminder_hours), 48),
     cabinetNo: normalizeCabinetNo(rawCabinetNo, ''),
     cabinetName: typeof item?.cabinetName === 'string' ? item.cabinetName : undefined,
     slotNo: Number.isFinite(Number(rawSlotNo)) ? Number(rawSlotNo) : undefined,
@@ -207,6 +213,8 @@ function buildCatalogItems(items: AvailableItem[]): CabinetCatalogItem[] {
       restricted: Boolean(item.restricted || item.authRequired),
       authorized: item.authorized !== false,
       authRequired: Boolean(item.authRequired || item.restricted),
+      borrowerReminderHours: item.borrowerReminderHours,
+      adminReminderHours: item.adminReminderHours,
       locations: [],
     }
 
@@ -215,6 +223,8 @@ function buildCatalogItems(items: AvailableItem[]): CabinetCatalogItem[] {
     next.restricted = next.restricted || Boolean(item.restricted || item.authRequired)
     next.authRequired = next.authRequired || Boolean(item.authRequired || item.restricted)
     next.authorized = next.authorized && item.authorized !== false
+    next.borrowerReminderHours = item.borrowerReminderHours ?? next.borrowerReminderHours
+    next.adminReminderHours = item.adminReminderHours ?? next.adminReminderHours
 
     if (isLocationUsable(item)) {
       next.locations.push({
@@ -246,6 +256,11 @@ function buildCategories(items: CabinetCatalogItem[]) {
 
 function normalizeOperationLocations(payload: any) {
   return Array.isArray(payload?.locations) ? payload.locations : []
+}
+
+function buildExpectedReturnTime(item: CabinetCatalogItem) {
+  const reminderHours = Math.max(Math.floor(item.borrowerReminderHours ?? 24), 1)
+  return new Date(Date.now() + reminderHours * 60 * 60 * 1000).toISOString()
 }
 
 function buildTwinCabinets(items: AvailableItem[]) {
@@ -463,6 +478,9 @@ async function executeItemAction(params: {
         operatorNo: operator.empWorkNo,
         operatorName: operator.empName,
         locations,
+        expectedReturnTime: buildExpectedReturnTime(item),
+        borrowerReminderHours: item.borrowerReminderHours ?? 24,
+        adminReminderHours: item.adminReminderHours ?? 48,
         remark: `终端借用：${operator.empName} ${item.name}`,
       }
 

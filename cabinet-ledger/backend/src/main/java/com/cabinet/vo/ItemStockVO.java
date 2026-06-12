@@ -11,6 +11,8 @@ public class ItemStockVO {
     private BigDecimal standardWeight;
     private Integer useType;
     private Integer authRequired;
+    private Integer borrowerReminderHours;
+    private Integer adminReminderHours;
     private Integer quantity;
     private Integer slotQuantity;
     private Integer borrowedQuantity;
@@ -40,6 +42,10 @@ public class ItemStockVO {
     public void setUseType(Integer useType) { this.useType = useType; }
     public Integer getAuthRequired() { return authRequired; }
     public void setAuthRequired(Integer authRequired) { this.authRequired = authRequired; }
+    public Integer getBorrowerReminderHours() { return borrowerReminderHours; }
+    public void setBorrowerReminderHours(Integer borrowerReminderHours) { this.borrowerReminderHours = borrowerReminderHours; }
+    public Integer getAdminReminderHours() { return adminReminderHours; }
+    public void setAdminReminderHours(Integer adminReminderHours) { this.adminReminderHours = adminReminderHours; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public Integer getSlotQuantity() { return slotQuantity; }

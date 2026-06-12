@@ -26,6 +26,12 @@
         <result column="return_operator_name" property="returnOperatorName"/>
         <result column="borrow_time" property="borrowTime"/>
         <result column="expected_return_time" property="expectedReturnTime"/>
+        <result column="borrower_reminder_hours" property="borrowerReminderHours"/>
+        <result column="admin_reminder_hours" property="adminReminderHours"/>
+        <result column="borrower_reminded_at" property="borrowerRemindedAt"/>
+        <result column="admin_reminded_at" property="adminRemindedAt"/>
+        <result column="next_borrower_reminder_time" property="nextBorrowerReminderTime"/>
+        <result column="next_admin_reminder_time" property="nextAdminReminderTime"/>
         <result column="return_time" property="returnTime"/>
         <result column="status" property="status"/>
         <result column="remark" property="remark"/>
@@ -39,11 +45,13 @@
         INSERT INTO item_borrow_record
         (item_id, cabinet_id, slot_id, quantity, returned_quantity, borrower, borrow_operator, borrow_operator_no,
          borrow_operator_name, return_operator, return_operator_no, return_operator_name, borrow_time,
-         expected_return_time, return_time, status, remark, created_at, updated_at, deleted)
+         expected_return_time, borrower_reminder_hours, admin_reminder_hours, borrower_reminded_at, admin_reminded_at,
+         return_time, status, remark, created_at, updated_at, deleted)
         VALUES
         (#{itemId}, #{cabinetId}, #{slotId}, #{quantity}, #{returnedQuantity}, #{borrower}, #{borrowOperator}, #{borrowOperatorNo},
          #{borrowOperatorName}, #{returnOperator}, #{returnOperatorNo}, #{returnOperatorName}, #{borrowTime},
-         #{expectedReturnTime}, #{returnTime}, #{status}, #{remark}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+         #{expectedReturnTime}, #{borrowerReminderHours}, #{adminReminderHours}, #{borrowerRemindedAt}, #{adminRemindedAt},
+         #{returnTime}, #{status}, #{remark}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
     </insert>
 
     <update id="updateById" parameterType="com.cabinet.entity.ItemBorrowRecord">
@@ -62,6 +70,10 @@
             return_operator_name = #{returnOperatorName},
             borrow_time = #{borrowTime},
             expected_return_time = #{expectedReturnTime},
+            borrower_reminder_hours = #{borrowerReminderHours},
+            admin_reminder_hours = #{adminReminderHours},
+            borrower_reminded_at = #{borrowerRemindedAt},
+            admin_reminded_at = #{adminRemindedAt},
             return_time = #{returnTime},
             status = #{status},
             remark = #{remark},
@@ -94,6 +106,20 @@
             br.return_operator_name,
             br.borrow_time,
             br.expected_return_time,
+            br.borrower_reminder_hours,
+            br.admin_reminder_hours,
+            br.borrower_reminded_at,
+            br.admin_reminded_at,
+            CASE
+                WHEN br.expected_return_time IS NULL OR br.borrower_reminder_hours IS NULL OR br.borrower_reminder_hours <= 0 THEN NULL
+                WHEN br.borrower_reminded_at IS NULL THEN br.expected_return_time
+                ELSE DATE_ADD(br.borrower_reminded_at, INTERVAL br.borrower_reminder_hours HOUR)
+            END AS next_borrower_reminder_time,
+            CASE
+                WHEN br.expected_return_time IS NULL OR br.admin_reminder_hours IS NULL OR br.admin_reminder_hours <= 0 THEN NULL
+                WHEN br.admin_reminded_at IS NULL THEN DATE_ADD(br.expected_return_time, INTERVAL br.admin_reminder_hours HOUR)
+                ELSE DATE_ADD(br.admin_reminded_at, INTERVAL br.admin_reminder_hours HOUR)
+            END AS next_admin_reminder_time,
             br.return_time,
             br.status,
             br.remark
@@ -138,6 +164,20 @@
             br.return_operator_name,
             br.borrow_time,
             br.expected_return_time,
+            br.borrower_reminder_hours,
+            br.admin_reminder_hours,
+            br.borrower_reminded_at,
+            br.admin_reminded_at,
+            CASE
+                WHEN br.expected_return_time IS NULL OR br.borrower_reminder_hours IS NULL OR br.borrower_reminder_hours <= 0 THEN NULL
+                WHEN br.borrower_reminded_at IS NULL THEN br.expected_return_time
+                ELSE DATE_ADD(br.borrower_reminded_at, INTERVAL br.borrower_reminder_hours HOUR)
+            END AS next_borrower_reminder_time,
+            CASE
+                WHEN br.expected_return_time IS NULL OR br.admin_reminder_hours IS NULL OR br.admin_reminder_hours <= 0 THEN NULL
+                WHEN br.admin_reminded_at IS NULL THEN DATE_ADD(br.expected_return_time, INTERVAL br.admin_reminder_hours HOUR)
+                ELSE DATE_ADD(br.admin_reminded_at, INTERVAL br.admin_reminder_hours HOUR)
+            END AS next_admin_reminder_time,
             br.return_time,
             br.status,
             br.remark
@@ -147,5 +187,91 @@
         LEFT JOIN cabinet_slot cs ON br.slot_id = cs.id AND cs.deleted = 0
         WHERE br.deleted = 0 AND br.id = #{id}
     </select>
+
+    <select id="selectDueReminders" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.id,
+            br.item_id,
+            i.name AS item_name,
+            i.category,
+            i.spec,
+            br.cabinet_id,
+            c.cabinet_no,
+            c.name AS cabinet_name,
+            br.slot_id,
+            cs.slot_no,
+            br.quantity,
+            br.returned_quantity,
+            (br.quantity - br.returned_quantity) AS pending_quantity,
+            br.borrower,
+            br.borrow_operator,
+            br.borrow_operator_no,
+            br.borrow_operator_name,
+            br.return_operator,
+            br.return_operator_no,
+            br.return_operator_name,
+            br.borrow_time,
+            br.expected_return_time,
+            br.borrower_reminder_hours,
+            br.admin_reminder_hours,
+            br.borrower_reminded_at,
+            br.admin_reminded_at,
+            CASE
+                WHEN br.expected_return_time IS NULL OR br.borrower_reminder_hours IS NULL OR br.borrower_reminder_hours <= 0 THEN NULL
+                WHEN br.borrower_reminded_at IS NULL THEN br.expected_return_time
+                ELSE DATE_ADD(br.borrower_reminded_at, INTERVAL br.borrower_reminder_hours HOUR)
+            END AS next_borrower_reminder_time,
+            CASE
+                WHEN br.expected_return_time IS NULL OR br.admin_reminder_hours IS NULL OR br.admin_reminder_hours <= 0 THEN NULL
+                WHEN br.admin_reminded_at IS NULL THEN DATE_ADD(br.expected_return_time, INTERVAL br.admin_reminder_hours HOUR)
+                ELSE DATE_ADD(br.admin_reminded_at, INTERVAL br.admin_reminder_hours HOUR)
+            END AS next_admin_reminder_time,
+            br.return_time,
+            br.status,
+            br.remark
+        FROM item_borrow_record br
+        LEFT JOIN item i ON br.item_id = i.id AND i.deleted = 0
+        LEFT JOIN cabinet c ON br.cabinet_id = c.id AND c.deleted = 0
+        LEFT JOIN cabinet_slot cs ON br.slot_id = cs.id AND cs.deleted = 0
+        WHERE br.deleted = 0
+          AND br.status IN (0, 2)
+          AND br.expected_return_time IS NOT NULL
+          AND (
+              (#{reminderType} = 'borrower'
+                  AND br.borrower_reminder_hours IS NOT NULL
+                  AND br.borrower_reminder_hours > 0
+                  AND (
+                      (br.borrower_reminded_at IS NULL AND br.expected_return_time <= NOW())
+                      OR (br.borrower_reminded_at IS NOT NULL AND DATE_ADD(br.borrower_reminded_at, INTERVAL br.borrower_reminder_hours HOUR) <= NOW())
+                  )
+              )
+              OR
+              (#{reminderType} = 'admin'
+                  AND br.admin_reminder_hours IS NOT NULL
+                  AND br.admin_reminder_hours > 0
+                  AND (
+                      (br.admin_reminded_at IS NULL AND DATE_ADD(br.expected_return_time, INTERVAL br.admin_reminder_hours HOUR) <= NOW())
+                      OR (br.admin_reminded_at IS NOT NULL AND DATE_ADD(br.admin_reminded_at, INTERVAL br.admin_reminder_hours HOUR) <= NOW())
+                  )
+              )
+          )
+        ORDER BY br.expected_return_time ASC, br.id ASC
+    </select>
+
+    <update id="updateBorrowerRemindedAt">
+        UPDATE item_borrow_record
+        SET borrower_reminded_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="updateAdminRemindedAt">
+        UPDATE item_borrow_record
+        SET admin_reminded_at = NOW(),
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
 
 </mapper>

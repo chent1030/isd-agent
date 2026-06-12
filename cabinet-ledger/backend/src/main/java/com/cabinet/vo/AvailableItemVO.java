@@ -12,6 +12,8 @@ public class AvailableItemVO {
     private Integer cabinetQuantity;
     private Boolean authRequired;
     private Boolean authorized;
+    private Integer borrowerReminderHours;
+    private Integer adminReminderHours;
     private Integer cabinetNo;
     private String cabinetName;
     private Integer slotNo;
@@ -41,6 +43,10 @@ public class AvailableItemVO {
     public void setAuthRequired(Boolean authRequired) { this.authRequired = authRequired; }
     public Boolean getAuthorized() { return authorized; }
     public void setAuthorized(Boolean authorized) { this.authorized = authorized; }
+    public Integer getBorrowerReminderHours() { return borrowerReminderHours; }
+    public void setBorrowerReminderHours(Integer borrowerReminderHours) { this.borrowerReminderHours = borrowerReminderHours; }
+    public Integer getAdminReminderHours() { return adminReminderHours; }
+    public void setAdminReminderHours(Integer adminReminderHours) { this.adminReminderHours = adminReminderHours; }
     public Integer getCabinetNo() { return cabinetNo; }
     public void setCabinetNo(Integer cabinetNo) { this.cabinetNo = cabinetNo; }
     public String getCabinetName() { return cabinetName; }

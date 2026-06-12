@@ -89,6 +89,9 @@
             <div class="card-header">
               <span>鐗╁搧鍩虹淇℃伅</span>
               <div>
+                <el-button type="warning" size="small" @click="openStockReminderDialog">
+                  库存提醒
+                </el-button>
                 <el-button type="success" size="small" @click="handleItemImport">
                   <el-icon><Upload /></el-icon>瀵煎叆
                 </el-button>
@@ -121,6 +124,8 @@
             <el-table-column prop="quantity" label="物品库存" width="100" />
             <el-table-column prop="slotQuantity" label="格口数量" width="100" />
             <el-table-column prop="borrowedQuantity" label="外借数量" width="100" />
+            <el-table-column prop="borrowerReminderHours" label="借用人提醒(h)" width="130" />
+            <el-table-column prop="adminReminderHours" label="管理员提醒(h)" width="130" />
             <el-table-column prop="warningQuantity" label="棰勮鏁伴噺" width="100" />
             <el-table-column prop="maxQuantity" label="最大库存" width="100" />
             <el-table-column prop="cabinetName" label="鏌滃瓙鍚嶇О" width="140" />
@@ -181,6 +186,14 @@
         <el-form-item label="最大库存">
           <el-input-number v-model="itemForm.maxQuantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
+        <el-form-item label="借用人提醒">
+          <el-input-number v-model="itemForm.borrowerReminderHours" :precision="0" :step="1" :min="0" />
+          <span class="unit">小时</span>
+        </el-form-item>
+        <el-form-item label="管理员提醒">
+          <el-input-number v-model="itemForm.adminReminderHours" :precision="0" :step="1" :min="0" />
+          <span class="unit">小时</span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="itemDialogVisible = false">鍙栨秷</el-button>
@@ -220,6 +233,28 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="stockReminderDialogVisible" title="库存提醒" width="760px">
+      <el-table :data="stockReminderData" v-loading="stockReminderLoading" border>
+        <el-table-column prop="reminderType" label="类型" width="130">
+          <template #default="{ row }">
+            <el-tag :type="row.reminderType === 'ITEM_STOCK_WARNING' ? 'warning' : 'danger'">
+              {{ stockReminderTypeText(row.reminderType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="itemName" label="物品" min-width="120" />
+        <el-table-column prop="quantity" label="物品库存" width="100" />
+        <el-table-column prop="warningQuantity" label="预警值" width="90" />
+        <el-table-column prop="cabinetName" label="柜子" width="130" />
+        <el-table-column prop="slotNo" label="格口" width="80" />
+        <el-table-column prop="slotQuantity" label="格口数量" width="100" />
+        <el-table-column prop="message" label="提醒内容" min-width="220" />
+      </el-table>
+      <template #footer>
+        <el-button @click="stockReminderDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <input
       ref="itemImportFileInput"
       type="file"
@@ -235,7 +270,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getLedgerList, exportLedger } from '../../api/ledger.js'
 import { getCabinetList } from '../../api/cabinet.js'
-import { getItemList, saveItem, saveItemStock, exportItem, exportItemImportTemplate, importItem } from '../../api/item.js'
+import { getItemList, getItemStockReminders, saveItem, saveItemStock, exportItem, exportItemImportTemplate, importItem } from '../../api/item.js'
 
 const activeTab = ref('ledger')
 const ledgerLoading = ref(false)
@@ -248,6 +283,9 @@ const itemDialogVisible = ref(false)
 const itemForm = ref({})
 const stockDialogVisible = ref(false)
 const stockForm = ref({})
+const stockReminderDialogVisible = ref(false)
+const stockReminderLoading = ref(false)
+const stockReminderData = ref([])
 
 const queryForm = ref({
   cabinetId: '',
@@ -388,7 +426,7 @@ const handleItemFileChange = async (event) => {
 const openItemDialog = (row) => {
   itemForm.value = row
     ? { ...row }
-    : { name: '', category: '', spec: '', standardWeight: 0, useType: 0, authRequired: 0, warningQuantity: 0, maxQuantity: 0 }
+    : { name: '', category: '', spec: '', standardWeight: 0, useType: 0, authRequired: 0, warningQuantity: 0, maxQuantity: 0, borrowerReminderHours: 24, adminReminderHours: 48 }
   itemDialogVisible.value = true
 }
 
@@ -425,6 +463,21 @@ const handleSaveStock = async () => {
     stockDialogVisible.value = false
     fetchItemData()
   }
+}
+
+const openStockReminderDialog = async () => {
+  stockReminderDialogVisible.value = true
+  stockReminderLoading.value = true
+  try {
+    const res = await getItemStockReminders()
+    stockReminderData.value = res || []
+  } finally {
+    stockReminderLoading.value = false
+  }
+}
+
+const stockReminderTypeText = (type) => {
+  return ({ ITEM_STOCK_WARNING: '库存预警', SLOT_QUANTITY_LOW: '格口低量' })[type] || '提醒'
 }
 
 const downloadBlob = (blob, filename) => {

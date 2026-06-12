@@ -18,4 +18,10 @@ public interface ItemBorrowRecordMapper {
                                                     @Param("borrower") String borrower);
 
     ItemBorrowRecordVO selectBorrowRecordById(@Param("id") Long id);
+
+    List<ItemBorrowRecordVO> selectDueReminders(@Param("reminderType") String reminderType);
+
+    int updateBorrowerRemindedAt(@Param("id") Long id);
+
+    int updateAdminRemindedAt(@Param("id") Long id);
 }

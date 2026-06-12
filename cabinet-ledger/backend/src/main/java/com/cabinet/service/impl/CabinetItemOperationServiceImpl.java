@@ -188,7 +188,10 @@ public class CabinetItemOperationServiceImpl implements CabinetItemOperationServ
                                String operatorName,
                                String remark,
                                String fallbackOperator) {
-        if (itemMapper.decreaseStock(context.item().getId(), context.quantity()) <= 0) {
+        int stockRows = operationType == 2
+                ? itemMapper.decreaseStockAndIncreaseBorrowed(context.item().getId(), context.quantity())
+                : itemMapper.decreaseStock(context.item().getId(), context.quantity());
+        if (stockRows <= 0) {
             throw new IllegalArgumentException("物品库存不足");
         }
         LocalDateTime now = LocalDateTime.now();
@@ -218,6 +221,8 @@ public class CabinetItemOperationServiceImpl implements CabinetItemOperationServ
             record.setBorrowOperatorName(resolveOperatorName(dto.getOperatorName(), fallbackOperator));
             record.setBorrowTime(now);
             record.setExpectedReturnTime(dto.getExpectedReturnTime());
+            record.setBorrowerReminderHours(resolveReminderHours(dto.getBorrowerReminderHours(), context.item().getBorrowerReminderHours()));
+            record.setAdminReminderHours(resolveReminderHours(dto.getAdminReminderHours(), context.item().getAdminReminderHours()));
             record.setStatus(0);
             record.setRemark(dto.getRemark());
             record.setCreatedAt(now);
@@ -323,6 +328,17 @@ public class CabinetItemOperationServiceImpl implements CabinetItemOperationServ
             throw new IllegalArgumentException("数量必须大于0");
         }
         return quantity;
+    }
+
+    private Integer resolveReminderHours(Integer requestHours, Integer itemHours) {
+        Integer hours = requestHours == null ? itemHours : requestHours;
+        if (hours == null) {
+            return null;
+        }
+        if (hours < 0) {
+            throw new IllegalArgumentException("提醒周期不能为负数");
+        }
+        return hours;
     }
 
     private static class OperationContext {
