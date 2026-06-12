@@ -325,6 +325,27 @@ public class CabinetItemOperationServiceImpl implements CabinetItemOperationServ
         return quantity;
     }
 
-    private record OperationContext(Item item, int quantity, String action) {
+    private static class OperationContext {
+        private final Item item;
+        private final int quantity;
+        private final String action;
+
+        private OperationContext(Item item, int quantity, String action) {
+            this.item = item;
+            this.quantity = quantity;
+            this.action = action;
+        }
+
+        private Item item() {
+            return item;
+        }
+
+        private int quantity() {
+            return quantity;
+        }
+
+        private String action() {
+            return action;
+        }
     }
 }

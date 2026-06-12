@@ -50,9 +50,75 @@ public class CabinetAllocationPolicy {
         return allocations;
     }
 
-    public record AllocatableSlot(Long slotId, String cabinetId, Integer cabinetNo, Integer slotNo, int quantity) {
+    public static class AllocatableSlot {
+        private final Long slotId;
+        private final String cabinetId;
+        private final Integer cabinetNo;
+        private final Integer slotNo;
+        private final int quantity;
+
+        public AllocatableSlot(Long slotId, String cabinetId, Integer cabinetNo, Integer slotNo, int quantity) {
+            this.slotId = slotId;
+            this.cabinetId = cabinetId;
+            this.cabinetNo = cabinetNo;
+            this.slotNo = slotNo;
+            this.quantity = quantity;
+        }
+
+        public Long slotId() {
+            return slotId;
+        }
+
+        public String cabinetId() {
+            return cabinetId;
+        }
+
+        public Integer cabinetNo() {
+            return cabinetNo;
+        }
+
+        public Integer slotNo() {
+            return slotNo;
+        }
+
+        public int quantity() {
+            return quantity;
+        }
     }
 
-    public record SlotAllocation(Long slotId, String cabinetId, Integer cabinetNo, Integer slotNo, int quantity) {
+    public static class SlotAllocation {
+        private final Long slotId;
+        private final String cabinetId;
+        private final Integer cabinetNo;
+        private final Integer slotNo;
+        private final int quantity;
+
+        public SlotAllocation(Long slotId, String cabinetId, Integer cabinetNo, Integer slotNo, int quantity) {
+            this.slotId = slotId;
+            this.cabinetId = cabinetId;
+            this.cabinetNo = cabinetNo;
+            this.slotNo = slotNo;
+            this.quantity = quantity;
+        }
+
+        public Long slotId() {
+            return slotId;
+        }
+
+        public String cabinetId() {
+            return cabinetId;
+        }
+
+        public Integer cabinetNo() {
+            return cabinetNo;
+        }
+
+        public Integer slotNo() {
+            return slotNo;
+        }
+
+        public int quantity() {
+            return quantity;
+        }
     }
 }
