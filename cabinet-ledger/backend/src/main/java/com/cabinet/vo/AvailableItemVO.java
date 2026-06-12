@@ -7,8 +7,17 @@ public class AvailableItemVO {
     private String spec;
     private Integer useType;
     private Integer stock;
+    private Integer itemStock;
+    private Integer slotQuantity;
+    private Integer cabinetQuantity;
+    private Boolean authRequired;
+    private Boolean authorized;
     private Integer cabinetNo;
+    private String cabinetName;
     private Integer slotNo;
+    private Long slotId;
+    private Boolean enabled;
+    private String status;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -22,8 +31,26 @@ public class AvailableItemVO {
     public void setUseType(Integer useType) { this.useType = useType; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public Integer getItemStock() { return itemStock; }
+    public void setItemStock(Integer itemStock) { this.itemStock = itemStock; }
+    public Integer getSlotQuantity() { return slotQuantity; }
+    public void setSlotQuantity(Integer slotQuantity) { this.slotQuantity = slotQuantity; }
+    public Integer getCabinetQuantity() { return cabinetQuantity; }
+    public void setCabinetQuantity(Integer cabinetQuantity) { this.cabinetQuantity = cabinetQuantity; }
+    public Boolean getAuthRequired() { return authRequired; }
+    public void setAuthRequired(Boolean authRequired) { this.authRequired = authRequired; }
+    public Boolean getAuthorized() { return authorized; }
+    public void setAuthorized(Boolean authorized) { this.authorized = authorized; }
     public Integer getCabinetNo() { return cabinetNo; }
     public void setCabinetNo(Integer cabinetNo) { this.cabinetNo = cabinetNo; }
+    public String getCabinetName() { return cabinetName; }
+    public void setCabinetName(String cabinetName) { this.cabinetName = cabinetName; }
     public Integer getSlotNo() { return slotNo; }
     public void setSlotNo(Integer slotNo) { this.slotNo = slotNo; }
+    public Long getSlotId() { return slotId; }
+    public void setSlotId(Long slotId) { this.slotId = slotId; }
+    public Boolean getEnabled() { return enabled; }
+    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

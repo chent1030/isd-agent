@@ -15,6 +15,17 @@
         SELECT * FROM cabinet_slot WHERE item_id = #{itemId} AND deleted = 0 LIMIT 1
     </select>
 
+    <select id="selectByItemIdForAllocation" resultType="com.cabinet.entity.CabinetSlot">
+        SELECT cs.*
+        FROM cabinet_slot cs
+        INNER JOIN cabinet c ON c.id = cs.cabinet_id AND c.deleted = 0 AND c.status = 1
+        WHERE cs.item_id = #{itemId}
+          AND cs.deleted = 0
+          AND COALESCE(cs.status, 0) != 2
+          AND COALESCE(cs.item_quantity, 0) > 0
+        ORDER BY cs.item_quantity ASC, c.cabinet_no ASC, cs.slot_no ASC
+    </select>
+
     <select id="selectByCabinetIdAndSlotNo" resultType="com.cabinet.entity.CabinetSlot">
         SELECT *
         FROM cabinet_slot
@@ -47,9 +58,9 @@
 
     <insert id="insert" parameterType="com.cabinet.entity.CabinetSlot" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO cabinet_slot
-        (cabinet_id, slot_no, item_id, board_addr, lock_number, sensor_id, weight_limit, status, created_at, deleted)
+        (cabinet_id, slot_no, item_id, board_addr, lock_number, sensor_id, weight_limit, item_quantity, status, created_at, deleted)
         VALUES
-        (#{cabinetId}, #{slotNo}, #{itemId}, #{boardAddr}, #{lockNumber}, #{sensorId}, #{weightLimit}, #{status}, #{createdAt}, COALESCE(#{deleted}, 0))
+        (#{cabinetId}, #{slotNo}, #{itemId}, #{boardAddr}, #{lockNumber}, #{sensorId}, #{weightLimit}, #{itemQuantity}, #{status}, #{createdAt}, COALESCE(#{deleted}, 0))
     </insert>
 
     <update id="updateById" parameterType="com.cabinet.entity.CabinetSlot">
@@ -61,9 +72,25 @@
             lock_number = #{lockNumber},
             sensor_id = #{sensorId},
             weight_limit = #{weightLimit},
+            item_quantity = #{itemQuantity},
             status = #{status},
             created_at = #{createdAt}
         WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="decreaseItemQuantity">
+        UPDATE cabinet_slot
+        SET item_quantity = item_quantity - #{quantity}
+        WHERE id = #{slotId}
+          AND deleted = 0
+          AND COALESCE(item_quantity, 0) >= #{quantity}
+    </update>
+
+    <update id="increaseItemQuantity">
+        UPDATE cabinet_slot
+        SET item_quantity = COALESCE(item_quantity, 0) + #{quantity}
+        WHERE id = #{slotId}
+          AND deleted = 0
     </update>
 
 </mapper>

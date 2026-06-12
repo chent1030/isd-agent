@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabinet.mapper.ItemAuthorizationMapper">
+
+    <resultMap id="AuthorizationResultMap" type="com.cabinet.vo.ItemAuthorizationVO">
+        <id column="id" property="id"/>
+        <result column="item_id" property="itemId"/>
+        <result column="item_name" property="itemName"/>
+        <result column="employee_no" property="employeeNo"/>
+        <result column="employee_name" property="employeeName"/>
+        <result column="valid_from" property="validFrom"/>
+        <result column="valid_to" property="validTo"/>
+        <result column="enabled" property="enabled"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultType="com.cabinet.entity.ItemAuthorization">
+        SELECT * FROM item_authorization WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="countValidAuthorization" resultType="int">
+        SELECT COUNT(1)
+        FROM item_authorization
+        WHERE item_id = #{itemId}
+          AND employee_no = #{employeeNo}
+          AND enabled = 1
+          AND deleted = 0
+          AND (valid_from IS NULL OR valid_from <= NOW())
+          AND (valid_to IS NULL OR valid_to >= NOW())
+    </select>
+
+    <select id="selectList" resultMap="AuthorizationResultMap">
+        SELECT
+            ia.id,
+            ia.item_id,
+            i.name AS item_name,
+            ia.employee_no,
+            ia.employee_name,
+            ia.valid_from,
+            ia.valid_to,
+            ia.enabled,
+            ia.remark,
+            ia.created_at,
+            ia.updated_at
+        FROM item_authorization ia
+        LEFT JOIN item i ON i.id = ia.item_id AND i.deleted = 0
+        WHERE ia.deleted = 0
+        <if test="itemId != null">
+            AND ia.item_id = #{itemId}
+        </if>
+        <if test="employeeNo != null and employeeNo != ''">
+            AND ia.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+        </if>
+        ORDER BY ia.updated_at DESC, ia.id DESC
+    </select>
+
+    <insert id="insert" parameterType="com.cabinet.entity.ItemAuthorization" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO item_authorization
+        (item_id, employee_no, employee_name, valid_from, valid_to, enabled, remark, created_at, updated_at, deleted)
+        VALUES
+        (#{itemId}, #{employeeNo}, #{employeeName}, #{validFrom}, #{validTo}, #{enabled}, #{remark}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+    </insert>
+
+    <update id="updateById" parameterType="com.cabinet.entity.ItemAuthorization">
+        UPDATE item_authorization
+        SET item_id = #{itemId},
+            employee_no = #{employeeNo},
+            employee_name = #{employeeName},
+            valid_from = #{validFrom},
+            valid_to = #{validTo},
+            enabled = #{enabled},
+            remark = #{remark},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="deleteById">
+        UPDATE item_authorization
+        SET deleted = 1,
+            updated_at = NOW()
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+</mapper>

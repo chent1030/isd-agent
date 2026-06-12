@@ -26,6 +26,36 @@ export interface CabinetTwinData {
   updatedAt: string
 }
 
+export interface CabinetCategory {
+  id: string
+  name: string
+  itemCount: number
+}
+
+export interface CabinetItemLocation {
+  cabinetNo: string
+  cabinetName?: string
+  slotNo: number
+  quantity: number
+  enabled: boolean
+  status: string
+}
+
+export interface CabinetCatalogItem {
+  id: string
+  name: string
+  categoryId: string
+  category: string
+  spec?: string
+  useType?: number
+  stock: number
+  cabinetQuantity: number
+  restricted: boolean
+  authorized: boolean
+  authRequired: boolean
+  locations: CabinetItemLocation[]
+}
+
 export interface BorrowRecord {
   id: string | number
   itemId: string | number
@@ -50,6 +80,13 @@ export interface CabinetOperationPayload {
   operator: { empName: string; empWorkNo: string }
 }
 
+export interface CabinetItemOperationPayload {
+  action: 'receive' | 'borrow'
+  itemId: string | number
+  quantity: number
+  operator: { empName: string; empWorkNo: string }
+}
+
 export interface CabinetReturnPayload {
   borrowRecordId: string | number
   itemId: string | number
@@ -61,7 +98,10 @@ export interface CabinetReturnPayload {
 export interface ElectronAPI {
   recognizeFace: (imageBase64: string) => Promise<{ empName: string; empWorkNo: string } | null>
   getCabinetTwinData: (operator?: { empName: string; empWorkNo: string }) => Promise<CabinetTwinData>
+  getCabinetCategories: () => Promise<CabinetCategory[]>
+  getCabinetCatalogItems: (categoryId?: string) => Promise<CabinetCatalogItem[]>
   operateCabinetSlot: (payload: CabinetOperationPayload) => Promise<unknown>
+  operateCabinetItem: (payload: CabinetItemOperationPayload) => Promise<unknown>
   getOpenBorrowRecords: (operator: { empName: string; empWorkNo: string }) => Promise<BorrowRecord[]>
   returnBorrowRecord: (payload: CabinetReturnPayload) => Promise<unknown>
   getAppConfig: () => Promise<{

@@ -20,7 +20,9 @@ public interface ItemMapper {
 
     int updateById(Item item);
 
+    int decreaseStock(@Param("itemId") Long itemId, @Param("quantity") Integer quantity);
+
     List<ItemStockVO> selectItemStockList();
 
-    List<AvailableItemVO> selectAvailableItems();
+    List<AvailableItemVO> selectAvailableItems(@Param("operatorNo") String operatorNo);
 }

@@ -12,6 +12,7 @@ public class Item {
     private Integer useType;
     private Integer warningQuantity;
     private Integer maxQuantity;
+    private Integer authRequired;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer deleted;
@@ -32,6 +33,8 @@ public class Item {
     public void setWarningQuantity(Integer warningQuantity) { this.warningQuantity = warningQuantity; }
     public Integer getMaxQuantity() { return maxQuantity; }
     public void setMaxQuantity(Integer maxQuantity) { this.maxQuantity = maxQuantity; }
+    public Integer getAuthRequired() { return authRequired; }
+    public void setAuthRequired(Integer authRequired) { this.authRequired = authRequired; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

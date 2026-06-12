@@ -7,8 +7,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getCabinetTwinData: (operator?: object) =>
     ipcRenderer.invoke('cabinet:twin-data', { operator }),
+  getCabinetCategories: () =>
+    ipcRenderer.invoke('cabinet:categories'),
+  getCabinetCatalogItems: (categoryId?: string) =>
+    ipcRenderer.invoke('cabinet:catalog-items', { categoryId }),
   operateCabinetSlot: (payload: object) =>
     ipcRenderer.invoke('cabinet:operate-slot', payload),
+  operateCabinetItem: (payload: object) =>
+    ipcRenderer.invoke('cabinet:operate-item', payload),
   getOpenBorrowRecords: (operator: object) =>
     ipcRenderer.invoke('cabinet:open-borrow-records', { operator }),
   returnBorrowRecord: (payload: object) =>

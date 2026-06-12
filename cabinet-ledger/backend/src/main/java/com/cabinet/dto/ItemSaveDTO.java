@@ -11,6 +11,7 @@ public class ItemSaveDTO {
     private Integer useType;
     private Integer warningQuantity;
     private Integer maxQuantity;
+    private Integer authRequired;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -28,4 +29,6 @@ public class ItemSaveDTO {
     public void setWarningQuantity(Integer warningQuantity) { this.warningQuantity = warningQuantity; }
     public Integer getMaxQuantity() { return maxQuantity; }
     public void setMaxQuantity(Integer maxQuantity) { this.maxQuantity = maxQuantity; }
+    public Integer getAuthRequired() { return authRequired; }
+    public void setAuthRequired(Integer authRequired) { this.authRequired = authRequired; }
 }

@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as THREE from 'three'
 import type {
   BorrowRecord,
-  CabinetSlotStatus,
-  CabinetTwinCabinet,
-  CabinetTwinData,
-  CabinetTwinSlot,
+  CabinetCatalogItem,
+  CabinetCategory,
 } from './types/electron'
 
 type Operator = { empName: string; empWorkNo: string }
@@ -14,85 +11,13 @@ type FaceState = 'idle' | 'camera' | 'recognizing' | 'success' | 'failed' | 'unm
 
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
+const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
 
-const fallbackTwinData: CabinetTwinData = {
-  updatedAt: new Date().toISOString(),
-  cabinets: [
-    { cabinetNo: '1', name: '双排柜', columnCount: 2, rowCount: 6, slots: createFallbackSlots('1', 2, 6) },
-    { cabinetNo: '2', name: '三排柜', columnCount: 3, rowCount: 6, slots: createFallbackSlots('2', 3, 6) },
-  ],
-}
-
-function createFallbackSlots(cabinetNo: string, columnCount: number, rowCount: number): CabinetTwinSlot[] {
-  return Array.from({ length: columnCount * rowCount }, (_, index) => ({
-    cabinetNo,
-    slotNo: index + 1,
-    itemId: null,
-    itemName: '',
-    category: '',
-    spec: '',
-    useType: null,
-    quantity: 0,
-    minQuantity: 2,
-    status: 'empty',
-  }))
-}
-
-function toPositiveInteger(value: unknown, fallback: number) {
-  const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
-}
-
-function normalizeSlotStatus(value: unknown): CabinetSlotStatus {
-  return value === 'available' || value === 'low' || value === 'depleted' || value === 'empty' || value === 'fault'
-    ? value
-    : 'empty'
-}
-
-function normalizeSlot(rawSlot: Partial<CabinetTwinSlot> | undefined, cabinetNo: string, slotNo: number): CabinetTwinSlot {
-  return {
-    cabinetNo,
-    slotNo,
-    itemId: rawSlot?.itemId ? String(rawSlot.itemId) : null,
-    itemName: String(rawSlot?.itemName || ''),
-    category: String(rawSlot?.category || ''),
-    spec: String(rawSlot?.spec || ''),
-    useType: rawSlot?.useType === null || rawSlot?.useType === undefined ? null : Number(rawSlot.useType),
-    quantity: toPositiveInteger(rawSlot?.quantity, 0),
-    minQuantity: toPositiveInteger(rawSlot?.minQuantity, 2),
-    status: normalizeSlotStatus(rawSlot?.status),
-  }
-}
-
-function normalizeTwinData(value: unknown): CabinetTwinData {
-  const rawData = value as Partial<CabinetTwinData> | null | undefined
-  const rawCabinets = Array.isArray(rawData?.cabinets) ? rawData.cabinets : []
-  const cabinets = fallbackTwinData.cabinets.map((fallbackCabinet, index) => {
-    const rawCabinet = rawCabinets[index] as Partial<CabinetTwinCabinet> | undefined
-    const cabinetNo = String(rawCabinet?.cabinetNo || fallbackCabinet.cabinetNo)
-    const columnCount = toPositiveInteger(rawCabinet?.columnCount, fallbackCabinet.columnCount)
-    const rowCount = toPositiveInteger(rawCabinet?.rowCount, fallbackCabinet.rowCount)
-    const rawSlots = Array.isArray(rawCabinet?.slots) ? rawCabinet.slots : []
-    const totalSlots = columnCount * rowCount
-    const slots = Array.from({ length: totalSlots }, (_, slotIndex) => {
-      const slotNo = slotIndex + 1
-      const rawSlot = rawSlots.find(slot => Number(slot?.slotNo) === slotNo) as Partial<CabinetTwinSlot> | undefined
-      return normalizeSlot(rawSlot, cabinetNo, slotNo)
-    })
-
-    return {
-      cabinetNo,
-      name: String(rawCabinet?.name || fallbackCabinet.name),
-      columnCount,
-      rowCount,
-      slots,
-    }
-  })
-
-  return {
-    cabinets,
-    updatedAt: typeof rawData?.updatedAt === 'string' ? rawData.updatedAt : new Date().toISOString(),
-  }
+interface CameraPreference {
+  deviceId: string
+  groupId?: string
+  label?: string
+  savedAt: string
 }
 
 function useClock() {
@@ -113,14 +38,42 @@ function formatDateTime(value?: string) {
   return date.toLocaleString('zh-CN', { hour12: false })
 }
 
-function slotStatusLabel(status: CabinetSlotStatus) {
-  return {
-    available: '可用',
-    low: '库存低',
-    depleted: '已空',
-    empty: '未绑定',
-    fault: '故障',
-  }[status] || '未知'
+function readCameraPreference(): CameraPreference | null {
+  try {
+    const raw = window.localStorage.getItem(CAMERA_PREFERENCE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CameraPreference
+    return parsed?.deviceId ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function saveCameraPreference(track: MediaStreamTrack) {
+  const settings = track.getSettings()
+  const deviceId = settings.deviceId
+  if (!deviceId) return
+
+  const preference: CameraPreference = {
+    deviceId,
+    groupId: settings.groupId,
+    label: track.label,
+    savedAt: new Date().toISOString(),
+  }
+  window.localStorage.setItem(CAMERA_PREFERENCE_KEY, JSON.stringify(preference))
+}
+
+async function getPreferredCameraConstraints(): Promise<MediaStreamConstraints> {
+  const baseVideo = { width: { ideal: 960 }, height: { ideal: 720 } }
+  const preference = readCameraPreference()
+  if (!preference?.deviceId || !navigator.mediaDevices?.enumerateDevices) {
+    return { video: { ...baseVideo, facingMode: 'user' } }
+  }
+
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  const matched = devices.some(device => device.kind === 'videoinput' && device.deviceId === preference.deviceId)
+  if (!matched) return { video: { ...baseVideo, facingMode: 'user' } }
+  return { video: { ...baseVideo, deviceId: { exact: preference.deviceId } } }
 }
 
 function useTypeLabel(useType: number | null) {
@@ -128,507 +81,6 @@ function useTypeLabel(useType: number | null) {
   if (useType === 1) return '借用'
   if (useType === 2) return '领用 / 借用'
   return '未配置'
-}
-
-function canReceive(slot: CabinetTwinSlot | null) {
-  return Boolean(slot?.itemId && slot.quantity > 0 && slot.useType !== 1)
-}
-
-function canBorrow(slot: CabinetTwinSlot | null) {
-  return Boolean(slot?.itemId && slot.quantity > 0 && (slot.useType === 1 || slot.useType === 2))
-}
-
-function slotColor(status: CabinetSlotStatus) {
-  if (status === 'available') return '#2ec8ff'
-  if (status === 'low') return '#f6b73c'
-  if (status === 'depleted' || status === 'fault') return '#ff5c7a'
-  return '#5e7380'
-}
-
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, fontSize: number, minSize = 12) {
-  let size = fontSize
-  do {
-    ctx.font = `700 ${size}px "Noto Sans SC", "Microsoft YaHei", sans-serif`
-    if (ctx.measureText(text).width <= maxWidth) return size
-    size -= 1
-  } while (size >= minSize)
-  return minSize
-}
-
-function createSlotLabelTexture(slot: CabinetTwinSlot) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 768
-  canvas.height = 384
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return null
-
-  const color = slotColor(slot.status)
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-  gradient.addColorStop(0, '#ffffff')
-  gradient.addColorStop(1, '#eef6fa')
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-  ctx.strokeStyle = color
-  ctx.lineWidth = 10
-  ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28)
-
-  ctx.fillStyle = color
-  ctx.fillRect(0, 0, 118, 88)
-  ctx.fillStyle = '#ffffff'
-  ctx.font = '700 54px Rajdhani, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(String(slot.slotNo), 59, 45)
-
-  const itemName = slot.itemName || '未绑定'
-  const nameSize = fitText(ctx, itemName, 560, 62, 30)
-  ctx.font = `700 ${nameSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = slot.itemId ? '#183545' : '#8498a4'
-  ctx.fillText(itemName, 144, 112)
-
-  ctx.font = '500 34px "Noto Sans SC", "Microsoft YaHei", sans-serif'
-  ctx.fillStyle = '#607887'
-  ctx.fillText(slot.spec || slotStatusLabel(slot.status), 144, 184)
-
-  ctx.font = '700 52px Rajdhani, "Noto Sans SC", sans-serif'
-  ctx.fillStyle = color
-  ctx.fillText(`剩余 ${slot.quantity}`, 144, 280)
-
-  ctx.font = '500 32px "Noto Sans SC", "Microsoft YaHei", sans-serif'
-  ctx.fillStyle = '#607887'
-  ctx.textAlign = 'right'
-  ctx.fillText(slotStatusLabel(slot.status), 720, 315)
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 4
-  return texture
-}
-
-function CabinetScene({
-  cabinet,
-  selectedSlot,
-  onSelectSlot,
-}: {
-  cabinet: CabinetTwinCabinet
-  selectedSlot: CabinetTwinSlot | null
-  onSelectSlot: (slot: CabinetTwinSlot) => void
-}) {
-  const mountRef = useRef<HTMLDivElement>(null)
-  const [renderError, setRenderError] = useState('')
-  const sceneStateRef = useRef<{
-    renderer: THREE.WebGLRenderer
-    scene: THREE.Scene
-    camera: THREE.PerspectiveCamera
-    slotMeshes: Map<string, THREE.Mesh>
-    frameId: number
-    pointer: THREE.Vector2
-    raycaster: THREE.Raycaster
-    dispose: () => void
-  } | null>(null)
-  const selectedSlotRef = useRef<CabinetTwinSlot | null>(selectedSlot)
-  const slotsRef = useRef<CabinetTwinSlot[]>(cabinet.slots)
-  const onSelectSlotRef = useRef(onSelectSlot)
-
-  useEffect(() => {
-    selectedSlotRef.current = selectedSlot
-  }, [selectedSlot])
-
-  useEffect(() => {
-    slotsRef.current = cabinet.slots
-  }, [cabinet.slots])
-
-  useEffect(() => {
-    onSelectSlotRef.current = onSelectSlot
-  }, [onSelectSlot])
-
-  useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
-
-    setRenderError('')
-    let renderer: THREE.WebGLRenderer | null = null
-
-    const scene = new THREE.Scene()
-    scene.background = null
-    const cabinetGroup = new THREE.Group()
-    cabinetGroup.rotation.y = cabinet.columnCount === 3 ? -0.24 : -0.2
-    cabinetGroup.rotation.x = 0.045
-    scene.add(cabinetGroup)
-
-    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100)
-    camera.position.set(cabinet.columnCount === 3 ? 0.46 : 0.34, 0.24, 8.8)
-    camera.lookAt(0, 0.04, -0.16)
-
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    } catch (error) {
-      console.error('[cabinet-3d] WebGL renderer initialization failed', error)
-      setRenderError('当前设备无法初始化 3D 渲染，已切换为备用柜体视图。')
-      return
-    }
-
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    mount.appendChild(renderer.domElement)
-
-    const ambient = new THREE.AmbientLight(0xffffff, 2.2)
-    scene.add(ambient)
-
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.6)
-    keyLight.position.set(2.4, 6, 5)
-    keyLight.castShadow = true
-    scene.add(keyLight)
-
-    const fillLight = new THREE.PointLight(0x7ec8e6, 8, 12)
-    fillLight.position.set(-3, 2.8, 3.4)
-    scene.add(fillLight)
-
-    const baseMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4f9a6e,
-      metalness: 0.28,
-      roughness: 0.42,
-    })
-    const sideMaterial = new THREE.MeshStandardMaterial({
-      color: 0x67ad7f,
-      metalness: 0.24,
-      roughness: 0.46,
-    })
-    const darkEdgeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2f6f4b,
-      metalness: 0.2,
-      roughness: 0.58,
-    })
-    const cavityMaterial = new THREE.MeshStandardMaterial({
-      color: 0xb5dbc1,
-      metalness: 0.1,
-      roughness: 0.68,
-    })
-    const width = cabinet.columnCount * 1.38 + 0.52
-    const height = cabinet.rowCount * 0.82 + 0.78
-    const depth = 1.42
-
-    const cabinetBox = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), sideMaterial)
-    cabinetBox.position.set(0, 0, -0.58)
-    cabinetBox.castShadow = true
-    cabinetBox.receiveShadow = true
-    cabinetGroup.add(cabinetBox)
-
-    const innerPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(width - 0.3, height - 0.32, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0xcae8d4, metalness: 0.12, roughness: 0.62 }),
-    )
-    innerPanel.position.set(0, 0, 0.18)
-    innerPanel.receiveShadow = true
-    cabinetGroup.add(innerPanel)
-
-    const topCap = new THREE.Mesh(new THREE.BoxGeometry(width + 0.56, 0.32, depth + 0.34), baseMaterial)
-    topCap.position.set(0, height / 2 + 0.2, -0.52)
-    topCap.castShadow = true
-    cabinetGroup.add(topCap)
-
-    const bottomCap = topCap.clone()
-    bottomCap.position.y = -height / 2 - 0.18
-    cabinetGroup.add(bottomCap)
-
-    const leftSide = new THREE.Mesh(new THREE.BoxGeometry(0.28, height + 0.46, depth + 0.28), baseMaterial)
-    leftSide.position.set(-width / 2 - 0.2, 0, -0.52)
-    leftSide.castShadow = true
-    cabinetGroup.add(leftSide)
-
-    const rightSide = leftSide.clone()
-    rightSide.position.x = width / 2 + 0.16
-    cabinetGroup.add(rightSide)
-
-    const frontTopLip = new THREE.Mesh(new THREE.BoxGeometry(width + 0.26, 0.08, 0.18), darkEdgeMaterial)
-    frontTopLip.position.set(0, height / 2 - 0.06, 0.24)
-    frontTopLip.castShadow = true
-    cabinetGroup.add(frontTopLip)
-
-    const frontBottomLip = frontTopLip.clone()
-    frontBottomLip.position.y = -height / 2 + 0.06
-    cabinetGroup.add(frontBottomLip)
-
-    const frontLeftLip = new THREE.Mesh(new THREE.BoxGeometry(0.08, height - 0.1, 0.18), darkEdgeMaterial)
-    frontLeftLip.position.set(-width / 2 + 0.06, 0, 0.24)
-    frontLeftLip.castShadow = true
-    cabinetGroup.add(frontLeftLip)
-
-    const frontRightLip = frontLeftLip.clone()
-    frontRightLip.position.x = width / 2 - 0.06
-    cabinetGroup.add(frontRightLip)
-
-    const rearShadow = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 0.5, height + 0.46, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0x276340, metalness: 0.08, roughness: 0.76 }),
-    )
-    rearShadow.position.set(0.24, -0.08, -1.3)
-    rearShadow.receiveShadow = true
-    cabinetGroup.add(rearShadow)
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(width + 1.8, 2.6),
-      new THREE.MeshStandardMaterial({ color: 0xeaf5ed, metalness: 0.04, roughness: 0.72 }),
-    )
-    floor.rotation.x = -Math.PI / 2
-    floor.position.set(0, -height / 2 - 0.32, 0.08)
-    floor.receiveShadow = true
-    scene.add(floor)
-
-    const slotMeshes = new Map<string, THREE.Mesh>()
-    const doorGeometry = new THREE.BoxGeometry(1.2, 0.68, 0.16)
-    const trimGeometry = new THREE.BoxGeometry(1.36, 0.84, 0.22)
-    const cavityGeometry = new THREE.BoxGeometry(1.28, 0.76, 0.18)
-    const itemGeometry = new THREE.BoxGeometry(0.5, 0.24, 0.3)
-
-    for (const slot of cabinet.slots) {
-      const col = Math.floor((slot.slotNo - 1) / cabinet.rowCount)
-      const row = (slot.slotNo - 1) % cabinet.rowCount
-      const x = (col - (cabinet.columnCount - 1) / 2) * 1.38
-      const y = ((cabinet.rowCount - 1) / 2 - row) * 0.82
-      const color = new THREE.Color(slotColor(slot.status))
-      const cavity = new THREE.Mesh(cavityGeometry, cavityMaterial)
-      cavity.position.set(x, y, 0.22)
-      cavity.receiveShadow = true
-      cabinetGroup.add(cavity)
-
-      const trim = new THREE.Mesh(
-        trimGeometry,
-        new THREE.MeshStandardMaterial({
-          color: 0x4f9a6e,
-          emissive: color,
-          emissiveIntensity: slot.itemId ? 0.035 : 0.012,
-          metalness: 0.28,
-          roughness: 0.46,
-        }),
-      )
-      trim.position.set(x, y, 0.36)
-      trim.castShadow = true
-      trim.receiveShadow = true
-      cabinetGroup.add(trim)
-
-      const door = new THREE.Mesh(
-        doorGeometry,
-        new THREE.MeshPhysicalMaterial({
-          color: slot.itemId ? 0xf7fcf8 : 0xd7eadc,
-          transparent: true,
-          opacity: slot.itemId ? 0.96 : 0.82,
-          roughness: 0.34,
-          metalness: 0.08,
-          transmission: 0,
-          emissive: color,
-          emissiveIntensity: slot.status === 'available' ? 0.025 : 0.018,
-        }),
-      )
-      door.position.set(x, y, 0.52)
-      door.userData.slotKey = `${slot.cabinetNo}-${slot.slotNo}`
-      door.userData.slotNo = slot.slotNo
-      door.castShadow = true
-      door.receiveShadow = true
-      cabinetGroup.add(door)
-      slotMeshes.set(door.userData.slotKey, door)
-
-      const shelf = new THREE.Mesh(
-        new THREE.BoxGeometry(1.16, 0.08, 0.84),
-        new THREE.MeshStandardMaterial({ color: 0x3f855c, metalness: 0.2, roughness: 0.5 }),
-      )
-      shelf.position.set(x, y - 0.36, 0.34)
-      shelf.castShadow = true
-      cabinetGroup.add(shelf)
-
-      if (slot.itemId) {
-        const itemBlock = new THREE.Mesh(
-          itemGeometry,
-          new THREE.MeshStandardMaterial({
-            color: slot.status === 'depleted' ? 0xc8d0d6 : 0xffffff,
-            metalness: 0.08,
-            roughness: 0.42,
-          }),
-        )
-        itemBlock.position.set(x - 0.22, y - 0.14, 0.72)
-        itemBlock.castShadow = true
-        cabinetGroup.add(itemBlock)
-      }
-
-      const labelTexture = createSlotLabelTexture(slot)
-      if (labelTexture) {
-        const label = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.14, 0.6),
-          new THREE.MeshBasicMaterial({
-            map: labelTexture,
-            transparent: true,
-            depthTest: true,
-          }),
-        )
-        label.position.set(x, y, 0.625)
-        label.userData.slotKey = `${slot.cabinetNo}-${slot.slotNo}`
-        label.userData.slotNo = slot.slotNo
-        cabinetGroup.add(label)
-        slotMeshes.set(`${slot.cabinetNo}-${slot.slotNo}-label`, label)
-      }
-    }
-
-    const pointer = new THREE.Vector2()
-    const raycaster = new THREE.Raycaster()
-
-    const resize = () => {
-      const rect = mount.getBoundingClientRect()
-      const width = Math.max(rect.width, 1)
-      const height = Math.max(rect.height, 1)
-      const aspect = width / height
-      const viewHeight = cabinet.rowCount * 0.82 + 1.55
-      const fov = THREE.MathUtils.degToRad(camera.fov)
-      const distance = viewHeight / (2 * Math.tan(fov / 2))
-      camera.aspect = aspect
-      camera.position.x = cabinet.columnCount === 3 ? 0.52 : 0.38
-      camera.position.z = distance + (aspect < 0.8 ? 2.1 : 1.35)
-      camera.lookAt(0, 0.04, -0.16)
-      camera.updateProjectionMatrix()
-      renderer.setSize(width, height, false)
-    }
-
-    const onPointerDown = (event: PointerEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect()
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(pointer, camera)
-      const intersections = raycaster.intersectObjects(Array.from(slotMeshes.values()), false)
-      const first = intersections[0]?.object
-      const slotNo = first?.userData?.slotNo
-      if (!slotNo) return
-      const slot = slotsRef.current.find(current => current.slotNo === slotNo)
-      if (slot) onSelectSlotRef.current(slot)
-    }
-
-    renderer.domElement.addEventListener('pointerdown', onPointerDown)
-    window.addEventListener('resize', resize)
-    resize()
-
-    const animate = () => {
-      const selected = selectedSlotRef.current
-      for (const mesh of slotMeshes.values()) {
-        const selectedKey = selected ? `${selected.cabinetNo}-${selected.slotNo}` : ''
-        const active = Boolean(selectedKey && mesh.userData.slotKey === selectedKey)
-        if (mesh.geometry instanceof THREE.BoxGeometry) {
-          mesh.scale.z = THREE.MathUtils.lerp(mesh.scale.z, active ? 1.55 : 1, 0.1)
-          mesh.position.z = THREE.MathUtils.lerp(mesh.position.z, active ? 0.72 : 0.52, 0.1)
-        } else if (mesh.geometry instanceof THREE.PlaneGeometry) {
-          mesh.position.z = THREE.MathUtils.lerp(mesh.position.z, active ? 0.86 : 0.625, 0.1)
-        }
-      }
-      renderer.render(scene, camera)
-      const state = sceneStateRef.current
-      if (state) state.frameId = window.requestAnimationFrame(animate)
-    }
-
-    const dispose = () => {
-      renderer.domElement.removeEventListener('pointerdown', onPointerDown)
-      window.removeEventListener('resize', resize)
-      const state = sceneStateRef.current
-      if (state?.frameId) window.cancelAnimationFrame(state.frameId)
-      scene.traverse(object => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose()
-          const materials = Array.isArray(object.material) ? object.material : [object.material]
-          materials.forEach(material => {
-            if ('map' in material && material.map) material.map.dispose()
-            material.dispose()
-          })
-        }
-      })
-      renderer.dispose()
-      renderer.domElement.remove()
-    }
-
-    sceneStateRef.current = { renderer, scene, camera, slotMeshes, frameId: 0, pointer, raycaster, dispose }
-    animate()
-
-    return () => {
-      dispose()
-      sceneStateRef.current = null
-    }
-  }, [cabinet])
-
-  if (renderError) {
-    return (
-      <CabinetFallbackGrid
-        cabinet={cabinet}
-        selectedSlot={selectedSlot}
-        message={renderError}
-        onSelectSlot={onSelectSlot}
-      />
-    )
-  }
-
-  return (
-    <div className="twin-3d-viewport">
-      <div ref={mountRef} className="twin-3d-canvas" />
-    </div>
-  )
-}
-
-function CabinetFallbackGrid({
-  cabinet,
-  selectedSlot,
-  message,
-  onSelectSlot,
-}: {
-  cabinet: CabinetTwinCabinet
-  selectedSlot: CabinetTwinSlot | null
-  message?: string
-  onSelectSlot: (slot: CabinetTwinSlot) => void
-}) {
-  return (
-    <div className="twin-fallback-cabinet">
-      {message && <div className="twin-fallback-notice">{message}</div>}
-      <div
-        className="twin-fallback-grid"
-        style={{
-          gridTemplateColumns: `repeat(${cabinet.columnCount}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${cabinet.rowCount}, minmax(0, 1fr))`,
-        }}
-      >
-        {cabinet.slots.map(slot => {
-          const isActive = selectedSlot?.cabinetNo === slot.cabinetNo && selectedSlot.slotNo === slot.slotNo
-          return (
-            <button
-              type="button"
-              key={`${slot.cabinetNo}-${slot.slotNo}`}
-              className={`twin-fallback-slot twin-fallback-slot-${slot.status}${isActive ? ' is-active' : ''}`}
-              onClick={() => onSelectSlot(slot)}
-            >
-              <span>{slot.slotNo}</span>
-              <strong>{slot.itemName || '未绑定'}</strong>
-              <em>{slot.spec || slotStatusLabel(slot.status)}</em>
-              <b>剩余 {slot.quantity}</b>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function CabinetModel({
-  cabinet,
-  selectedSlot,
-  onSelectSlot,
-}: {
-  cabinet: CabinetTwinCabinet
-  selectedSlot: CabinetTwinSlot | null
-  onSelectSlot: (slot: CabinetTwinSlot) => void
-}) {
-  return (
-    <section className="twin-cabinet twin-cabinet-3d" aria-label={cabinet.name}>
-      <CabinetScene cabinet={cabinet} selectedSlot={selectedSlot} onSelectSlot={onSelectSlot} />
-    </section>
-  )
 }
 
 function FaceGate({
@@ -717,9 +169,17 @@ function FaceGate({
     setErrorMsg('')
     setState('camera')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 960 }, height: { ideal: 720 }, facingMode: 'user' },
-      })
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(await getPreferredCameraConstraints())
+      } catch (error) {
+        window.localStorage.removeItem(CAMERA_PREFERENCE_KEY)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 960 }, height: { ideal: 720 }, facingMode: 'user' },
+        })
+      }
+      const videoTrack = stream.getVideoTracks()[0]
+      if (videoTrack) saveCameraPreference(videoTrack)
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
       void runRecognition()
@@ -854,39 +314,45 @@ function QuantityPicker({
   )
 }
 
-function SlotDialog({
-  slot,
+function ItemDialog({
+  item,
   operating,
   onClose,
   onOperate,
 }: {
-  slot: CabinetTwinSlot
+  item: CabinetCatalogItem
   operating: boolean
   onClose: () => void
-  onOperate: (mode: OperationMode, quantity: number, operator: Operator) => Promise<void>
+  onOperate: (item: CabinetCatalogItem, mode: OperationMode, quantity: number, operator: Operator) => Promise<void>
 }) {
-  const [mode, setMode] = useState<OperationMode>(canReceive(slot) ? 'receive' : 'borrow')
+  const [mode, setMode] = useState<OperationMode>(item.useType === 1 ? 'borrow' : 'receive')
   const [quantity, setQuantity] = useState(1)
   const [step, setStep] = useState<'quantity' | 'face'>('quantity')
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setMode(canReceive(slot) ? 'receive' : 'borrow')
+    setMode(item.useType === 1 ? 'borrow' : 'receive')
     setQuantity(1)
     setStep('quantity')
     setError('')
-  }, [slot])
+  }, [item])
 
-  const maxQuantity = Math.max(slot.quantity, 1)
-  const canProceed = slot.itemId && quantity > 0 && quantity <= maxQuantity && !operating
+  const maxQuantity = Math.max(Math.min(item.stock, item.cabinetQuantity), 1)
+  const canReceiveItem = item.stock > 0 && item.cabinetQuantity > 0 && item.useType !== 1
+  const canBorrowItem = item.stock > 0 && item.cabinetQuantity > 0 && (item.useType === 1 || item.useType === 2)
+  const canProceed = quantity > 0 && quantity <= maxQuantity && !operating && (mode === 'receive' ? canReceiveItem : canBorrowItem)
 
   const proceedToFace = () => {
-    if (!slot.itemId) {
-      setError('该格口未绑定物品')
+    if (item.stock <= 0) {
+      setError('物品库存不足')
+      return
+    }
+    if (item.cabinetQuantity <= 0) {
+      setError('柜内可领数量不足，请联系管理员补货')
       return
     }
     if (quantity < 1 || quantity > maxQuantity) {
-      setError(`请输入 1 到 ${maxQuantity} 之间的数量`)
+      setError(`请选择 1 到 ${maxQuantity} 之间的数量`)
       return
     }
     setError('')
@@ -895,37 +361,37 @@ function SlotDialog({
 
   const handleAuthenticated = async (operator: Operator) => {
     setError('')
-    await onOperate(mode, quantity, operator)
+    await onOperate(item, mode, quantity, operator)
   }
 
   return (
     <div className="twin-modal-backdrop" role="dialog" aria-modal="true">
-      <section className="twin-modal twin-slot-dialog">
+      <section className="twin-modal twin-item-dialog">
         <header className="twin-modal-header">
           <div>
-            <span>{slot.cabinetNo} 号柜 / {slot.slotNo} 号格</span>
-            <h3>{slot.itemName || '未绑定物品'}</h3>
+            <span>{item.category || '未分类'}</span>
+            <h3>{item.name}</h3>
           </div>
           <button type="button" className="twin-icon-button" onClick={onClose} aria-label="关闭">×</button>
         </header>
 
-        <div className={step === 'quantity' ? 'twin-slot-dialog-grid twin-slot-dialog-quantity' : 'twin-slot-dialog-grid'}>
+        <div className={step === 'quantity' ? 'twin-item-dialog-grid twin-item-dialog-quantity' : 'twin-item-dialog-grid'}>
           <div className="twin-slot-facts">
             <div>
-              <span>当前库存</span>
-              <strong>{slot.quantity}</strong>
+              <span>物品库存</span>
+              <strong>{item.stock}</strong>
             </div>
             <div>
-              <span>支持动作</span>
-              <strong>{useTypeLabel(slot.useType)}</strong>
+              <span>柜内可领</span>
+              <strong>{item.cabinetQuantity}</strong>
             </div>
             <div>
               <span>规格</span>
-              <strong>{slot.spec || '--'}</strong>
+              <strong>{item.spec || '--'}</strong>
             </div>
             <div>
-              <span>状态</span>
-              <strong>{slotStatusLabel(slot.status)}</strong>
+              <span>授权</span>
+              <strong>{item.authRequired ? '需要授权' : '无需授权'}</strong>
             </div>
           </div>
 
@@ -936,7 +402,7 @@ function SlotDialog({
                   <button
                     type="button"
                     className={mode === 'receive' ? 'is-active' : ''}
-                    disabled={!canReceive(slot)}
+                    disabled={!canReceiveItem}
                     onClick={() => setMode('receive')}
                   >
                     领用
@@ -944,7 +410,7 @@ function SlotDialog({
                   <button
                     type="button"
                     className={mode === 'borrow' ? 'is-active' : ''}
-                    disabled={!canBorrow(slot)}
+                    disabled={!canBorrowItem}
                     onClick={() => setMode('borrow')}
                   >
                     借用
@@ -1089,60 +555,61 @@ function ReturnDialog({
 
 export default function App() {
   const now = useClock()
-  const [twinData, setTwinData] = useState<CabinetTwinData>(fallbackTwinData)
-  const [selectedSlot, setSelectedSlot] = useState<CabinetTwinSlot | null>(null)
-  const [slotDialog, setSlotDialog] = useState<CabinetTwinSlot | null>(null)
+  const [categories, setCategories] = useState<CabinetCategory[]>([])
+  const [items, setItems] = useState<CabinetCatalogItem[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [itemDialog, setItemDialog] = useState<CabinetCatalogItem | null>(null)
   const [returnVisible, setReturnVisible] = useState(false)
   const [borrowRecords, setBorrowRecords] = useState<BorrowRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [operating, setOperating] = useState(false)
-  const [message, setMessage] = useState('系统待机，点击柜体格口后输入数量。')
+  const [message, setMessage] = useState('系统待机，选择类别和物品后输入数量。')
   const [lastOperator, setLastOperator] = useState<Operator | null>(null)
 
-  const refreshTwinData = useCallback(async (operator?: Operator) => {
+  const refreshCatalog = useCallback(async (categoryId = selectedCategoryId) => {
     setLoading(true)
     try {
-      const data = await window.electronAPI.getCabinetTwinData(operator)
-      setTwinData(normalizeTwinData(data))
-      setMessage('柜体数据已同步。')
+      const nextCategories = await window.electronAPI.getCabinetCategories()
+      const nextCategoryId = categoryId || nextCategories[0]?.id || ''
+      const nextItems = nextCategoryId ? await window.electronAPI.getCabinetCatalogItems(nextCategoryId) : []
+      setCategories(nextCategories)
+      setSelectedCategoryId(nextCategoryId)
+      setItems(nextItems)
+      setMessage('物品数据已同步。')
     } catch (error) {
       console.error(error)
-      setMessage(`柜体数据同步失败：${error instanceof Error ? error.message : String(error)}`)
+      setMessage(`物品数据同步失败：${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedCategoryId])
 
   useEffect(() => {
-    void refreshTwinData()
-    const timer = window.setInterval(() => void refreshTwinData(lastOperator || undefined), 30000)
+    void refreshCatalog()
+    const timer = window.setInterval(() => void refreshCatalog(), 30000)
     return () => window.clearInterval(timer)
-  }, [lastOperator, refreshTwinData])
+  }, [refreshCatalog])
 
-  const handleSelectSlot = (slot: CabinetTwinSlot) => {
-    setSelectedSlot(slot)
-    if (!slot.itemId) {
-      setMessage(`${slot.cabinetNo}号柜 ${slot.slotNo}号格尚未绑定物品。`)
-      return
-    }
-    setSlotDialog(slot)
+  const handleSelectCategory = async (categoryId: string) => {
+    setSelectedCategoryId(categoryId)
+    await refreshCatalog(categoryId)
   }
 
-  const handleOperate = async (mode: OperationMode, quantity: number, operator: Operator) => {
-    if (!slotDialog?.itemId) return
+  const handleOperateItem = async (item: CabinetCatalogItem, mode: OperationMode, quantity: number, operator: Operator) => {
     setOperating(true)
     setLastOperator(operator)
     try {
-      await window.electronAPI.operateCabinetSlot({
+      const result = await window.electronAPI.operateCabinetItem({
         action: mode,
-        itemId: slotDialog.itemId,
+        itemId: item.id,
         quantity,
         operator,
       })
-      setMessage(`${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${slotDialog.itemName} x ${quantity}。`)
-      setSlotDialog(null)
-      await refreshTwinData(operator)
+      const openedCount = Array.isArray((result as any)?.locations) ? (result as any).locations.length : 0
+      setMessage(`${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${item.name} x ${quantity}${openedCount ? `，已打开 ${openedCount} 个格口` : ''}。`)
+      setItemDialog(null)
+      await refreshCatalog()
     } catch (error) {
       console.error(error)
       setMessage(`${mode === 'receive' ? '领用' : '借用'}失败：${error instanceof Error ? error.message : String(error)}`)
@@ -1182,7 +649,7 @@ export default function App() {
       })
       setMessage(`${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。`)
       await loadBorrowRecords(lastOperator)
-      await refreshTwinData(lastOperator)
+      await refreshCatalog()
     } catch (error) {
       console.error(error)
       setMessage(`归还失败：${error instanceof Error ? error.message : String(error)}`)
@@ -1198,7 +665,7 @@ export default function App() {
           <h1>行小助物品领用</h1>
         </div>
         <div className="twin-header-actions">
-          <button type="button" className="twin-utility-button" onClick={() => void refreshTwinData(lastOperator || undefined)}>
+          <button type="button" className="twin-utility-button" onClick={() => void refreshCatalog()}>
             {loading ? '同步中' : '刷新数据'}
           </button>
           <button type="button" className="twin-utility-button twin-return-button" onClick={() => setReturnVisible(true)}>
@@ -1211,26 +678,54 @@ export default function App() {
         </div>
       </header>
 
-      <section className="twin-stage">
-        <div className="twin-cabinet-row">
-          {twinData.cabinets.map(cabinet => (
-            <CabinetModel
-              key={cabinet.cabinetNo}
-              cabinet={cabinet}
-              selectedSlot={selectedSlot}
-              onSelectSlot={handleSelectSlot}
-            />
+      <section className="catalog-stage">
+        <aside className="catalog-category-panel">
+          {categories.length === 0 ? (
+            <div className="catalog-empty-state">暂无类别</div>
+          ) : categories.map(category => (
+            <button
+              type="button"
+              key={category.id}
+              className={selectedCategoryId === category.id ? 'catalog-category is-active' : 'catalog-category'}
+              onClick={() => void handleSelectCategory(category.id)}
+            >
+              <strong>{category.name}</strong>
+              <span>{category.itemCount} 种物品</span>
+            </button>
+          ))}
+        </aside>
+
+        <div className="catalog-item-panel">
+          {items.length === 0 ? (
+            <div className="catalog-empty-state">当前类别暂无可用物品</div>
+          ) : items.map(item => (
+            <button
+              type="button"
+              key={item.id}
+              className="catalog-item-card"
+              disabled={item.stock <= 0 || item.cabinetQuantity <= 0}
+              onClick={() => setItemDialog(item)}
+            >
+              <span>{item.category}</span>
+              <strong>{item.name}</strong>
+              <em>{item.spec || '无规格'}</em>
+              <div>
+                <b>库存 {item.stock}</b>
+                <b>柜内 {item.cabinetQuantity}</b>
+              </div>
+              {item.authRequired && <small>需授权</small>}
+            </button>
           ))}
         </div>
 
       </section>
 
-      {slotDialog && (
-        <SlotDialog
-          slot={slotDialog}
+      {itemDialog && (
+        <ItemDialog
+          item={itemDialog}
           operating={operating}
-          onClose={() => setSlotDialog(null)}
-          onOperate={handleOperate}
+          onClose={() => setItemDialog(null)}
+          onOperate={handleOperateItem}
         />
       )}
 

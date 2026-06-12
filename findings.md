@@ -1,32 +1,17 @@
-# Findings
+# 调研记录
 
-## 项目约定
+## 业务结论
+- 后台必须修改，不能只改前端。权限、物品库存、格口分配、扣减和借用记录都必须由后台作为最终裁决。
+- 终端流程：选择类别 -> 选择物品 -> 选择数量 -> 扫脸 -> 后台校验权限 -> 后台返回应开格口 -> 终端开门 -> 后台写业务结果。
+- 物品库存和格口数量是两个概念：领用/借用成功后，两者都要扣减；归还借用后，物品库存和对应借用格口数量都要增加。
+- 如果单个格口能满足请求数量，优先只开一个格口；多个格口都能满足时，选数量最接近请求数量的格口。
+- 授权有效期需要支持开始/结束时间，后台按当前时间判断是否有效。
 
-### API 接口占位符
-所有内部 API 通过 .env 配置，格式：
-- `FACE_API_URL` — 人脸识别，POST，body: `{image: base64}`, 返回 `{empName, empWorkNo}`
-- `STT_API_URL` — 语音转文字，POST multipart/form-data，body: 音频文件，返回 `{text}`
-- `TTS_API_URL` — 文字转语音，POST，body: `{text}`, 返回音频流（binary）
-- `LLM_API_URL` — LLM 对话，POST，支持流式，body: `{messages, stream}`
-- `LLM_API_KEY` — LLM 鉴权 key
-
-### Skills 规范
-每个 skill 是一个目录，包含：
-- `manifest.json`: `{id, name, description, keywords[], requiresAuth}`
-- `index.ts`: 导出 `execute(params, context) => Promise<string>`
-
-### 会话状态
-- 认证用户：`{empName, empWorkNo, authenticatedAt, lastActiveAt}`
-- 未认证用户：`{empName: null, empWorkNo: null}`
-- 超时：2分钟无操作，清除会话，跳转锁屏
-
-### VAD 实现
-使用 Web Audio API：
-- `AudioContext` + `AnalyserNode` 实时检测音量
-- 音量低于阈值持续 1.5s 判定为停止说话
-- 无需第三方库
-
-### TTS 同步
-- LLM 流式输出按句子分割（。！？\n）
-- 每句完成后立即调用 TTS
-- 当前朗读句子高亮显示
+## 当前实现要点
+- 新增 `item.auth_required`，用于标记物品是否需要授权。
+- 新增 `cabinet_slot.item_quantity`，用于记录该格口中当前分配物品数量。
+- 取消 `cabinet_slot.item_id` 唯一限制，允许同一物品分配到多个格口。
+- 新增 `item_authorization`，用于维护物品和人员的授权及有效期。
+- 终端 `operate-item` 和旧 `operate-slot` 都走 `/cabinet/item/operate/plan`、`/cabinet/item/receive`、`/cabinet/item/operate/borrow`。
+- 归还开门改为按借用记录中的 `cabinetNo` 和 `slotNo` 开门，避免同物品多格口时开错门。
+- 后台后续迁移为无 `data` 包装后，终端按顶层字段读取接口返回。

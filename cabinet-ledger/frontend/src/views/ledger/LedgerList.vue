@@ -1,21 +1,21 @@
-<template>
+﻿<template>
   <div class="ledger-list">
     <el-tabs v-model="activeTab">
-      <el-tab-pane label="台账记录" name="ledger">
+      <el-tab-pane label="鍙拌处璁板綍" name="ledger">
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>台账记录</span>
+              <span>鍙拌处璁板綍</span>
               <div>
                 <el-button type="primary" size="small" @click="handleExport">
-                  <el-icon><Download /></el-icon>导出
+                  <el-icon><Download /></el-icon>瀵煎嚭
                 </el-button>
               </div>
             </div>
           </template>
           <el-form :model="queryForm" inline class="query-form">
-            <el-form-item label="柜号">
-              <el-select v-model="queryForm.cabinetId" placeholder="请选择柜号" clearable style="width: 160px">
+            <el-form-item label="鏌滃彿">
+              <el-select v-model="queryForm.cabinetId" placeholder="璇烽€夋嫨鏌滃彿" clearable style="width: 160px">
                 <el-option
                   v-for="item in cabinetOptions"
                   :key="item.value"
@@ -24,40 +24,40 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="操作类型">
-              <el-select v-model="queryForm.operationType" placeholder="请选择类型" clearable style="width: 160px">
-                <el-option label="入库" :value="0" />
-                <el-option label="领用" :value="1" />
-                <el-option label="借用" :value="2" />
-                <el-option label="归还" :value="3" />
+            <el-form-item label="鎿嶄綔绫诲瀷">
+              <el-select v-model="queryForm.operationType" placeholder="璇烽€夋嫨绫诲瀷" clearable style="width: 160px">
+                <el-option label="鍏ュ簱" :value="0" />
+                <el-option label="棰嗙敤" :value="1" />
+                <el-option label="鍊熺敤" :value="2" />
+                <el-option label="褰掕繕" :value="3" />
               </el-select>
             </el-form-item>
             <el-form-item label="状态">
               <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 160px">
-                <el-option label="在库" :value="0" />
+                <el-option label="鍦ㄥ簱" :value="0" />
                 <el-option label="已取出" :value="1" />
-                <el-option label="异常" :value="2" />
+                <el-option label="寮傚父" :value="2" />
               </el-select>
             </el-form-item>
-            <el-form-item label="类别">
+            <el-form-item label="绫诲埆">
               <el-input v-model="queryForm.category" placeholder="请输入类别" clearable style="width: 160px" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleQuery">
-                <el-icon><Search /></el-icon>查询
+                <el-icon><Search /></el-icon>鏌ヨ
               </el-button>
-              <el-button @click="handleReset">重置</el-button>
+              <el-button @click="handleReset">閲嶇疆</el-button>
             </el-form-item>
           </el-form>
 
           <el-table :data="ledgerData" v-loading="ledgerLoading" border>
-            <el-table-column prop="itemName" label="物品名称" />
-            <el-table-column prop="category" label="类别" width="120" />
-            <el-table-column prop="spec" label="规格" width="120" />
-            <el-table-column prop="slotNo" label="格口" width="100" />
-            <el-table-column prop="quantity" label="数量" width="80" />
-            <el-table-column prop="totalWeight" label="重量(g)" width="100" />
-            <el-table-column prop="operationType" label="操作类型" width="100">
+            <el-table-column prop="itemName" label="鐗╁搧鍚嶇О" />
+            <el-table-column prop="category" label="绫诲埆" width="120" />
+            <el-table-column prop="spec" label="瑙勬牸" width="120" />
+            <el-table-column prop="slotNo" label="鏍煎彛" width="100" />
+            <el-table-column prop="quantity" label="鏁伴噺" width="80" />
+            <el-table-column prop="totalWeight" label="閲嶉噺(g)" width="100" />
+            <el-table-column prop="operationType" label="鎿嶄綔绫诲瀷" width="100">
               <template #default="{ row }">
                 <el-tag :type="operationTypeTag(row.operationType)">
                   {{ operationTypeText(row.operationType) }}
@@ -66,7 +66,7 @@
             </el-table-column>
             <el-table-column prop="operatorNo" label="操作人工号" width="120" />
             <el-table-column prop="operatorName" label="操作人姓名" width="120" />
-            <el-table-column prop="storedAt" label="操作时间" width="160" />
+            <el-table-column prop="storedAt" label="鎿嶄綔鏃堕棿" width="160" />
           </el-table>
 
           <div class="pagination">
@@ -83,41 +83,47 @@
         </el-card>
       </el-tab-pane>
 
-      <el-tab-pane label="物品基础信息" name="items">
+      <el-tab-pane label="鐗╁搧鍩虹淇℃伅" name="items">
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>物品基础信息</span>
+              <span>鐗╁搧鍩虹淇℃伅</span>
               <div>
                 <el-button type="success" size="small" @click="handleItemImport">
-                  <el-icon><Upload /></el-icon>导入
+                  <el-icon><Upload /></el-icon>瀵煎叆
                 </el-button>
                 <el-button size="small" @click="handleItemTemplateExport">
-                  <el-icon><Download /></el-icon>导入模板
+                  <el-icon><Download /></el-icon>瀵煎叆妯℃澘
                 </el-button>
                 <el-button type="primary" size="small" @click="handleItemExport">
-                  <el-icon><Download /></el-icon>导出
+                  <el-icon><Download /></el-icon>瀵煎嚭
                 </el-button>
-                <el-button type="primary" size="small" @click="openItemDialog()">新增物品</el-button>
+                <el-button type="primary" size="small" @click="openItemDialog()">鏂板鐗╁搧</el-button>
               </div>
             </div>
           </template>
 
           <el-table :data="itemData" border v-loading="itemLoading">
-            <el-table-column prop="name" label="物品名称" />
-            <el-table-column prop="category" label="类别" width="120" />
-            <el-table-column prop="spec" label="规格" width="160" />
-            <el-table-column prop="standardWeight" label="标准重量(g)" width="140" />
-            <el-table-column prop="useType" label="使用类型" width="110">
+            <el-table-column prop="name" label="鐗╁搧鍚嶇О" />
+            <el-table-column prop="category" label="绫诲埆" width="120" />
+            <el-table-column prop="spec" label="瑙勬牸" width="160" />
+            <el-table-column prop="standardWeight" label="鏍囧噯閲嶉噺(g)" width="140" />
+            <el-table-column prop="useType" label="浣跨敤绫诲瀷" width="110">
               <template #default="{ row }">
                 {{ useTypeText(row.useType) }}
               </template>
             </el-table-column>
-            <el-table-column prop="quantity" label="柜内库存" width="100" />
+            <el-table-column prop="authRequired" label="授权" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.authRequired ? 'warning' : 'info'">{{ row.authRequired ? '需要' : '不需要' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="quantity" label="物品库存" width="100" />
+            <el-table-column prop="slotQuantity" label="格口数量" width="100" />
             <el-table-column prop="borrowedQuantity" label="外借数量" width="100" />
-            <el-table-column prop="warningQuantity" label="预警数量" width="100" />
+            <el-table-column prop="warningQuantity" label="棰勮鏁伴噺" width="100" />
             <el-table-column prop="maxQuantity" label="最大库存" width="100" />
-            <el-table-column prop="cabinetName" label="柜子名称" width="140" />
+            <el-table-column prop="cabinetName" label="鏌滃瓙鍚嶇О" width="140" />
             <el-table-column prop="slotNo" label="格口号" width="90" />
             <el-table-column prop="stockStatus" label="库存状态" width="100">
               <template #default="{ row }">
@@ -126,11 +132,11 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="updatedAt" label="更新时间" width="170" />
-            <el-table-column label="操作" width="150">
+            <el-table-column prop="updatedAt" label="鏇存柊鏃堕棿" width="170" />
+            <el-table-column label="鎿嶄綔" width="150">
               <template #default="{ row }">
-                <el-button size="small" @click="openItemDialog(row)">编辑</el-button>
-                <el-button size="small" type="primary" @click="openStockDialog(row)">库存</el-button>
+                <el-button size="small" @click="openItemDialog(row)">缂栬緫</el-button>
+                <el-button size="small" type="primary" @click="openStockDialog(row)">搴撳瓨</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -138,61 +144,70 @@
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="itemDialogVisible" title="物品信息" width="520px">
+    <el-dialog v-model="itemDialogVisible" title="鐗╁搧淇℃伅" width="520px">
       <el-form :model="itemForm" label-width="110px">
-        <el-form-item label="名称">
+        <el-form-item label="鍚嶇О">
           <el-input v-model="itemForm.name" />
         </el-form-item>
-        <el-form-item label="类别">
+        <el-form-item label="绫诲埆">
           <el-input v-model="itemForm.category" />
         </el-form-item>
-        <el-form-item label="规格">
+        <el-form-item label="瑙勬牸">
           <el-input v-model="itemForm.spec" />
         </el-form-item>
-        <el-form-item label="标准重量">
+        <el-form-item label="鏍囧噯閲嶉噺">
           <el-input-number v-model="itemForm.standardWeight" :precision="0" :step="1" :min="0" />
           <span class="unit">g</span>
         </el-form-item>
-        <el-form-item label="使用类型">
+        <el-form-item label="浣跨敤绫诲瀷">
           <el-select v-model="itemForm.useType" style="width: 220px">
-            <el-option label="领用" :value="0" />
-            <el-option label="借用" :value="1" />
-            <el-option label="领用/借用" :value="2" />
+            <el-option label="棰嗙敤" :value="0" />
+            <el-option label="鍊熺敤" :value="1" />
+            <el-option label="棰嗙敤/鍊熺敤" :value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item label="预警数量">
+        <el-form-item label="棰勮鏁伴噺">
           <el-input-number v-model="itemForm.warningQuantity" :precision="0" :step="1" :min="0" />
+        </el-form-item>
+        <el-form-item label="领用授权">
+          <el-switch
+            v-model="itemForm.authRequired"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="需要"
+            inactive-text="不需要"
+          />
         </el-form-item>
         <el-form-item label="最大库存">
           <el-input-number v-model="itemForm.maxQuantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="itemDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveItem">保存</el-button>
+        <el-button @click="itemDialogVisible = false">鍙栨秷</el-button>
+        <el-button type="primary" @click="handleSaveItem">淇濆瓨</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="stockDialogVisible" title="库存修正" width="520px">
+    <el-dialog v-model="stockDialogVisible" title="搴撳瓨淇" width="520px">
       <el-form :model="stockForm" label-width="120px">
-        <el-form-item label="物品">
+        <el-form-item label="鐗╁搧">
           <el-input :model-value="stockForm.name" disabled />
         </el-form-item>
-        <el-form-item label="当前库存">
+        <el-form-item label="褰撳墠搴撳瓨">
           <el-input-number v-model="stockForm.quantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
         <el-form-item label="外借数量">
           <el-input-number v-model="stockForm.borrowedQuantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
-        <el-form-item label="台账重量">
+        <el-form-item label="鍙拌处閲嶉噺">
           <el-input-number v-model="stockForm.ledgerWeight" :precision="0" :step="1" :min="0" />
           <span class="unit">g</span>
         </el-form-item>
-        <el-form-item label="实际重量">
+        <el-form-item label="瀹為檯閲嶉噺">
           <el-input-number v-model="stockForm.actualWeight" :precision="0" :step="1" :min="0" />
           <span class="unit">g</span>
         </el-form-item>
-        <el-form-item label="预警数量">
+        <el-form-item label="棰勮鏁伴噺">
           <el-input-number v-model="stockForm.warningQuantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
         <el-form-item label="最大库存">
@@ -200,8 +215,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="stockDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveStock">保存</el-button>
+        <el-button @click="stockDialogVisible = false">鍙栨秷</el-button>
+        <el-button type="primary" @click="handleSaveStock">淇濆瓨</el-button>
       </template>
     </el-dialog>
 
@@ -281,7 +296,7 @@ const fetchCabinetOptions = async () => {
     if (res) {
       cabinetOptions.value = (res || []).map(item => ({
         value: item.id,
-        label: `${item.name}（柜号 ${item.cabinetNo}）`
+        label: `${item.name}（柜号${item.cabinetNo}）`
       }))
     }
   } catch (error) {
@@ -319,10 +334,10 @@ const handleCurrentChange = (val) => {
 const handleExport = async () => {
   try {
     const res = await exportLedger(queryForm.value)
-    downloadBlob(res, '物品台账_' + new Date().toLocaleDateString() + '.xlsx')
-    ElMessage.success('导出成功')
+    downloadBlob(res, '鐗╁搧鍙拌处_' + new Date().toLocaleDateString() + '.xlsx')
+    ElMessage.success('瀵煎嚭鎴愬姛')
   } catch (error) {
-    ElMessage.error('导出失败')
+    ElMessage.error('瀵煎嚭澶辫触')
     console.error(error)
   }
 }
@@ -330,10 +345,10 @@ const handleExport = async () => {
 const handleItemExport = async () => {
   try {
     const res = await exportItem()
-    downloadBlob(res, '物品基础信息_' + new Date().toLocaleDateString() + '.xlsx')
-    ElMessage.success('导出成功')
+    downloadBlob(res, '鐗╁搧鍩虹淇℃伅_' + new Date().toLocaleDateString() + '.xlsx')
+    ElMessage.success('瀵煎嚭鎴愬姛')
   } catch (error) {
-    ElMessage.error('导出失败')
+    ElMessage.error('瀵煎嚭澶辫触')
     console.error(error)
   }
 }
@@ -345,10 +360,10 @@ const handleItemImport = () => {
 const handleItemTemplateExport = async () => {
   try {
     const res = await exportItemImportTemplate()
-    downloadBlob(res, '物品基础信息导入模板.xlsx')
+    downloadBlob(res, '鐗╁搧鍩虹淇℃伅瀵煎叆妯℃澘.xlsx')
     ElMessage.success('模板已导出')
   } catch (error) {
-    ElMessage.error('模板导出失败')
+    ElMessage.error('妯℃澘瀵煎嚭澶辫触')
     console.error(error)
   }
 }
@@ -359,12 +374,12 @@ const handleItemFileChange = async (event) => {
   try {
     const res = await importItem(file)
     if (res) {
-      ElMessage.success(res.data || '导入成功')
+      ElMessage.success(res.data || '瀵煎叆鎴愬姛')
       fetchItemData()
       fetchLedgerData()
     }
   } catch (error) {
-    ElMessage.error('导入失败')
+    ElMessage.error('瀵煎叆澶辫触')
     console.error(error)
   }
   event.target.value = ''
@@ -373,14 +388,14 @@ const handleItemFileChange = async (event) => {
 const openItemDialog = (row) => {
   itemForm.value = row
     ? { ...row }
-    : { name: '', category: '', spec: '', standardWeight: 0, useType: 0, warningQuantity: 0, maxQuantity: 0 }
+    : { name: '', category: '', spec: '', standardWeight: 0, useType: 0, authRequired: 0, warningQuantity: 0, maxQuantity: 0 }
   itemDialogVisible.value = true
 }
 
 const handleSaveItem = async () => {
   const res = await saveItem(itemForm.value)
   if (res) {
-    ElMessage.success('保存成功')
+    ElMessage.success('淇濆瓨鎴愬姛')
     itemDialogVisible.value = false
     fetchItemData()
     fetchLedgerData()
@@ -425,7 +440,7 @@ const downloadBlob = (blob, filename) => {
 
 const stockStatusText = (status) => {
   const map = { 0: '正常', 1: '低库存', 2: '超库存', 3: '重量异常' }
-  return map[status] || '未知'
+  return map[status] || '鏈煡'
 }
 
 const stockStatusTag = (status) => {
@@ -434,11 +449,11 @@ const stockStatusTag = (status) => {
 }
 
 const useTypeText = (type) => {
-  return ({ 0: '领用', 1: '借用', 2: '领用/借用' })[type] || '领用'
+  return ({ 0: '棰嗙敤', 1: '鍊熺敤', 2: '棰嗙敤/鍊熺敤' })[type] || '棰嗙敤'
 }
 
 const operationTypeText = (type) => {
-  return ({ 0: '入库', 1: '领用', 2: '借用', 3: '归还' })[type] || '未知'
+  return ({ 0: '鍏ュ簱', 1: '棰嗙敤', 2: '鍊熺敤', 3: '褰掕繕' })[type] || '鏈煡'
 }
 
 const operationTypeTag = (type) => {

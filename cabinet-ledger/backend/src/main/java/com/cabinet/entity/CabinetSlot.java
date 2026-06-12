@@ -12,6 +12,7 @@ public class CabinetSlot {
     private String lockNumber;
     private String sensorId;
     private BigDecimal weightLimit;
+    private Integer itemQuantity;
     private Integer status;
     private LocalDateTime createdAt;
     private Integer deleted;
@@ -32,6 +33,8 @@ public class CabinetSlot {
     public void setSensorId(String sensorId) { this.sensorId = sensorId; }
     public BigDecimal getWeightLimit() { return weightLimit; }
     public void setWeightLimit(BigDecimal weightLimit) { this.weightLimit = weightLimit; }
+    public Integer getItemQuantity() { return itemQuantity; }
+    public void setItemQuantity(Integer itemQuantity) { this.itemQuantity = itemQuantity; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }

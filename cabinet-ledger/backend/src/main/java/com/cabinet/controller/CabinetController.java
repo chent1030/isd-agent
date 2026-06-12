@@ -11,11 +11,16 @@ import com.cabinet.service.OperationLogService;
 import com.cabinet.util.WeightUnitUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.util.StringUtils;
-
 import java.io.IOException;
 import java.util.List;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/cabinet")
@@ -63,7 +68,6 @@ public class CabinetController {
         if (slot == null) {
             throw new IllegalArgumentException("该物品未绑定格口");
         }
-
         Cabinet cabinet = cabinetService.getById(slot.getCabinetId());
         if (cabinet == null || cabinet.getStatus() == null || cabinet.getStatus() != 1) {
             throw new IllegalArgumentException("该物品绑定的柜子未启用");
@@ -110,15 +114,8 @@ public class CabinetController {
                 itemStockService.clearSlotBinding(oldSlot.getItemId(), oldSlot.getId());
             }
             itemStockService.syncSlotBinding(slot);
-        }
-        if (success) {
-            operationLogService.record(
-                    slot.getCabinetId(),
-                    operatorOrDefault(operator),
-                    "SLOT_SAVE",
-                    "保存格口配置：" + slot.getSlotNo() + "，物品：" + slot.getItemId(),
-                    request.getRemoteAddr()
-            );
+            operationLogService.record(slot.getCabinetId(), operatorOrDefault(operator), "SLOT_SAVE",
+                    "保存格口配置：" + slot.getSlotNo() + "，物品：" + slot.getItemId(), request.getRemoteAddr());
         }
         return Result.success(success);
     }
@@ -139,7 +136,8 @@ public class CabinetController {
         }
         boolean success = cabinetService.saveOrUpdate(cabinet);
         if (success) {
-            operationLogService.record(cabinet.getId(), operatorOrDefault(operator), "CABINET_SAVE", "保存柜子配置：" + cabinet.getName(), request.getRemoteAddr());
+            operationLogService.record(cabinet.getId(), operatorOrDefault(operator), "CABINET_SAVE",
+                    "保存柜子配置：" + cabinet.getName(), request.getRemoteAddr());
         }
         return Result.success(success);
     }
@@ -156,7 +154,8 @@ public class CabinetController {
         cabinet.setStatus(status);
         boolean success = cabinetService.updateById(cabinet);
         if (success) {
-            operationLogService.record(id, operatorOrDefault(operator), "CABINET_STATUS", "修改柜子状态为：" + status, request.getRemoteAddr());
+            operationLogService.record(id, operatorOrDefault(operator), "CABINET_STATUS",
+                    "修改柜子状态为：" + status, request.getRemoteAddr());
         }
         return Result.success(success);
     }
@@ -169,29 +168,15 @@ public class CabinetController {
         ensureCabinetEditable(cabinet, "启用中的柜子不能删除");
         boolean success = cabinetService.removeById(id);
         if (success) {
-            operationLogService.record(id, operatorOrDefault(operator), "CABINET_DELETE", "删除柜子：" + id, request.getRemoteAddr());
+            operationLogService.record(id, operatorOrDefault(operator), "CABINET_DELETE",
+                    "删除柜子：" + id, request.getRemoteAddr());
         }
         return Result.success(success);
     }
 
-    // ==================== 导出 ====================
-
     @GetMapping("/export")
     public void export(HttpServletResponse response) throws IOException {
         excelUtil.exportCabinet(response);
-    }
-
-    private String operatorOrDefault(String operator) {
-        return StringUtils.hasText(operator) ? operator : "admin";
-    }
-
-    private void ensureCabinetEditable(Cabinet cabinet, String message) {
-        if (cabinet == null) {
-            throw new IllegalArgumentException("柜子不存在");
-        }
-        if (cabinet.getStatus() != null && cabinet.getStatus() == 1) {
-            throw new IllegalArgumentException(message);
-        }
     }
 
     private void validateCabinet(Cabinet cabinet) {
@@ -201,10 +186,7 @@ public class CabinetController {
         if (!StringUtils.hasText(cabinet.getId())) {
             throw new IllegalArgumentException("ID不能为空");
         }
-        if (cabinet.getCabinetNo() == null) {
-            throw new IllegalArgumentException("柜号不能为空");
-        }
-        if (cabinet.getCabinetNo() <= 0) {
+        if (cabinet.getCabinetNo() == null || cabinet.getCabinetNo() <= 0) {
             throw new IllegalArgumentException("柜号必须为正整数");
         }
     }
@@ -214,13 +196,19 @@ public class CabinetController {
             throw new IllegalArgumentException("格口配置不能为空");
         }
         if (!StringUtils.hasText(slot.getCabinetId())) {
-            throw new IllegalArgumentException("柜号不能为空");
+            throw new IllegalArgumentException("柜子不能为空");
         }
-        if (slot.getSlotNo() == null) {
-            throw new IllegalArgumentException("格口号不能为空");
-        }
-        if (slot.getSlotNo() <= 0) {
+        if (slot.getSlotNo() == null || slot.getSlotNo() <= 0) {
             throw new IllegalArgumentException("格口号必须为正整数");
+        }
+        if (slot.getItemId() == null) {
+            slot.setItemQuantity(0);
+        }
+        if (slot.getItemQuantity() == null) {
+            slot.setItemQuantity(0);
+        }
+        if (slot.getItemQuantity() < 0) {
+            throw new IllegalArgumentException("格口物品数量不能为负数");
         }
         slot.setWeightLimit(WeightUnitUtil.zeroIfNullIntegerGram(slot.getWeightLimit(), "格口称重上限"));
     }
@@ -236,10 +224,18 @@ public class CabinetController {
         if (cabinetSlotMapper.countByCabinetSlotNo(slot.getCabinetId(), slot.getSlotNo(), slot.getId()) > 0) {
             throw new IllegalArgumentException("同一柜子的格口编号不能重复");
         }
-        if (slot.getItemId() != null) {
-            if (cabinetSlotMapper.countByItemId(slot.getItemId(), slot.getId()) > 0) {
-                throw new IllegalArgumentException("该物品已绑定其他格口");
-            }
+    }
+
+    private void ensureCabinetEditable(Cabinet cabinet, String message) {
+        if (cabinet == null) {
+            throw new IllegalArgumentException("柜子不存在");
         }
+        if (cabinet.getStatus() != null && cabinet.getStatus() == 1) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private String operatorOrDefault(String operator) {
+        return StringUtils.hasText(operator) ? operator : "admin";
     }
 }

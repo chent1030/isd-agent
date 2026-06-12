@@ -5,18 +5,49 @@ interface OperatorIdentity {
   empName?: string
   empWorkNo?: string
 }
-
 interface AvailableItem {
   id: string
   name: string
+  categoryId?: string
   category?: string
   spec?: string
   useType?: number
   stock?: number
+  itemStock?: number
+  restricted?: boolean
+  authorized?: boolean
+  authRequired?: boolean
   cabinetNo?: string
   cabinetName?: string
   slotNo?: number
+  slotQuantity?: number
   minQuantity?: number
+  enabled?: boolean
+  status?: string
+}
+
+interface CabinetItemLocation {
+  cabinetNo: string
+  cabinetName?: string
+  slotNo: number
+  quantity: number
+  enabled: boolean
+  status: string
+}
+
+interface CabinetCatalogItem {
+  id: string
+  name: string
+  categoryId: string
+  category: string
+  spec?: string
+  useType?: number
+  stock: number
+  cabinetQuantity: number
+  restricted: boolean
+  authorized: boolean
+  authRequired: boolean
+  locations: CabinetItemLocation[]
 }
 
 const DEFAULT_CABINET_API_BASE_URL = 'https://cshzeroapi.uabcbattery.com/unify/v1/1'
@@ -118,21 +149,103 @@ function normalizeCabinetNo(value: unknown, fallback: string) {
 }
 
 function normalizeAvailableItem(item: any): AvailableItem {
-  const stock = toNumber(firstDefined(item?.stock, item?.quantity, item?.itemQuantity, item?.availableQuantity), 0)
+  const stock = toNumber(firstDefined(item?.stock, item?.itemStock, item?.totalStock, item?.inventoryQuantity, item?.quantity), 0)
+  const slotQuantity = toNumber(firstDefined(item?.slotQuantity, item?.cabinetQuantity, item?.locationQuantity, item?.gridQuantity, item?.availableQuantity, item?.itemQuantity), stock)
   const rawCabinetNo = firstDefined(item?.cabinetNo, item?.cabinetId, item?.cabinetCode, item?.lockerNo)
   const rawSlotNo = firstDefined(item?.slotNo, item?.gridNo, item?.cellNo, item?.doorNo, item?.lockNo)
+  const authRequired = Boolean(firstDefined(item?.authRequired, item?.restricted, item?.needAuth, item?.permissionRequired))
+  const authorized = firstDefined(item?.authorized, item?.hasPermission, item?.permitted)
   return {
     id: String(item?.id ?? '').trim(),
     name: String(item?.name ?? item?.itemName ?? '').trim(),
-    category: typeof item?.category === 'string' ? item.category : undefined,
+    categoryId: String(firstDefined(item?.categoryId, item?.categoryCode, item?.category) || 'default').trim(),
+    category: String(firstDefined(item?.categoryName, item?.category, item?.typeName) || '未分类').trim(),
     spec: typeof item?.spec === 'string' ? item.spec : undefined,
     useType: Number.isFinite(Number(item?.useType)) ? Number(item.useType) : undefined,
     stock,
+    itemStock: stock,
+    slotQuantity,
+    restricted: authRequired,
+    authRequired,
+    authorized: authorized === undefined ? !authRequired : Boolean(authorized),
     cabinetNo: normalizeCabinetNo(rawCabinetNo, ''),
     cabinetName: typeof item?.cabinetName === 'string' ? item.cabinetName : undefined,
     slotNo: Number.isFinite(Number(rawSlotNo)) ? Number(rawSlotNo) : undefined,
     minQuantity: Number.isFinite(Number(item?.minQuantity)) ? Number(item.minQuantity) : undefined,
+    enabled: item?.enabled === undefined ? true : Boolean(item.enabled),
+    status: String(firstDefined(item?.status, item?.slotStatus) || 'available'),
   }
+}
+
+function isLocationUsable(item: AvailableItem) {
+  const status = String(item.status || 'available').toLowerCase()
+  return Boolean(
+    item.enabled !== false &&
+    item.cabinetNo &&
+    item.slotNo &&
+    (item.slotQuantity ?? 0) > 0 &&
+    status !== 'fault' &&
+    status !== 'disabled' &&
+    status !== 'depleted',
+  )
+}
+
+function buildCatalogItems(items: AvailableItem[]): CabinetCatalogItem[] {
+  const grouped = new Map<string, CabinetCatalogItem>()
+
+  for (const item of items) {
+    const existing = grouped.get(item.id)
+    const next = existing || {
+      id: item.id,
+      name: item.name,
+      categoryId: item.categoryId || item.category || 'default',
+      category: item.category || '未分类',
+      spec: item.spec,
+      useType: item.useType,
+      stock: item.itemStock ?? item.stock ?? 0,
+      cabinetQuantity: 0,
+      restricted: Boolean(item.restricted || item.authRequired),
+      authorized: item.authorized !== false,
+      authRequired: Boolean(item.authRequired || item.restricted),
+      locations: [],
+    }
+
+    next.stock = Math.max(next.stock, item.itemStock ?? item.stock ?? 0)
+    next.cabinetQuantity += isLocationUsable(item) ? item.slotQuantity ?? 0 : 0
+    next.restricted = next.restricted || Boolean(item.restricted || item.authRequired)
+    next.authRequired = next.authRequired || Boolean(item.authRequired || item.restricted)
+    next.authorized = next.authorized && item.authorized !== false
+
+    if (isLocationUsable(item)) {
+      next.locations.push({
+        cabinetNo: item.cabinetNo || '',
+        cabinetName: item.cabinetName,
+        slotNo: item.slotNo || 0,
+        quantity: item.slotQuantity ?? 0,
+        enabled: item.enabled !== false,
+        status: item.status || 'available',
+      })
+    }
+
+    grouped.set(item.id, next)
+  }
+
+  return Array.from(grouped.values()).sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+}
+
+function buildCategories(items: CabinetCatalogItem[]) {
+  const categoryMap = new Map<string, { id: string; name: string; itemCount: number }>()
+  for (const item of items) {
+    const id = item.categoryId || 'default'
+    const current = categoryMap.get(id) || { id, name: item.category || '未分类', itemCount: 0 }
+    current.itemCount += 1
+    categoryMap.set(id, current)
+  }
+  return Array.from(categoryMap.values()).sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+}
+
+function normalizeOperationLocations(payload: any) {
+  return Array.isArray(payload?.locations) ? payload.locations : []
 }
 
 function buildTwinCabinets(items: AvailableItem[]) {
@@ -290,68 +403,76 @@ async function openSlotDoor(item: AvailableItem) {
   return parseOpenLockResponse(response, boardAddr, lockNumber)
 }
 
-async function findAvailableItem(itemId: string | number, operator: OperatorIdentity) {
+async function findCatalogItem(itemId: string | number, operator: OperatorIdentity) {
   const items = await fetchAvailableItems(operator)
-  const item = items.find(current => String(current.id) === String(itemId))
+  const item = buildCatalogItems(items).find(current => String(current.id) === String(itemId))
   if (!item) throw new Error(`未找到物品: ${itemId}`)
-  if (!item.slotNo || !item.cabinetNo) throw new Error(`物品 ${item.name} 未绑定柜体格口`)
   return item
 }
 
-async function executeCabinetAction(params: {
-  action: 'receive' | 'borrow' | 'return'
+async function executeItemAction(params: {
+  action: 'receive' | 'borrow'
   itemId: string | number
   quantity?: number
   operator?: OperatorIdentity
 }) {
   const operator = normalizeOperator(params.operator)
   const quantity = Math.max(Number.parseInt(String(params.quantity ?? 1), 10) || 1, 1)
-  const item = await findAvailableItem(params.itemId, operator)
+  const item = await findCatalogItem(params.itemId, operator)
 
-  if (params.action === 'receive' && item.useType === 1) {
-    throw new Error(`物品 ${item.name} 仅支持借用，不能领用`)
-  }
-  if (params.action === 'borrow' && item.useType === 0) {
-    throw new Error(`物品 ${item.name} 仅支持领用，不能借用`)
-  }
-  if (params.action !== 'return' && (item.stock ?? 0) < quantity) {
-    throw new Error(`库存不足: ${item.name} 当前库存 ${item.stock ?? 0}, 请求数量 ${quantity}`)
+  const plan = await requestCabinet('/cabinet/item/operate/plan', undefined, operator, {
+    method: 'POST',
+    body: JSON.stringify({
+      itemId: item.id,
+      quantity,
+      action: params.action,
+      operatorNo: operator.empWorkNo,
+      operatorName: operator.empName,
+    }),
+  })
+  const locations = normalizeOperationLocations(plan)
+  if (!locations.length) {
+    throw new Error(`后台未返回 ${item.name} 的可开格口`)
   }
 
-  const doorResult = await openSlotDoor(item)
+  const doorResults = []
+  for (const location of locations) {
+    doorResults.push(await openSlotDoor({
+      id: item.id,
+      name: item.name,
+      cabinetNo: location.cabinetNo,
+      slotNo: location.slotNo,
+      stock: location.quantity,
+    }))
+  }
 
-  if (params.action === 'receive') {
-    const stock = await requestCabinet('/cabinet/item/receive', undefined, operator, {
-      method: 'POST',
-      body: JSON.stringify({
+  const endpoint = params.action === 'receive' ? '/cabinet/item/receive' : '/cabinet/item/operate/borrow'
+  const body = params.action === 'receive'
+    ? {
         itemId: item.id,
         quantity,
         operatorNo: operator.empWorkNo,
         operatorName: operator.empName,
+        locations,
         remark: `终端领用：${operator.empName} ${item.name}`,
-      }),
-    })
-    return { item, doorResult, deductResult: { success: true, remainingStock: stock?.quantity ?? 0 }, quantity }
-  }
-
-  if (params.action === 'borrow') {
-    const borrowRecord = await requestCabinet('/cabinet/borrow/borrow', undefined, operator, {
-      method: 'POST',
-      body: JSON.stringify({
+      }
+    : {
         itemId: item.id,
         quantity,
         borrower: operator.empWorkNo,
         operatorNo: operator.empWorkNo,
         operatorName: operator.empName,
+        locations,
         remark: `终端借用：${operator.empName} ${item.name}`,
-      }),
-    })
-    return { item, doorResult, borrowRecord, quantity }
-  }
+      }
 
-  return { item, doorResult, quantity }
+  const businessResult = await requestCabinet(endpoint, undefined, operator, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+
+  return { item, locations, doorResults, businessResult, quantity }
 }
-
 async function fetchOpenBorrowRecords(operator: OperatorIdentity) {
   const safeOperator = normalizeOperator(operator)
   const records: any[] = []
@@ -398,6 +519,16 @@ export function registerCabinetHandlers() {
     return buildTwinCabinets(items)
   })
 
+  ipcMain.handle('cabinet:categories', async () => {
+    const items = buildCatalogItems(await fetchAvailableItems())
+    return buildCategories(items)
+  })
+
+  ipcMain.handle('cabinet:catalog-items', async (_event, { categoryId }: { categoryId?: string } = {}) => {
+    const items = buildCatalogItems(await fetchAvailableItems())
+    return categoryId ? items.filter(item => item.categoryId === categoryId) : items
+  })
+
   ipcMain.handle('cabinet:operate-slot', async (_event, {
     action,
     itemId,
@@ -412,7 +543,24 @@ export function registerCabinetHandlers() {
     const normalizedAction = normalizeAction(action)
     if (normalizedAction === 'return') throw new Error('归还请使用借用记录归还接口')
     if (!itemId) throw new Error('缺少物品 ID')
-    return executeCabinetAction({ action: normalizedAction, itemId, quantity, operator })
+    return executeItemAction({ action: normalizedAction, itemId, quantity, operator })
+  })
+
+  ipcMain.handle('cabinet:operate-item', async (_event, {
+    action,
+    itemId,
+    quantity = 1,
+    operator,
+  }: {
+    action: 'receive' | 'borrow'
+    itemId: string | number
+    quantity?: number
+    operator?: OperatorIdentity
+  }) => {
+    const normalizedAction = normalizeAction(action)
+    if (normalizedAction === 'return') throw new Error('归还请使用借用记录归还接口')
+    if (!itemId) throw new Error('缺少物品 ID')
+    return executeItemAction({ action: normalizedAction, itemId, quantity, operator })
   })
 
   ipcMain.handle('cabinet:open-borrow-records', async (_event, { operator }: { operator?: OperatorIdentity }) => {
@@ -436,7 +584,23 @@ export function registerCabinetHandlers() {
     if (!borrowRecordId) throw new Error('缺少借用记录 ID')
     if (!itemId) throw new Error('缺少归还物品 ID')
 
-    await executeCabinetAction({ action: 'return', itemId, quantity, operator: safeOperator })
+    const recordPayload = await requestCabinet('/cabinet/borrow/list', {
+      status: 0,
+      page: 1,
+      size: 200,
+    }, safeOperator)
+    const record = getPageRecords(recordPayload)
+      .find(current => String(current?.id ?? current?.borrowRecordId ?? '') === String(borrowRecordId))
+    if (!record) throw new Error('未找到可归还的借用记录')
+    if (!record.cabinetNo || !record.slotNo) throw new Error('借用记录缺少柜号或格口号')
+
+    await openSlotDoor({
+      id: String(itemId),
+      name: String(record.itemName || '归还物品'),
+      cabinetNo: record.cabinetNo,
+      slotNo: record.slotNo,
+      stock: quantity,
+    })
     return requestCabinet('/cabinet/borrow/return', undefined, safeOperator, {
       method: 'POST',
       body: JSON.stringify({

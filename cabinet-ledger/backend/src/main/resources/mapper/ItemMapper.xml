@@ -10,7 +10,9 @@
         <result column="spec" property="spec"/>
         <result column="standard_weight" property="standardWeight"/>
         <result column="use_type" property="useType"/>
+        <result column="auth_required" property="authRequired"/>
         <result column="quantity" property="quantity"/>
+        <result column="slot_quantity" property="slotQuantity"/>
         <result column="borrowed_quantity" property="borrowedQuantity"/>
         <result column="ledger_weight" property="ledgerWeight"/>
         <result column="actual_weight" property="actualWeight"/>
@@ -32,8 +34,17 @@
         <result column="spec" property="spec"/>
         <result column="use_type" property="useType"/>
         <result column="stock" property="stock"/>
+        <result column="item_stock" property="itemStock"/>
+        <result column="slot_quantity" property="slotQuantity"/>
+        <result column="cabinet_quantity" property="cabinetQuantity"/>
+        <result column="auth_required" property="authRequired"/>
+        <result column="authorized" property="authorized"/>
         <result column="cabinet_no" property="cabinetNo"/>
+        <result column="cabinet_name" property="cabinetName"/>
         <result column="slot_no" property="slotNo"/>
+        <result column="slot_id" property="slotId"/>
+        <result column="enabled" property="enabled"/>
+        <result column="status_text" property="status"/>
     </resultMap>
 
     <select id="selectAll" resultType="com.cabinet.entity.Item">
@@ -70,9 +81,9 @@
 
     <insert id="insert" parameterType="com.cabinet.entity.Item" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO item
-        (name, category, spec, standard_weight, use_type, warning_quantity, max_quantity, created_at, updated_at, deleted)
+        (name, category, spec, standard_weight, use_type, warning_quantity, max_quantity, auth_required, created_at, updated_at, deleted)
         VALUES
-        (#{name}, #{category}, #{spec}, #{standardWeight}, #{useType}, #{warningQuantity}, #{maxQuantity}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
+        (#{name}, #{category}, #{spec}, #{standardWeight}, #{useType}, #{warningQuantity}, #{maxQuantity}, #{authRequired}, #{createdAt}, #{updatedAt}, COALESCE(#{deleted}, 0))
     </insert>
 
     <update id="updateById" parameterType="com.cabinet.entity.Item">
@@ -84,9 +95,19 @@
             use_type = #{useType},
             warning_quantity = #{warningQuantity},
             max_quantity = #{maxQuantity},
+            auth_required = #{authRequired},
             created_at = #{createdAt},
             updated_at = #{updatedAt}
         WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="decreaseStock">
+        UPDATE item_stock
+        SET quantity = quantity - #{quantity},
+            updated_at = NOW()
+        WHERE item_id = #{itemId}
+          AND deleted = 0
+          AND COALESCE(quantity, 0) >= #{quantity}
     </update>
 
     <select id="selectAvailableItems" resultMap="AvailableItemResultMap">
@@ -97,8 +118,35 @@
             i.spec,
             i.use_type,
             COALESCE(s.quantity, 0) AS stock,
+            COALESCE(s.quantity, 0) AS item_stock,
+            COALESCE(cs.item_quantity, 0) AS slot_quantity,
+            COALESCE(cs.item_quantity, 0) AS cabinet_quantity,
+            COALESCE(i.auth_required, 0) = 1 AS auth_required,
+            CASE
+                WHEN COALESCE(i.auth_required, 0) = 0 THEN TRUE
+                WHEN #{operatorNo} IS NULL OR #{operatorNo} = '' THEN FALSE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM item_authorization ia
+                    WHERE ia.item_id = i.id
+                      AND ia.employee_no = #{operatorNo}
+                      AND ia.enabled = 1
+                      AND ia.deleted = 0
+                      AND (ia.valid_from IS NULL OR ia.valid_from <= NOW())
+                      AND (ia.valid_to IS NULL OR ia.valid_to >= NOW())
+                ) THEN TRUE
+                ELSE FALSE
+            END AS authorized,
             c.cabinet_no,
-            cs.slot_no
+            c.name AS cabinet_name,
+            cs.slot_no,
+            cs.id AS slot_id,
+            COALESCE(cs.status, 0) != 2 AS enabled,
+            CASE
+                WHEN COALESCE(cs.status, 0) = 2 THEN 'fault'
+                WHEN COALESCE(cs.item_quantity, 0) <= 0 THEN 'depleted'
+                ELSE 'available'
+            END AS status_text
         FROM item i
         INNER JOIN cabinet_slot cs ON cs.item_id = i.id AND cs.deleted = 0
         INNER JOIN cabinet c ON c.id = cs.cabinet_id AND c.deleted = 0 AND c.status = 1
@@ -115,7 +163,9 @@
             i.spec,
             i.standard_weight,
             i.use_type,
+            COALESCE(i.auth_required, 0) AS auth_required,
             COALESCE(s.quantity, 0) AS quantity,
+            COALESCE(cs.item_quantity, 0) AS slot_quantity,
             COALESCE(s.borrowed_quantity, 0) AS borrowed_quantity,
             COALESCE(s.ledger_weight, 0) AS ledger_weight,
             COALESCE(s.actual_weight, 0) AS actual_weight,

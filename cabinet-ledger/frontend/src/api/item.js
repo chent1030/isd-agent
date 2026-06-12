@@ -12,12 +12,23 @@ export const saveItemStock = (data) => {
   return request.post('/cabinet/item/stock/save', data)
 }
 
+export const getItemAuthList = (params) => {
+  return request.get('/cabinet/item-auth/list', { params })
+}
+
+export const saveItemAuth = (data) => {
+  return request.post('/cabinet/item-auth/save', data)
+}
+
+export const deleteItemAuth = (id) => {
+  return request.post('/cabinet/item-auth/delete', null, { params: { id } })
+}
+
 export const exportItem = () => {
   return request.get('/cabinet/item/export', {
     responseType: 'blob'
   })
 }
-
 export const exportItemImportTemplate = () => {
   return request.get('/cabinet/item/import-template', {
     responseType: 'blob'

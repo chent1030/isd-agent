@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="cabinet-detail">
     <el-card>
       <template #header>
@@ -57,7 +57,7 @@
             </div>
             <div class="slot-meta">
               <span>上限 {{ slot.weightLimit || 0 }}g</span>
-              <span v-if="slot.itemQuantity !== null">库存 {{ slot.itemQuantity }}</span>
+              <span v-if="slot.itemQuantity !== null">格口数量 {{ slot.itemQuantity }}</span>
             </div>
           </button>
         </div>
@@ -78,6 +78,9 @@
               :value="item.id"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="格口数量">
+          <el-input-number v-model="slotForm.itemQuantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
         <el-form-item label="称重上限">
           <el-input-number v-model="slotForm.weightLimit" :precision="0" :step="1" :min="0" />
@@ -119,7 +122,7 @@ const rowCount = 6
 const columnCount = computed(() => {
   const text = `${detail.value.name || ''}${detail.value.location || ''}`
   const maxSlotNo = slots.value.reduce((max, slot) => Math.max(max, slot.slotNo || 0), 0)
-  if (text.includes('三排') || maxSlotNo > 12) {
+  if (text.includes('涓夋帓') || maxSlotNo > 12) {
     return 3
   }
   return 2
@@ -135,7 +138,7 @@ const physicalSlots = computed(() => {
       slotNo,
       itemId: null,
       itemName: '',
-      itemQuantity: null,
+      itemQuantity: 0,
       weightLimit: 0,
       status: null,
       virtual: true
@@ -161,7 +164,7 @@ const fetchSlots = async () => {
     slots.value = (res || []).map(slot => ({
       ...slot,
       itemName: items.find(item => item.id === slot.itemId)?.name || '',
-      itemQuantity: items.find(item => item.id === slot.itemId)?.quantity ?? null
+      itemQuantity: slot.itemQuantity ?? 0
     }))
   } finally {
     loading.value = false
@@ -171,14 +174,14 @@ const fetchSlots = async () => {
 const openSlotDialog = (row) => {
   slotForm.value = row
     ? { ...row, id: row.virtual ? null : row.id }
-    : { cabinetId: route.params.id, slotNo: null, itemId: null, weightLimit: 0, status: 0 }
+    : { cabinetId: route.params.id, slotNo: null, itemId: null, itemQuantity: 0, weightLimit: 0, status: 0 }
   slotDialogVisible.value = true
 }
 
 const saveSlot = async () => {
   const res = await saveCabinetSlot(slotForm.value)
   if (res) {
-    ElMessage.success('保存成功')
+    ElMessage.success('淇濆瓨鎴愬姛')
     slotDialogVisible.value = false
     fetchSlots()
   }
@@ -188,6 +191,7 @@ const clearSlot = async () => {
   const res = await saveCabinetSlot({
     ...slotForm.value,
     itemId: null,
+    itemQuantity: 0,
     status: 0
   })
   if (res) {

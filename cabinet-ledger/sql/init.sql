@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS cabinet_slot (
     lock_number        VARCHAR(32) DEFAULT NULL COMMENT '锁号',
     sensor_id          VARCHAR(32) DEFAULT NULL COMMENT '称重模块传感器ID',
     weight_limit       DECIMAL(12,0) DEFAULT 0 COMMENT '称重上限（g）',
+    item_quantity      INT DEFAULT 0 COMMENT '当前格口分配物品数量',
     status             TINYINT DEFAULT 0 COMMENT '状态：0-空闲 1-占用 2-故障',
     tare_weight        DECIMAL(12,0) DEFAULT 0 COMMENT '去皮重量（g）',
     calibration_factor DECIMAL(10,6) DEFAULT 1.000000 COMMENT '校准系数',
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS cabinet_slot (
     deleted            TINYINT DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
     PRIMARY KEY (id),
     UNIQUE KEY uk_cabinet_slot (cabinet_id, slot_no),
-    UNIQUE KEY uk_item_id (item_id),
+    KEY idx_item_id (item_id),
     KEY idx_cabinet_id (cabinet_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='柜格口表';
 
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS item (
     use_type        TINYINT DEFAULT 0 COMMENT '使用类型：0-领用 1-借用 2-领用/借用',
     warning_quantity INT DEFAULT 0 COMMENT '库存预警数量',
     max_quantity     INT DEFAULT 0 COMMENT '最大库存数量',
+    auth_required    TINYINT DEFAULT 0 COMMENT '是否需要人员授权：0-不需要 1-需要',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted         TINYINT DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
@@ -124,6 +126,25 @@ CREATE TABLE IF NOT EXISTS item_stock (
     KEY idx_slot_id (slot_id),
     KEY idx_stock_status (stock_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物品库存表';
+
+-- 物品人员授权表
+CREATE TABLE IF NOT EXISTS item_authorization (
+    id            BIGINT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+    item_id       BIGINT NOT NULL COMMENT '授权物品ID',
+    employee_no   VARCHAR(64) NOT NULL COMMENT '授权人员工号',
+    employee_name VARCHAR(64) DEFAULT NULL COMMENT '授权人员姓名',
+    valid_from    DATETIME DEFAULT NULL COMMENT '授权开始时间',
+    valid_to      DATETIME DEFAULT NULL COMMENT '授权结束时间，空表示长期有效',
+    enabled       TINYINT DEFAULT 1 COMMENT '状态：0-停用 1-启用',
+    remark        TEXT COMMENT '备注',
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted       TINYINT DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
+    PRIMARY KEY (id),
+    KEY idx_item_employee (item_id, employee_no),
+    KEY idx_employee_no (employee_no),
+    KEY idx_valid_time (valid_from, valid_to)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物品人员授权表';
 
 -- 物品借用记录表
 CREATE TABLE IF NOT EXISTS item_borrow_record (

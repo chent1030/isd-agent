@@ -10,7 +10,9 @@ public class ItemStockVO {
     private String spec;
     private BigDecimal standardWeight;
     private Integer useType;
+    private Integer authRequired;
     private Integer quantity;
+    private Integer slotQuantity;
     private Integer borrowedQuantity;
     private BigDecimal ledgerWeight;
     private BigDecimal actualWeight;
@@ -36,8 +38,12 @@ public class ItemStockVO {
     public void setStandardWeight(BigDecimal standardWeight) { this.standardWeight = standardWeight; }
     public Integer getUseType() { return useType; }
     public void setUseType(Integer useType) { this.useType = useType; }
+    public Integer getAuthRequired() { return authRequired; }
+    public void setAuthRequired(Integer authRequired) { this.authRequired = authRequired; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public Integer getSlotQuantity() { return slotQuantity; }
+    public void setSlotQuantity(Integer slotQuantity) { this.slotQuantity = slotQuantity; }
     public Integer getBorrowedQuantity() { return borrowedQuantity; }
     public void setBorrowedQuantity(Integer borrowedQuantity) { this.borrowedQuantity = borrowedQuantity; }
     public BigDecimal getLedgerWeight() { return ledgerWeight; }

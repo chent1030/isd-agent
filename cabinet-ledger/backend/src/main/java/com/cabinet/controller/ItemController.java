@@ -1,58 +1,52 @@
 package com.cabinet.controller;
 
-import java.util.List;
-import java.io.IOException;
-
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.util.StringUtils;
-
 import com.cabinet.common.Result;
+import com.cabinet.dto.CabinetItemOperateDTO;
+import com.cabinet.dto.ItemBorrowDTO;
 import com.cabinet.dto.ItemReceiveDTO;
 import com.cabinet.dto.ItemSaveDTO;
-import com.cabinet.entity.CabinetSlot;
 import com.cabinet.entity.Item;
-import com.cabinet.entity.ItemLedger;
 import com.cabinet.entity.ItemStock;
 import com.cabinet.excel.ExcelUtil;
-import com.cabinet.mapper.CabinetSlotMapper;
 import com.cabinet.mapper.ItemMapper;
-import com.cabinet.service.ItemLedgerService;
+import com.cabinet.service.CabinetItemOperationService;
 import com.cabinet.service.ItemStockService;
 import com.cabinet.service.OperationLogService;
 import com.cabinet.util.WeightUnitUtil;
 import com.cabinet.vo.AvailableItemVO;
+import com.cabinet.vo.CabinetOperationVO;
 import com.cabinet.vo.ItemStockVO;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/cabinet/item")
 public class ItemController {
     private final ItemMapper itemMapper;
-    private final CabinetSlotMapper cabinetSlotMapper;
     private final ItemStockService itemStockService;
-    private final ItemLedgerService itemLedgerService;
+    private final CabinetItemOperationService cabinetItemOperationService;
     private final OperationLogService operationLogService;
     private final ExcelUtil excelUtil;
 
     public ItemController(ItemMapper itemMapper,
-                          CabinetSlotMapper cabinetSlotMapper,
                           ItemStockService itemStockService,
-                          ItemLedgerService itemLedgerService,
+                          CabinetItemOperationService cabinetItemOperationService,
                           OperationLogService operationLogService,
                           ExcelUtil excelUtil) {
         this.itemMapper = itemMapper;
-        this.cabinetSlotMapper = cabinetSlotMapper;
         this.itemStockService = itemStockService;
-        this.itemLedgerService = itemLedgerService;
+        this.cabinetItemOperationService = cabinetItemOperationService;
         this.operationLogService = operationLogService;
         this.excelUtil = excelUtil;
     }
@@ -63,45 +57,36 @@ public class ItemController {
     }
 
     @GetMapping("/available")
-    public Result<List<AvailableItemVO>> available() {
-        return Result.success(itemMapper.selectAvailableItems());
+    public Result<List<AvailableItemVO>> available(@RequestHeader(value = "X-Operator", required = false) String operator) {
+        return Result.success(itemMapper.selectAvailableItems(operator));
+    }
+
+    @PostMapping("/operate/plan")
+    public Result<CabinetOperationVO> planOperation(@RequestBody CabinetItemOperateDTO dto,
+                                                   @RequestHeader(value = "X-Operator", required = false) String operator) {
+        return Result.success(cabinetItemOperationService.plan(dto, operatorOrDefault(operator)));
     }
 
     @PostMapping("/receive")
-    public Result<ItemStock> receive(@RequestBody ItemReceiveDTO dto,
-                                     @RequestHeader(value = "X-Operator", required = false) String operator,
-                                     HttpServletRequest request) {
-        Item item = validateReceive(dto);
-        CabinetSlot slot = cabinetSlotMapper.selectByItemId(dto.getItemId());
-        if (slot == null) {
-            throw new IllegalArgumentException("物品未绑定柜子格口");
-        }
-        ItemStock stock = itemStockService.getStockByItemId(dto.getItemId());
-        int currentQuantity = stock == null || stock.getQuantity() == null ? 0 : stock.getQuantity();
-        int quantity = dto.getQuantity();
-        if (currentQuantity < quantity) {
-            throw new IllegalArgumentException("库存不足，当前库存：" + currentQuantity);
-        }
+    public Result<CabinetOperationVO> receive(@RequestBody ItemReceiveDTO dto,
+                                             @RequestHeader(value = "X-Operator", required = false) String operator,
+                                             HttpServletRequest request) {
+        CabinetOperationVO vo = cabinetItemOperationService.receive(dto, operatorOrDefault(operator));
+        operationLogService.record(null, operatorOrDefault(operator), "ITEM_RECEIVE",
+                "领取物品：" + (vo == null ? dto.getItemId() : vo.getItemName()) + "，数量：" + dto.getQuantity(),
+                request.getRemoteAddr());
+        return Result.success(vo);
+    }
 
-        ItemLedger ledger = new ItemLedger();
-        ledger.setItemId(item.getId());
-        ledger.setCabinetId(slot.getCabinetId());
-        ledger.setSlotId(slot.getId());
-        ledger.setQuantity(quantity);
-        ledger.setTotalWeight(WeightUnitUtil.zeroIfNullIntegerGram(item.getStandardWeight(), "标准重量")
-                .multiply(java.math.BigDecimal.valueOf(quantity)));
-        ledger.setOperationType(1);
-        ledger.setStatus(1);
-        ledger.setOperatorNo(StringUtils.hasText(dto.getOperatorNo()) ? dto.getOperatorNo() : operatorOrDefault(operator));
-        ledger.setOperatorName(StringUtils.hasText(dto.getOperatorName()) ? dto.getOperatorName() : operatorOrDefault(operator));
-        ledger.setRemovedBy(ledger.getOperatorNo());
-        ledger.setRemark(StringUtils.hasText(dto.getRemark()) ? dto.getRemark() : "领用物品");
-        boolean success = itemLedgerService.saveLedger(ledger);
-        if (success) {
-            operationLogService.record(slot.getCabinetId(), operatorOrDefault(operator), "ITEM_RECEIVE",
-                    "领用物品：" + item.getName() + "，数量：" + quantity, request.getRemoteAddr());
-        }
-        return Result.success(itemStockService.getStockByItemId(item.getId()));
+    @PostMapping("/operate/borrow")
+    public Result<CabinetOperationVO> borrow(@RequestBody ItemBorrowDTO dto,
+                                            @RequestHeader(value = "X-Operator", required = false) String operator,
+                                            HttpServletRequest request) {
+        CabinetOperationVO vo = cabinetItemOperationService.borrow(dto, operatorOrDefault(operator));
+        operationLogService.record(null, operatorOrDefault(operator), "ITEM_BORROW",
+                "借用物品：" + (vo == null ? dto.getItemId() : vo.getItemName()) + "，数量：" + dto.getQuantity(),
+                request.getRemoteAddr());
+        return Result.success(vo);
     }
 
     @PostMapping("/save")
@@ -116,9 +101,8 @@ public class ItemController {
                 : itemMapper.updateById(item) > 0;
         if (success) {
             itemStockService.updateStockConfig(item.getId(), item.getWarningQuantity(), item.getMaxQuantity());
-        }
-        if (success) {
-            operationLogService.record(null, operatorOrDefault(operator), "ITEM_SAVE", "保存物品：" + item.getName(), request.getRemoteAddr());
+            operationLogService.record(null, operatorOrDefault(operator), "ITEM_SAVE",
+                    "保存物品：" + item.getName(), request.getRemoteAddr());
         }
         return Result.success(success);
     }
@@ -129,7 +113,8 @@ public class ItemController {
                                      HttpServletRequest request) {
         boolean success = itemStockService.adjustStock(stock);
         if (success) {
-            operationLogService.record(stock.getCabinetId(), operatorOrDefault(operator), "STOCK_SAVE", "修正库存，物品：" + stock.getItemId(), request.getRemoteAddr());
+            operationLogService.record(stock.getCabinetId(), operatorOrDefault(operator), "STOCK_SAVE",
+                    "修正库存，物品：" + stock.getItemId(), request.getRemoteAddr());
         }
         return Result.success(success);
     }
@@ -151,12 +136,9 @@ public class ItemController {
         excelUtil.importItem(file.getInputStream());
         itemMapper.selectAll()
                 .forEach(item -> itemStockService.updateStockConfig(item.getId(), item.getWarningQuantity(), item.getMaxQuantity()));
-        operationLogService.record(null, operatorOrDefault(operator), "ITEM_IMPORT", "导入物品基础信息", request.getRemoteAddr());
+        operationLogService.record(null, operatorOrDefault(operator), "ITEM_IMPORT",
+                "导入物品基础信息", request.getRemoteAddr());
         return Result.success("导入成功");
-    }
-
-    private String operatorOrDefault(String operator) {
-        return StringUtils.hasText(operator) ? operator : "admin";
     }
 
     private Item toItem(ItemSaveDTO dto) {
@@ -172,27 +154,14 @@ public class ItemController {
         item.setUseType(dto.getUseType());
         item.setWarningQuantity(dto.getWarningQuantity());
         item.setMaxQuantity(dto.getMaxQuantity());
-        return item;
-    }
-
-    private Item validateReceive(ItemReceiveDTO dto) {
-        if (dto == null || dto.getItemId() == null) {
-            throw new IllegalArgumentException("物品ID不能为空");
-        }
-        if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
-            throw new IllegalArgumentException("领用数量必须大于0");
-        }
-        Item item = itemMapper.selectById(dto.getItemId());
-        if (item == null) {
-            throw new IllegalArgumentException("物品不存在");
-        }
-        if (item.getUseType() != null && item.getUseType() == 1) {
-            throw new IllegalArgumentException("该物品仅支持借用，不能领用");
-        }
+        item.setAuthRequired(dto.getAuthRequired());
         return item;
     }
 
     private void normalizeStockConfig(Item item) {
+        if (!StringUtils.hasText(item.getName())) {
+            throw new IllegalArgumentException("物品名称不能为空");
+        }
         if (item.getWarningQuantity() == null) {
             item.setWarningQuantity(0);
         }
@@ -201,6 +170,9 @@ public class ItemController {
         }
         if (item.getUseType() == null) {
             item.setUseType(0);
+        }
+        if (item.getAuthRequired() == null) {
+            item.setAuthRequired(0);
         }
         if (item.getWarningQuantity() < 0) {
             throw new IllegalArgumentException("预警数量不能为负数");
@@ -211,5 +183,12 @@ public class ItemController {
         if (item.getUseType() < 0 || item.getUseType() > 2) {
             throw new IllegalArgumentException("使用类型不正确");
         }
+        if (item.getAuthRequired() < 0 || item.getAuthRequired() > 1) {
+            throw new IllegalArgumentException("授权开关不正确");
+        }
+    }
+
+    private String operatorOrDefault(String operator) {
+        return StringUtils.hasText(operator) ? operator : "admin";
     }
 }
