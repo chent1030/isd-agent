@@ -6,7 +6,7 @@ import com.cabinet.entity.WeightRecord;
 import com.cabinet.excel.ExcelUtil;
 import com.cabinet.service.WeightRecordService;
 import com.cabinet.vo.WeightReportVO;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;

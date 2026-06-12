@@ -209,17 +209,17 @@ public class ItemLedgerServiceImpl implements ItemLedgerService {
     }
 
     private void normalizeOperator(ItemLedger ledger) {
-        if (ledger.getOperatorNo() == null || ledger.getOperatorNo().isBlank()) {
+        if (ledger.getOperatorNo() == null || ledger.getOperatorNo().trim().isEmpty()) {
             String fallback = ledger.getStatus() != null && ledger.getStatus() == 1 ? ledger.getRemovedBy() : ledger.getStoredBy();
             ledger.setOperatorNo(fallback);
         }
-        if (ledger.getOperatorName() == null || ledger.getOperatorName().isBlank()) {
+        if (ledger.getOperatorName() == null || ledger.getOperatorName().trim().isEmpty()) {
             ledger.setOperatorName(ledger.getOperatorNo());
         }
-        if (ledger.getStatus() != null && ledger.getStatus() == 1 && (ledger.getRemovedBy() == null || ledger.getRemovedBy().isBlank())) {
+        if (ledger.getStatus() != null && ledger.getStatus() == 1 && (ledger.getRemovedBy() == null || ledger.getRemovedBy().trim().isEmpty())) {
             ledger.setRemovedBy(ledger.getOperatorNo());
         }
-        if ((ledger.getStatus() == null || ledger.getStatus() == 0) && (ledger.getStoredBy() == null || ledger.getStoredBy().isBlank())) {
+        if ((ledger.getStatus() == null || ledger.getStatus() == 0) && (ledger.getStoredBy() == null || ledger.getStoredBy().trim().isEmpty())) {
             ledger.setStoredBy(ledger.getOperatorNo());
         }
     }

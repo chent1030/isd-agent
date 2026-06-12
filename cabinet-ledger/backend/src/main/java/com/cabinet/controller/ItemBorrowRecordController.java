@@ -7,7 +7,7 @@ import com.cabinet.service.ItemBorrowRecordService;
 import com.cabinet.service.OperationLogService;
 import com.cabinet.vo.ItemBorrowRecordVO;
 import io.choerodon.core.domain.Page;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

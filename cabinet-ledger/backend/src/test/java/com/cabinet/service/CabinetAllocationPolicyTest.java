@@ -2,6 +2,7 @@ package com.cabinet.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,7 @@ class CabinetAllocationPolicyTest {
 
     @Test
     void prefersSingleSlotThatCanSatisfyQuantity() {
-        List<CabinetAllocationPolicy.SlotAllocation> allocations = policy.allocate(List.of(
+        List<CabinetAllocationPolicy.SlotAllocation> allocations = policy.allocate(Arrays.asList(
                 new CabinetAllocationPolicy.AllocatableSlot(3L, "UABC-001", 1, 3, 5),
                 new CabinetAllocationPolicy.AllocatableSlot(7L, "UABC-002", 2, 7, 10)
         ), 8);
@@ -23,7 +24,7 @@ class CabinetAllocationPolicyTest {
 
     @Test
     void combinesSlotsOnlyWhenNoSingleSlotCanSatisfyQuantity() {
-        List<CabinetAllocationPolicy.SlotAllocation> allocations = policy.allocate(List.of(
+        List<CabinetAllocationPolicy.SlotAllocation> allocations = policy.allocate(Arrays.asList(
                 new CabinetAllocationPolicy.AllocatableSlot(1L, "UABC-001", 1, 1, 5),
                 new CabinetAllocationPolicy.AllocatableSlot(2L, "UABC-001", 1, 2, 4)
         ), 8);

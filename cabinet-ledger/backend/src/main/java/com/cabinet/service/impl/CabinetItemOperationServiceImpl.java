@@ -304,7 +304,7 @@ public class CabinetItemOperationServiceImpl implements CabinetItemOperationServ
         if ("borrow".equals(action)) {
             return "borrow";
         }
-        if ("receive".equals(action) || action == null || action.isBlank()) {
+        if ("receive".equals(action) || action == null || action.trim().isEmpty()) {
             return "receive";
         }
         throw new IllegalArgumentException("不支持的操作类型");

@@ -16,7 +16,7 @@ import com.cabinet.service.OperationLogService;
 import com.cabinet.util.PasswordUtil;
 import com.cabinet.vo.AdminUserVO;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/auth")

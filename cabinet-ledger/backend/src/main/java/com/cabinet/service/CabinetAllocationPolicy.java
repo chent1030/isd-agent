@@ -1,8 +1,10 @@
 package com.cabinet.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CabinetAllocationPolicy {
 
@@ -10,9 +12,9 @@ public class CabinetAllocationPolicy {
         if (requestedQuantity <= 0) {
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
-        List<AllocatableSlot> usableSlots = slots == null ? List.of() : slots.stream()
+        List<AllocatableSlot> usableSlots = slots == null ? Collections.emptyList() : slots.stream()
                 .filter(slot -> slot.quantity() > 0)
-                .toList();
+                .collect(Collectors.toList());
 
         AllocatableSlot singleSlot = usableSlots.stream()
                 .filter(slot -> slot.quantity() >= requestedQuantity)
@@ -22,7 +24,7 @@ public class CabinetAllocationPolicy {
                         .thenComparing(AllocatableSlot::slotNo))
                 .orElse(null);
         if (singleSlot != null) {
-            return List.of(new SlotAllocation(singleSlot.slotId(), singleSlot.cabinetId(), singleSlot.cabinetNo(),
+            return Collections.singletonList(new SlotAllocation(singleSlot.slotId(), singleSlot.cabinetId(), singleSlot.cabinetNo(),
                     singleSlot.slotNo(), requestedQuantity));
         }
 
@@ -32,7 +34,7 @@ public class CabinetAllocationPolicy {
                         .reversed()
                         .thenComparing(slot -> slot.cabinetNo() == null ? Integer.MAX_VALUE : slot.cabinetNo())
                         .thenComparing(AllocatableSlot::slotNo))
-                .toList();
+                .collect(Collectors.toList());
 
         List<SlotAllocation> allocations = new ArrayList<>();
         int remaining = requestedQuantity;

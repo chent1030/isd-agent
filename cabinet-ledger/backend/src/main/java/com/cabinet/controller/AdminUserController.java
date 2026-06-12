@@ -2,6 +2,7 @@ package com.cabinet.controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,7 @@ import com.cabinet.service.OperationLogService;
 import com.cabinet.util.PasswordUtil;
 import com.cabinet.vo.AdminUserVO;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/cabinet/admin-user")
@@ -34,7 +35,7 @@ public class AdminUserController {
 
     @GetMapping("/list")
     public Result<List<AdminUserVO>> list() {
-        List<AdminUserVO> list = adminUserMapper.selectAll().stream().map(this::toVO).toList();
+        List<AdminUserVO> list = adminUserMapper.selectAll().stream().map(this::toVO).collect(Collectors.toList());
         return Result.success(list);
     }
 

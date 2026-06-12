@@ -12,12 +12,13 @@ import com.cabinet.service.CabinetService;
 import com.cabinet.service.ItemLedgerService;
 import com.cabinet.service.WeightRecordService;
 import com.cabinet.vo.LedgerVO;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -156,7 +157,7 @@ public class ExcelUtil {
         setResponseHeader(response, "物品基础信息导入模板");
         EasyExcel.write(response.getOutputStream(), ItemExcelTemplate.class)
                 .sheet("导入模板")
-                .doWrite(java.util.List.of(template));
+                .doWrite(Collections.singletonList(template));
     }
 
     // ==================== 导入 ====================
@@ -173,10 +174,10 @@ public class ExcelUtil {
 
     // ==================== 辅助方法 ====================
 
-    private void setResponseHeader(HttpServletResponse response, String fileName) {
+    private void setResponseHeader(HttpServletResponse response, String fileName) throws IOException {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("utf-8");
-        String encodedFileName = URLEncoder.encode(fileName + "_" + System.currentTimeMillis(), StandardCharsets.UTF_8)
+        String encodedFileName = URLEncoder.encode(fileName + "_" + System.currentTimeMillis(), StandardCharsets.UTF_8.name())
                 .replaceAll("\\+", "%20");
         response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + encodedFileName + ".xlsx");
     }
