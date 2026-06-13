@@ -375,16 +375,12 @@ function ItemDialog({
     setError('')
   }, [item])
 
-  const maxQuantity = Math.max(Math.min(item.stock, item.cabinetQuantity), 1)
-  const canReceiveItem = item.stock > 0 && item.cabinetQuantity > 0 && item.useType !== 1
-  const canBorrowItem = item.stock > 0 && item.cabinetQuantity > 0 && (item.useType === 1 || item.useType === 2)
+  const maxQuantity = Math.max(item.cabinetQuantity, 1)
+  const canReceiveItem = item.cabinetQuantity > 0 && item.useType !== 1
+  const canBorrowItem = item.cabinetQuantity > 0 && (item.useType === 1 || item.useType === 2)
   const canProceed = quantity > 0 && quantity <= maxQuantity && !operating && (mode === 'receive' ? canReceiveItem : canBorrowItem)
 
   const proceedToFace = () => {
-    if (item.stock <= 0) {
-      setError('可用数量不足')
-      return
-    }
     if (item.cabinetQuantity <= 0) {
       setError('柜内可领数量不足，请联系管理员补货')
       return
@@ -774,7 +770,7 @@ export default function App() {
                   key={item.id}
                   className="catalog-item-card"
                   style={{ '--card-accent': ITEM_ACCENTS[Math.abs(Number(item.id) || 0) % ITEM_ACCENTS.length] } as React.CSSProperties}
-                  disabled={item.stock <= 0 || item.cabinetQuantity <= 0}
+                  disabled={item.cabinetQuantity <= 0}
                   onClick={() => setItemDialog(item)}
                 >
                   <span>{useTypeLabel(item.useType)}</span>
