@@ -92,13 +92,13 @@ function getDisplayInitial(value?: string) {
 
 function ParticleField() {
   const particles = useMemo(
-    () => Array.from({ length: 34 }, (_, index) => ({
+    () => Array.from({ length: 58 }, (_, index) => ({
       id: index,
       x: (index * 37) % 100,
       y: (index * 53) % 100,
-      size: 3 + (index % 4),
-      delay: (index % 9) * 0.42,
-      duration: 6 + (index % 6) * 0.7,
+      size: 3 + (index % 5),
+      delay: (index % 11) * 0.36,
+      duration: 7 + (index % 7) * 0.62,
     })),
     [],
   )
