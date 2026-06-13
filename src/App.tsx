@@ -735,13 +735,6 @@ export default function App() {
       <section className="terminal-stage">
         {screen === 'categories' && (
           <div className="terminal-page terminal-category-page">
-            <div className="terminal-page-header">
-              <div>
-                <span>物品类别</span>
-                <h2>选择类别</h2>
-              </div>
-              <div className="terminal-page-message">{message}</div>
-            </div>
             <div className="catalog-category-panel">
               {categories.length === 0 ? (
                 <div className="catalog-empty-state">暂无类别</div>
@@ -754,7 +747,6 @@ export default function App() {
                   onClick={() => void handleSelectCategory(category.id)}
                 >
                   <i>{getDisplayInitial(category.name)}</i>
-                  <span>类别 {String(index + 1).padStart(2, '0')}</span>
                   <strong>{category.name}</strong>
                   <em>{category.itemCount} 种物品</em>
                 </button>
@@ -767,7 +759,6 @@ export default function App() {
           <div className="terminal-page">
             <div className="terminal-page-header">
               <div>
-                <span>第二步</span>
                 <h2>{selectedCategory?.name || '选择物品'}</h2>
               </div>
               <div className="terminal-page-actions">
