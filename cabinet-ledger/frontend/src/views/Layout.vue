@@ -12,15 +12,15 @@
       >
         <el-menu-item index="/dashboard">
           <el-icon><HomeFilled /></el-icon>
-          <span>棣栭〉</span>
+          <span>首页</span>
         </el-menu-item>
         <el-menu-item index="/cabinets">
           <el-icon><Box /></el-icon>
-          <span>鏌滃瓙绠＄悊</span>
+          <span>柜子管理</span>
         </el-menu-item>
         <el-menu-item index="/ledger">
           <el-icon><Document /></el-icon>
-          <span>鐗╁搧鍙拌处</span>
+          <span>物品台账</span>
         </el-menu-item>
         <el-menu-item index="/item-auth">
           <el-icon><User /></el-icon>
@@ -28,23 +28,23 @@
         </el-menu-item>
         <el-menu-item index="/inventory-check">
           <el-icon><Checked /></el-icon>
-          <span>搴撳瓨鐩樼偣</span>
+          <span>库存盘点</span>
         </el-menu-item>
         <el-menu-item index="/borrow-records">
           <el-icon><Tickets /></el-icon>
-          <span>鍊熺敤璁板綍</span>
+          <span>借用记录</span>
         </el-menu-item>
         <el-menu-item index="/weight-data">
           <el-icon><ScaleToOriginal /></el-icon>
-          <span>绉伴噸鏁版嵁</span>
+          <span>称重数据</span>
         </el-menu-item>
         <el-menu-item index="/operation-log">
           <el-icon><List /></el-icon>
-          <span>鎿嶄綔鏃ュ織</span>
+          <span>操作日志</span>
         </el-menu-item>
         <el-menu-item index="/admin-users">
           <el-icon><User /></el-icon>
-          <span>璐﹀彿绠＄悊</span>
+          <span>账号管理</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
