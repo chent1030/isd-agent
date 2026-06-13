@@ -166,8 +166,8 @@
             COALESCE(cs.item_quantity, 0) AS slot_quantity,
             COALESCE(cs.item_quantity, 0) AS cabinet_quantity,
             COALESCE(i.auth_required, 0) = 1 AS auth_required,
-            COALESCE(i.borrower_reminder_hours, 24) AS borrower_reminder_hours,
-            COALESCE(i.admin_reminder_hours, 48) AS admin_reminder_hours,
+            CASE WHEN i.use_type = 0 THEN NULL ELSE COALESCE(i.borrower_reminder_hours, 24) END AS borrower_reminder_hours,
+            CASE WHEN i.use_type = 0 THEN NULL ELSE COALESCE(i.admin_reminder_hours, 48) END AS admin_reminder_hours,
             CASE
                 WHEN COALESCE(i.auth_required, 0) = 0 THEN TRUE
                 WHEN #{operatorNo} IS NULL OR #{operatorNo} = '' THEN FALSE
@@ -210,8 +210,8 @@
             i.standard_weight,
             i.use_type,
             COALESCE(i.auth_required, 0) AS auth_required,
-            COALESCE(i.borrower_reminder_hours, 24) AS borrower_reminder_hours,
-            COALESCE(i.admin_reminder_hours, 48) AS admin_reminder_hours,
+            CASE WHEN i.use_type = 0 THEN NULL ELSE COALESCE(i.borrower_reminder_hours, 24) END AS borrower_reminder_hours,
+            CASE WHEN i.use_type = 0 THEN NULL ELSE COALESCE(i.admin_reminder_hours, 48) END AS admin_reminder_hours,
             COALESCE(s.quantity, 0) AS quantity,
             COALESCE(cs.item_quantity, 0) AS slot_quantity,
             COALESCE(s.borrowed_quantity, 0) AS borrowed_quantity,

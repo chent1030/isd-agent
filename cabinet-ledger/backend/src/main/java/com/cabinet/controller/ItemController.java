@@ -182,11 +182,16 @@ public class ItemController {
         if (item.getAuthRequired() == null) {
             item.setAuthRequired(0);
         }
-        if (item.getBorrowerReminderHours() == null) {
-            item.setBorrowerReminderHours(24);
-        }
-        if (item.getAdminReminderHours() == null) {
-            item.setAdminReminderHours(48);
+        if (item.getUseType() == 0) {
+            item.setBorrowerReminderHours(null);
+            item.setAdminReminderHours(null);
+        } else {
+            if (item.getBorrowerReminderHours() == null) {
+                item.setBorrowerReminderHours(24);
+            }
+            if (item.getAdminReminderHours() == null) {
+                item.setAdminReminderHours(48);
+            }
         }
         if (item.getWarningQuantity() < 0) {
             throw new IllegalArgumentException("预警数量不能为负数");
@@ -200,10 +205,10 @@ public class ItemController {
         if (item.getAuthRequired() < 0 || item.getAuthRequired() > 1) {
             throw new IllegalArgumentException("授权开关不正确");
         }
-        if (item.getBorrowerReminderHours() < 0) {
+        if (item.getBorrowerReminderHours() != null && item.getBorrowerReminderHours() < 0) {
             throw new IllegalArgumentException("借用人提醒周期不能为负数");
         }
-        if (item.getAdminReminderHours() < 0) {
+        if (item.getAdminReminderHours() != null && item.getAdminReminderHours() < 0) {
             throw new IllegalArgumentException("管理员提醒周期不能为负数");
         }
     }

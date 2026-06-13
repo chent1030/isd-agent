@@ -106,11 +106,10 @@
             </div>
           </template>
 
-          <el-table :data="itemData" border v-loading="itemLoading">
+          <el-table :data="itemTableData" border v-loading="itemLoading">
             <el-table-column prop="name" label="物品名称" />
             <el-table-column prop="category" label="类别" width="120" />
             <el-table-column prop="spec" label="规格" width="160" />
-            <el-table-column prop="standardWeight" label="标准重量(g)" width="140" />
             <el-table-column prop="useType" label="使用类型" width="110">
               <template #default="{ row }">
                 {{ useTypeText(row.useType) }}
@@ -122,14 +121,9 @@
               </template>
             </el-table-column>
             <el-table-column prop="quantity" label="物品库存" width="100" />
-            <el-table-column prop="slotQuantity" label="格口数量" width="100" />
             <el-table-column prop="borrowedQuantity" label="外借数量" width="100" />
-            <el-table-column prop="borrowerReminderHours" label="借用人提醒(h)" width="130" />
-            <el-table-column prop="adminReminderHours" label="管理员提醒(h)" width="130" />
             <el-table-column prop="warningQuantity" label="预警数量" width="100" />
-            <el-table-column prop="maxQuantity" label="最大库存" width="100" />
-            <el-table-column prop="cabinetName" label="柜子名称" width="140" />
-            <el-table-column prop="slotNo" label="格口号" width="90" />
+            <el-table-column prop="slotCount" label="关联格口" width="100" />
             <el-table-column prop="stockStatus" label="库存状态" width="100">
               <template #default="{ row }">
                 <el-tag :type="stockStatusTag(row.stockStatus)">
@@ -138,8 +132,9 @@
               </template>
             </el-table-column>
             <el-table-column prop="updatedAt" label="更新时间" width="170" />
-            <el-table-column label="操作" width="150">
+            <el-table-column label="操作" width="190">
               <template #default="{ row }">
+                <el-button size="small" @click="openItemDetailDialog(row)">详情</el-button>
                 <el-button size="small" @click="openItemDialog(row)">编辑</el-button>
                 <el-button size="small" type="primary" @click="openStockDialog(row)">库存</el-button>
               </template>
@@ -186,11 +181,11 @@
         <el-form-item label="最大库存">
           <el-input-number v-model="itemForm.maxQuantity" :precision="0" :step="1" :min="0" />
         </el-form-item>
-        <el-form-item label="借用人提醒">
+        <el-form-item v-if="supportsBorrow(itemForm)" label="借用人提醒">
           <el-input-number v-model="itemForm.borrowerReminderHours" :precision="0" :step="1" :min="0" />
           <span class="unit">小时</span>
         </el-form-item>
-        <el-form-item label="管理员提醒">
+        <el-form-item v-if="supportsBorrow(itemForm)" label="管理员提醒">
           <el-input-number v-model="itemForm.adminReminderHours" :precision="0" :step="1" :min="0" />
           <span class="unit">小时</span>
         </el-form-item>
@@ -198,6 +193,38 @@
       <template #footer>
         <el-button @click="itemDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSaveItem">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="itemDetailDialogVisible" title="物品详情" width="860px">
+      <el-descriptions :column="3" border>
+        <el-descriptions-item label="物品名称">{{ itemDetail.name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="类别">{{ itemDetail.category || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="规格">{{ itemDetail.spec || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="标准重量">{{ itemDetail.standardWeight ?? 0 }} g</el-descriptions-item>
+        <el-descriptions-item label="使用类型">{{ useTypeText(itemDetail.useType) }}</el-descriptions-item>
+        <el-descriptions-item label="领用授权">{{ itemDetail.authRequired ? '需要' : '不需要' }}</el-descriptions-item>
+        <el-descriptions-item label="物品库存">{{ itemDetail.quantity ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="外借数量">{{ itemDetail.borrowedQuantity ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="预警数量">{{ itemDetail.warningQuantity ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="最大库存">{{ itemDetail.maxQuantity ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="台账重量">{{ itemDetail.ledgerWeight ?? 0 }} g</el-descriptions-item>
+        <el-descriptions-item label="实际重量">{{ itemDetail.actualWeight ?? 0 }} g</el-descriptions-item>
+        <el-descriptions-item v-if="supportsBorrow(itemDetail)" label="借用人提醒">{{ itemDetail.borrowerReminderHours ?? 0 }} 小时</el-descriptions-item>
+        <el-descriptions-item v-if="supportsBorrow(itemDetail)" label="管理员提醒">{{ itemDetail.adminReminderHours ?? 0 }} 小时</el-descriptions-item>
+        <el-descriptions-item label="库存状态">{{ stockStatusText(itemDetail.stockStatus) }}</el-descriptions-item>
+        <el-descriptions-item label="更新时间">{{ itemDetail.updatedAt || '-' }}</el-descriptions-item>
+      </el-descriptions>
+
+      <div class="detail-section-title">格口分布</div>
+      <el-table :data="itemDetail.slots || []" border>
+        <el-table-column prop="cabinetName" label="柜子名称" />
+        <el-table-column prop="cabinetNo" label="柜号" width="90" />
+        <el-table-column prop="slotNo" label="格口号" width="90" />
+        <el-table-column prop="slotQuantity" label="格口数量" width="110" />
+      </el-table>
+      <template #footer>
+        <el-button @click="itemDetailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -266,7 +293,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getLedgerList, exportLedger } from '../../api/ledger.js'
 import { getCabinetList } from '../../api/cabinet.js'
@@ -281,6 +308,8 @@ const cabinetOptions = ref([])
 const itemImportFileInput = ref(null)
 const itemDialogVisible = ref(false)
 const itemForm = ref({})
+const itemDetailDialogVisible = ref(false)
+const itemDetail = ref({})
 const stockDialogVisible = ref(false)
 const stockForm = ref({})
 const stockReminderDialogVisible = ref(false)
@@ -298,6 +327,34 @@ const pagination = ref({
   page: 1,
   pageSize: 10,
   total: 0
+})
+
+const itemTableData = computed(() => {
+  const itemMap = new Map()
+  for (const row of itemData.value) {
+    const existing = itemMap.get(row.id)
+    if (!existing) {
+      itemMap.set(row.id, {
+        ...row,
+        slotCount: row.slotId ? 1 : 0,
+        slots: row.slotId ? [toSlotInfo(row)] : []
+      })
+      continue
+    }
+    existing.quantity = row.quantity ?? existing.quantity
+    existing.borrowedQuantity = row.borrowedQuantity ?? existing.borrowedQuantity
+    existing.warningQuantity = row.warningQuantity ?? existing.warningQuantity
+    existing.maxQuantity = row.maxQuantity ?? existing.maxQuantity
+    existing.ledgerWeight = row.ledgerWeight ?? existing.ledgerWeight
+    existing.actualWeight = row.actualWeight ?? existing.actualWeight
+    existing.stockStatus = row.stockStatus ?? existing.stockStatus
+    existing.updatedAt = row.updatedAt || existing.updatedAt
+    if (row.slotId && !existing.slots.some(slot => slot.slotId === row.slotId)) {
+      existing.slots.push(toSlotInfo(row))
+      existing.slotCount = existing.slots.length
+    }
+  }
+  return Array.from(itemMap.values())
 })
 
 const fetchLedgerData = async () => {
@@ -430,6 +487,11 @@ const openItemDialog = (row) => {
   itemDialogVisible.value = true
 }
 
+const openItemDetailDialog = (row) => {
+  itemDetail.value = { ...row }
+  itemDetailDialogVisible.value = true
+}
+
 const handleSaveItem = async () => {
   const res = await saveItem(itemForm.value)
   if (res) {
@@ -444,8 +506,8 @@ const openStockDialog = (row) => {
   stockForm.value = {
     itemId: row.id,
     name: row.name,
-    cabinetId: row.cabinetId,
-    slotId: row.slotId,
+    cabinetId: null,
+    slotId: null,
     quantity: row.quantity || 0,
     borrowedQuantity: row.borrowedQuantity || 0,
     ledgerWeight: row.ledgerWeight || 0,
@@ -479,6 +541,19 @@ const openStockReminderDialog = async () => {
 const stockReminderTypeText = (type) => {
   return ({ ITEM_STOCK_WARNING: '库存预警', SLOT_QUANTITY_LOW: '格口低量' })[type] || '提醒'
 }
+
+const supportsBorrow = (item) => {
+  return item && (item.useType === 1 || item.useType === 2)
+}
+
+const toSlotInfo = (row) => ({
+  slotId: row.slotId,
+  cabinetId: row.cabinetId,
+  cabinetNo: row.cabinetNo,
+  cabinetName: row.cabinetName,
+  slotNo: row.slotNo,
+  slotQuantity: row.slotQuantity ?? 0
+})
 
 const downloadBlob = (blob, filename) => {
   const url = window.URL.createObjectURL(new Blob([blob]))
