@@ -13,6 +13,8 @@ type AppScreen = 'categories' | 'items'
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
+const CATEGORY_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#8a6eb8', '#c35f4c', '#4f7d51']
+const ITEM_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#c35f4c']
 
 interface CameraPreference {
   deviceId: string
@@ -82,6 +84,10 @@ function useTypeLabel(useType: number | null) {
   if (useType === 1) return '借用'
   if (useType === 2) return '领用 / 借用'
   return '未配置'
+}
+
+function getDisplayInitial(value?: string) {
+  return (value || '物').trim().slice(0, 1)
 }
 
 function ParticleField() {
@@ -728,25 +734,29 @@ export default function App() {
 
       <section className="terminal-stage">
         {screen === 'categories' && (
-          <div className="terminal-page">
+          <div className="terminal-page terminal-category-page">
             <div className="terminal-page-header">
               <div>
+                <span>物品类别</span>
                 <h2>选择类别</h2>
               </div>
-              <span>{message}</span>
+              <div className="terminal-page-message">{message}</div>
             </div>
             <div className="catalog-category-panel">
               {categories.length === 0 ? (
                 <div className="catalog-empty-state">暂无类别</div>
-              ) : categories.map(category => (
+              ) : categories.map((category, index) => (
                 <button
                   type="button"
                   key={category.id}
                   className="catalog-category"
+                  style={{ '--card-accent': CATEGORY_ACCENTS[index % CATEGORY_ACCENTS.length] } as React.CSSProperties}
                   onClick={() => void handleSelectCategory(category.id)}
                 >
+                  <i>{getDisplayInitial(category.name)}</i>
+                  <span>类别 {String(index + 1).padStart(2, '0')}</span>
                   <strong>{category.name}</strong>
-                  <span>{category.itemCount} 种物品</span>
+                  <em>{category.itemCount} 种物品</em>
                 </button>
               ))}
             </div>
@@ -772,16 +782,17 @@ export default function App() {
                   type="button"
                   key={item.id}
                   className="catalog-item-card"
+                  style={{ '--card-accent': ITEM_ACCENTS[Math.abs(Number(item.id) || 0) % ITEM_ACCENTS.length] } as React.CSSProperties}
                   disabled={item.stock <= 0 || item.cabinetQuantity <= 0}
                   onClick={() => setItemDialog(item)}
                 >
-                  <span>{item.category}</span>
+                  <span>{useTypeLabel(item.useType)}</span>
                   <strong>{item.name}</strong>
                   <em>{item.spec || '无规格'}</em>
                   <div>
-                    <b>格口内数量 {item.cabinetQuantity}</b>
+                    <b><small>格口内数量</small>{item.cabinetQuantity}</b>
                   </div>
-                  <small>{useTypeLabel(item.useType)}</small>
+                  <i>{getDisplayInitial(item.name)}</i>
                 </button>
               ))}
             </div>
