@@ -8,6 +8,7 @@ import type {
 type Operator = { empName: string; empWorkNo: string }
 type OperationMode = 'receive' | 'borrow'
 type FaceState = 'idle' | 'camera' | 'recognizing' | 'success' | 'failed' | 'unmatched'
+type AppScreen = 'categories' | 'items'
 
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
@@ -81,6 +82,37 @@ function useTypeLabel(useType: number | null) {
   if (useType === 1) return '借用'
   if (useType === 2) return '领用 / 借用'
   return '未配置'
+}
+
+function ParticleField() {
+  const particles = useMemo(
+    () => Array.from({ length: 34 }, (_, index) => ({
+      id: index,
+      x: (index * 37) % 100,
+      y: (index * 53) % 100,
+      size: 3 + (index % 4),
+      delay: (index % 9) * 0.42,
+      duration: 6 + (index % 6) * 0.7,
+    })),
+    [],
+  )
+
+  return (
+    <div className="twin-particle-field" aria-hidden="true">
+      {particles.map(particle => (
+        <span
+          key={particle.id}
+          style={{
+            '--particle-x': `${particle.x}%`,
+            '--particle-y': `${particle.y}%`,
+            '--particle-size': `${particle.size}px`,
+            '--particle-delay': `${particle.delay}s`,
+            '--particle-duration': `${particle.duration}s`,
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  )
 }
 
 function FaceGate({
@@ -344,7 +376,7 @@ function ItemDialog({
 
   const proceedToFace = () => {
     if (item.stock <= 0) {
-      setError('物品库存不足')
+      setError('可用数量不足')
       return
     }
     if (item.cabinetQuantity <= 0) {
@@ -378,11 +410,7 @@ function ItemDialog({
         <div className={step === 'quantity' ? 'twin-item-dialog-grid twin-item-dialog-quantity' : 'twin-item-dialog-grid'}>
           <div className="twin-slot-facts">
             <div>
-              <span>物品库存</span>
-              <strong>{item.stock}</strong>
-            </div>
-            <div>
-              <span>柜内可领</span>
+              <span>格口内数量</span>
               <strong>{item.cabinetQuantity}</strong>
             </div>
             <div>
@@ -555,6 +583,7 @@ function ReturnDialog({
 
 export default function App() {
   const now = useClock()
+  const [screen, setScreen] = useState<AppScreen>('categories')
   const [categories, setCategories] = useState<CabinetCategory[]>([])
   const [items, setItems] = useState<CabinetCatalogItem[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
@@ -564,8 +593,12 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [operating, setOperating] = useState(false)
-  const [message, setMessage] = useState('系统待机，选择类别和物品后输入数量。')
+  const [message, setMessage] = useState('请选择类别。')
   const [lastOperator, setLastOperator] = useState<Operator | null>(null)
+  const selectedCategory = useMemo(
+    () => categories.find(category => category.id === selectedCategoryId) || null,
+    [categories, selectedCategoryId],
+  )
 
   const refreshCatalog = useCallback(async (categoryId = selectedCategoryId) => {
     setLoading(true)
@@ -594,6 +627,19 @@ export default function App() {
   const handleSelectCategory = async (categoryId: string) => {
     setSelectedCategoryId(categoryId)
     await refreshCatalog(categoryId)
+    setScreen('items')
+  }
+
+  const returnHome = useCallback(() => {
+    setScreen('categories')
+    setItemDialog(null)
+    setReturnVisible(false)
+    setBorrowRecords([])
+  }, [])
+
+  const openReturnDialog = () => {
+    setScreen('categories')
+    setReturnVisible(true)
   }
 
   const handleOperateItem = async (item: CabinetCatalogItem, mode: OperationMode, quantity: number, operator: Operator) => {
@@ -607,14 +653,14 @@ export default function App() {
         operator,
       })
       const openedCount = Array.isArray((result as any)?.locations) ? (result as any).locations.length : 0
-      setMessage(`${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${item.name} x ${quantity}${openedCount ? `，已打开 ${openedCount} 个格口` : ''}。`)
-      setItemDialog(null)
       await refreshCatalog()
+      setMessage(`${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${item.name} x ${quantity}${openedCount ? `，已打开 ${openedCount} 个格口` : ''}。`)
     } catch (error) {
       console.error(error)
       setMessage(`${mode === 'receive' ? '领用' : '借用'}失败：${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setOperating(false)
+      returnHome()
     }
   }
 
@@ -636,6 +682,7 @@ export default function App() {
   const handleReturn = async (record: BorrowRecord, quantity: number) => {
     if (!lastOperator) {
       setMessage('请先完成人脸认证。')
+      returnHome()
       return
     }
     setOperating(true)
@@ -647,19 +694,20 @@ export default function App() {
         operator: lastOperator,
         remark: `终端归还：${lastOperator.empName}`,
       })
-      setMessage(`${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。`)
-      await loadBorrowRecords(lastOperator)
       await refreshCatalog()
+      setMessage(`${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。`)
     } catch (error) {
       console.error(error)
       setMessage(`归还失败：${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setOperating(false)
+      returnHome()
     }
   }
 
   return (
     <main className="digital-twin-shell">
+      <ParticleField />
       <header className="twin-header">
         <div>
           <h1>行小助物品领用</h1>
@@ -668,7 +716,7 @@ export default function App() {
           <button type="button" className="twin-utility-button" onClick={() => void refreshCatalog()}>
             {loading ? '同步中' : '刷新数据'}
           </button>
-          <button type="button" className="twin-utility-button twin-return-button" onClick={() => setReturnVisible(true)}>
+          <button type="button" className="twin-utility-button twin-return-button" onClick={openReturnDialog}>
             归还
           </button>
           <div className="twin-clock">
@@ -678,46 +726,67 @@ export default function App() {
         </div>
       </header>
 
-      <section className="catalog-stage">
-        <aside className="catalog-category-panel">
-          {categories.length === 0 ? (
-            <div className="catalog-empty-state">暂无类别</div>
-          ) : categories.map(category => (
-            <button
-              type="button"
-              key={category.id}
-              className={selectedCategoryId === category.id ? 'catalog-category is-active' : 'catalog-category'}
-              onClick={() => void handleSelectCategory(category.id)}
-            >
-              <strong>{category.name}</strong>
-              <span>{category.itemCount} 种物品</span>
-            </button>
-          ))}
-        </aside>
-
-        <div className="catalog-item-panel">
-          {items.length === 0 ? (
-            <div className="catalog-empty-state">当前类别暂无可用物品</div>
-          ) : items.map(item => (
-            <button
-              type="button"
-              key={item.id}
-              className="catalog-item-card"
-              disabled={item.stock <= 0 || item.cabinetQuantity <= 0}
-              onClick={() => setItemDialog(item)}
-            >
-              <span>{item.category}</span>
-              <strong>{item.name}</strong>
-              <em>{item.spec || '无规格'}</em>
+      <section className="terminal-stage">
+        {screen === 'categories' && (
+          <div className="terminal-page">
+            <div className="terminal-page-header">
               <div>
-                <b>库存 {item.stock}</b>
-                <b>柜内 {item.cabinetQuantity}</b>
+                <h2>选择类别</h2>
               </div>
-              {item.authRequired && <small>需授权</small>}
-            </button>
-          ))}
-        </div>
+              <span>{message}</span>
+            </div>
+            <div className="catalog-category-panel">
+              {categories.length === 0 ? (
+                <div className="catalog-empty-state">暂无类别</div>
+              ) : categories.map(category => (
+                <button
+                  type="button"
+                  key={category.id}
+                  className="catalog-category"
+                  onClick={() => void handleSelectCategory(category.id)}
+                >
+                  <strong>{category.name}</strong>
+                  <span>{category.itemCount} 种物品</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
+        {screen === 'items' && (
+          <div className="terminal-page">
+            <div className="terminal-page-header">
+              <div>
+                <span>第二步</span>
+                <h2>{selectedCategory?.name || '选择物品'}</h2>
+              </div>
+              <div className="terminal-page-actions">
+                <button type="button" className="twin-secondary-action" onClick={() => setScreen('categories')}>返回类别</button>
+              </div>
+            </div>
+            <div className="catalog-item-panel">
+              {items.length === 0 ? (
+                <div className="catalog-empty-state">当前类别暂无可用物品</div>
+              ) : items.map(item => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className="catalog-item-card"
+                  disabled={item.stock <= 0 || item.cabinetQuantity <= 0}
+                  onClick={() => setItemDialog(item)}
+                >
+                  <span>{item.category}</span>
+                  <strong>{item.name}</strong>
+                  <em>{item.spec || '无规格'}</em>
+                  <div>
+                    <b>格口内数量 {item.cabinetQuantity}</b>
+                  </div>
+                  <small>{useTypeLabel(item.useType)}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {itemDialog && (

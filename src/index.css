@@ -2388,6 +2388,7 @@ body {
 }
 
 .digital-twin-shell {
+  position: relative;
   height: 100vh;
   min-height: 100vh;
   display: grid;
@@ -2401,8 +2402,48 @@ body {
   overflow: hidden;
 }
 
+.digital-twin-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(53, 121, 152, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 121, 152, 0.045) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0.2));
+}
+
+.twin-particle-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.twin-particle-field span {
+  position: absolute;
+  left: var(--particle-x);
+  top: var(--particle-y);
+  width: var(--particle-size);
+  height: var(--particle-size);
+  border-radius: 999px;
+  background: rgba(28, 134, 157, 0.44);
+  box-shadow: 0 0 16px rgba(28, 134, 157, 0.28);
+  animation: terminal-particle var(--particle-duration) ease-in-out infinite;
+  animation-delay: var(--particle-delay);
+}
+
+@keyframes terminal-particle {
+  0%, 100% { opacity: 0.18; transform: translate3d(0, 0, 0) scale(0.9); }
+  50% { opacity: 0.74; transform: translate3d(14px, -24px, 0) scale(1.28); }
+}
+
 .twin-header,
 .twin-modal {
+  position: relative;
+  z-index: 1;
   border: 1px solid rgba(82, 147, 104, 0.3);
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 18px 48px rgba(43, 91, 63, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.72);
@@ -2522,16 +2563,61 @@ body {
     rgba(239, 248, 242, 0.88);
 }
 
-.catalog-stage {
+.terminal-stage {
+  position: relative;
+  z-index: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
   margin-top: 16px;
+}
+
+.terminal-page {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(82, 147, 104, 0.18);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(101, 169, 129, 0.18), transparent 30%),
+    radial-gradient(circle at 78% 24%, rgba(49, 150, 182, 0.13), transparent 28%),
+    rgba(255, 255, 255, 0.58);
+  box-shadow: 0 18px 44px rgba(43, 91, 63, 0.1);
+  overflow: hidden;
+}
+
+.terminal-page-header span {
+  color: #4f8ca7;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.terminal-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid rgba(119, 151, 169, 0.16);
+}
+
+.terminal-page-header h2 {
+  margin-top: 4px;
+  color: #183545;
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.terminal-page-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .catalog-category-panel,
 .catalog-item-panel {
+  flex: 1;
   min-height: 0;
   overflow: auto;
   border-radius: 8px;
@@ -2539,11 +2625,12 @@ body {
 
 .catalog-category-panel {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   align-content: start;
-  gap: 12px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.64);
-  border: 1px solid rgba(82, 147, 104, 0.18);
+  gap: 18px;
+  padding: 22px;
+  background: transparent;
+  border: 0;
 }
 
 .catalog-category,
@@ -2559,8 +2646,9 @@ body {
 }
 
 .catalog-category {
-  min-height: 92px;
-  padding: 18px;
+  min-height: 160px;
+  padding: 24px;
+  box-shadow: 0 14px 28px rgba(43, 91, 63, 0.1);
 }
 
 .catalog-category strong,
@@ -2573,13 +2661,14 @@ body {
 }
 
 .catalog-category strong {
-  font-size: 22px;
+  font-size: clamp(26px, 2.8vw, 38px);
+  line-height: 1.16;
 }
 
 .catalog-category span {
-  margin-top: 8px;
+  margin-top: 12px;
   color: #667f8e;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .catalog-category.is-active {
@@ -2595,23 +2684,21 @@ body {
 
 .catalog-item-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   align-content: start;
-  gap: 14px;
-  padding: 16px;
-  background:
-    radial-gradient(circle at 30% 18%, rgba(101, 169, 129, 0.14), transparent 30%),
-    rgba(239, 248, 242, 0.76);
-  border: 1px solid rgba(82, 147, 104, 0.14);
+  gap: 18px;
+  padding: 22px;
+  background: transparent;
+  border: 0;
 }
 
 .catalog-item-card {
   position: relative;
-  min-height: 190px;
+  min-height: 214px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 18px;
+  gap: 9px;
+  padding: 22px;
   box-shadow: 0 12px 26px rgba(43, 91, 63, 0.1);
 }
 
@@ -2628,38 +2715,37 @@ body {
 
 .catalog-item-card span {
   color: #4f8ca7;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .catalog-item-card strong {
-  min-height: 58px;
-  font-size: 24px;
+  min-height: 64px;
+  font-size: clamp(25px, 2.2vw, 34px);
   line-height: 1.2;
 }
 
 .catalog-item-card em {
   color: #667f8e;
-  font-size: 14px;
+  font-size: 16px;
   font-style: normal;
 }
 
 .catalog-item-card div {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 1fr;
   margin-top: auto;
 }
 
 .catalog-item-card b {
-  min-height: 42px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   color: #217493;
   background: rgba(232, 244, 251, 0.92);
-  font-size: 17px;
+  font-size: 20px;
 }
 
 .catalog-item-card small {
@@ -3425,14 +3511,8 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .catalog-stage {
-    grid-template-columns: 1fr;
-  }
-
   .catalog-category-panel {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(180px, 1fr);
-    overflow-x: auto;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
 
   .twin-slot-grid {
@@ -3447,9 +3527,16 @@ body {
 
 @media (max-width: 760px) {
   .twin-header,
-  .twin-header-actions {
+  .twin-header-actions,
+  .terminal-page-header,
+  .terminal-page-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .catalog-category,
+  .catalog-item-card {
+    min-height: 150px;
   }
 
   .twin-slot-dialog-grid,
