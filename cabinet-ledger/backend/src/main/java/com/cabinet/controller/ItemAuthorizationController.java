@@ -8,6 +8,8 @@ import com.cabinet.service.OperationLogService;
 import com.cabinet.vo.ItemAuthorizationVO;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ItemAuthorizationController {
     private final ItemAuthorizationMapper authorizationMapper;
     private final OperationLogService operationLogService;
+    private static final DateTimeFormatter SPACE_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public ItemAuthorizationController(ItemAuthorizationMapper authorizationMapper,
                                        OperationLogService operationLogService) {
@@ -70,7 +73,9 @@ public class ItemAuthorizationController {
         if (!StringUtils.hasText(dto.getEmployeeNo())) {
             throw new IllegalArgumentException("人员工号不能为空");
         }
-        if (dto.getValidFrom() != null && dto.getValidTo() != null && dto.getValidFrom().isAfter(dto.getValidTo())) {
+        LocalDateTime validFrom = parseDateTime(dto.getValidFrom(), "授权开始时间");
+        LocalDateTime validTo = parseDateTime(dto.getValidTo(), "授权结束时间");
+        if (validFrom != null && validTo != null && validFrom.isAfter(validTo)) {
             throw new IllegalArgumentException("授权开始时间不能晚于结束时间");
         }
         LocalDateTime now = LocalDateTime.now();
@@ -79,13 +84,27 @@ public class ItemAuthorizationController {
         authorization.setItemId(dto.getItemId());
         authorization.setEmployeeNo(dto.getEmployeeNo());
         authorization.setEmployeeName(dto.getEmployeeName());
-        authorization.setValidFrom(dto.getValidFrom());
-        authorization.setValidTo(dto.getValidTo());
+        authorization.setValidFrom(validFrom);
+        authorization.setValidTo(validTo);
         authorization.setEnabled(dto.getEnabled() == null ? 1 : dto.getEnabled());
         authorization.setRemark(dto.getRemark());
         authorization.setCreatedAt(now);
         authorization.setUpdatedAt(now);
         return authorization;
+    }
+
+    private LocalDateTime parseDateTime(String value, String fieldName) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim();
+        try {
+            return normalized.indexOf('T') >= 0
+                    ? LocalDateTime.parse(normalized)
+                    : LocalDateTime.parse(normalized, SPACE_DATE_TIME_FORMATTER);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(fieldName + "格式不正确，请使用 yyyy-MM-dd HH:mm:ss");
+        }
     }
 
     private String operatorOrDefault(String operator) {

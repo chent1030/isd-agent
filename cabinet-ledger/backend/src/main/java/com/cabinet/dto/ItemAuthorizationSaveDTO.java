@@ -1,14 +1,12 @@
 package com.cabinet.dto;
 
-import java.time.LocalDateTime;
-
 public class ItemAuthorizationSaveDTO {
     private Long id;
     private Long itemId;
     private String employeeNo;
     private String employeeName;
-    private LocalDateTime validFrom;
-    private LocalDateTime validTo;
+    private String validFrom;
+    private String validTo;
     private Integer enabled;
     private String remark;
 
@@ -20,10 +18,10 @@ public class ItemAuthorizationSaveDTO {
     public void setEmployeeNo(String employeeNo) { this.employeeNo = employeeNo; }
     public String getEmployeeName() { return employeeName; }
     public void setEmployeeName(String employeeName) { this.employeeName = employeeName; }
-    public LocalDateTime getValidFrom() { return validFrom; }
-    public void setValidFrom(LocalDateTime validFrom) { this.validFrom = validFrom; }
-    public LocalDateTime getValidTo() { return validTo; }
-    public void setValidTo(LocalDateTime validTo) { this.validTo = validTo; }
+    public String getValidFrom() { return validFrom; }
+    public void setValidFrom(String validFrom) { this.validFrom = validFrom; }
+    public String getValidTo() { return validTo; }
+    public void setValidTo(String validTo) { this.validTo = validTo; }
     public Integer getEnabled() { return enabled; }
     public void setEnabled(Integer enabled) { this.enabled = enabled; }
     public String getRemark() { return remark; }

@@ -9,6 +9,8 @@ type Operator = { empName: string; empWorkNo: string }
 type OperationMode = 'receive' | 'borrow'
 type FaceState = 'idle' | 'camera' | 'recognizing' | 'success' | 'failed' | 'unmatched'
 type AppScreen = 'categories' | 'items'
+type NoticeTone = 'success' | 'error' | 'info'
+type AppNotice = { tone: NoticeTone; text: string }
 
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
@@ -90,6 +92,13 @@ function getDisplayInitial(value?: string) {
   return (value || '物').trim().slice(0, 1)
 }
 
+function getErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return message
+    .replace(/^参数异常[:：]\s*/, '')
+    .replace(/^柜机接口请求失败[:：]\s*/, '')
+}
+
 function ParticleField() {
   const particles = useMemo(
     () => Array.from({ length: 58 }, (_, index) => ({
@@ -124,7 +133,7 @@ function ParticleField() {
 function FaceGate({
   onAuthenticated,
 }: {
-  onAuthenticated: (operator: Operator) => void
+  onAuthenticated: (operator: Operator) => void | Promise<void>
 }) {
   const [state, setState] = useState<FaceState>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -189,7 +198,7 @@ function FaceGate({
         if (result?.empName && result?.empWorkNo) {
           setState('success')
           stopCamera()
-          onAuthenticated({ empName: result.empName, empWorkNo: result.empWorkNo })
+          await onAuthenticated({ empName: result.empName, empWorkNo: result.empWorkNo })
           return
         }
       }
@@ -595,7 +604,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [operating, setOperating] = useState(false)
-  const [message, setMessage] = useState('请选择类别。')
+  const [notice, setNotice] = useState<AppNotice | null>(null)
   const [lastOperator, setLastOperator] = useState<Operator | null>(null)
   const selectedCategory = useMemo(
     () => categories.find(category => category.id === selectedCategoryId) || null,
@@ -611,10 +620,9 @@ export default function App() {
       setCategories(nextCategories)
       setSelectedCategoryId(nextCategoryId)
       setItems(nextItems)
-      setMessage('物品数据已同步。')
     } catch (error) {
       console.error(error)
-      setMessage(`物品数据同步失败：${error instanceof Error ? error.message : String(error)}`)
+      setNotice({ tone: 'error', text: `物品数据同步失败：${getErrorMessage(error)}` })
     } finally {
       setLoading(false)
     }
@@ -656,10 +664,13 @@ export default function App() {
       })
       const openedCount = Array.isArray((result as any)?.locations) ? (result as any).locations.length : 0
       await refreshCatalog()
-      setMessage(`${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${item.name} x ${quantity}${openedCount ? `，已打开 ${openedCount} 个格口` : ''}。`)
+      setNotice({
+        tone: 'success',
+        text: `${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${item.name} x ${quantity}${openedCount ? `，已打开 ${openedCount} 个格口` : ''}。`,
+      })
     } catch (error) {
       console.error(error)
-      setMessage(`${mode === 'receive' ? '领用' : '借用'}失败：${error instanceof Error ? error.message : String(error)}`)
+      setNotice({ tone: 'error', text: `${mode === 'receive' ? '领用' : '借用'}失败：${getErrorMessage(error)}` })
     } finally {
       setOperating(false)
       returnHome()
@@ -672,10 +683,10 @@ export default function App() {
     try {
       const records = await window.electronAPI.getOpenBorrowRecords(operator)
       setBorrowRecords(records)
-      setMessage(`已查询到 ${records.length} 条未归还记录。`)
+      setNotice({ tone: 'info', text: `已查询到 ${records.length} 条未归还记录。` })
     } catch (error) {
       console.error(error)
-      setMessage(`未归还记录查询失败：${error instanceof Error ? error.message : String(error)}`)
+      setNotice({ tone: 'error', text: `未归还记录查询失败：${getErrorMessage(error)}` })
     } finally {
       setRecordsLoading(false)
     }
@@ -683,7 +694,7 @@ export default function App() {
 
   const handleReturn = async (record: BorrowRecord, quantity: number) => {
     if (!lastOperator) {
-      setMessage('请先完成人脸认证。')
+      setNotice({ tone: 'error', text: '请先完成人脸认证。' })
       returnHome()
       return
     }
@@ -697,10 +708,10 @@ export default function App() {
         remark: `终端归还：${lastOperator.empName}`,
       })
       await refreshCatalog()
-      setMessage(`${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。`)
+      setNotice({ tone: 'success', text: `${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。` })
     } catch (error) {
       console.error(error)
-      setMessage(`归还失败：${error instanceof Error ? error.message : String(error)}`)
+      setNotice({ tone: 'error', text: `归还失败：${getErrorMessage(error)}` })
     } finally {
       setOperating(false)
       returnHome()
@@ -727,6 +738,14 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {notice && (
+        <div className={`terminal-notice terminal-notice-${notice.tone}`} role="status" aria-live="polite">
+          <strong>{notice.tone === 'error' ? '操作未完成' : notice.tone === 'success' ? '操作完成' : '提示'}</strong>
+          <span>{notice.text}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="关闭提示">×</button>
+        </div>
+      )}
 
       <section className="terminal-stage">
         {screen === 'categories' && (
