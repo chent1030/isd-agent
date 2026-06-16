@@ -14,6 +14,7 @@ type AppNotice = { tone: NoticeTone; text: string }
 
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
+const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
 const CATEGORY_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#8a6eb8', '#c35f4c', '#4f7d51']
 const ITEM_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#c35f4c']
@@ -605,7 +606,9 @@ export default function App() {
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [operating, setOperating] = useState(false)
   const [notice, setNotice] = useState<AppNotice | null>(null)
+  const [idleTimeoutMs, setIdleTimeoutMs] = useState(DEFAULT_IDLE_TIMEOUT_MS)
   const [lastOperator, setLastOperator] = useState<Operator | null>(null)
+  const lastActivityAtRef = useRef(Date.now())
   const selectedCategory = useMemo(
     () => categories.find(category => category.id === selectedCategoryId) || null,
     [categories, selectedCategoryId],
@@ -634,6 +637,23 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [refreshCatalog])
 
+  useEffect(() => {
+    let cancelled = false
+    window.electronAPI.getAppConfig()
+      .then(config => {
+        if (!cancelled && Number.isFinite(config.idleTimeoutMs) && config.idleTimeoutMs > 0) {
+          setIdleTimeoutMs(config.idleTimeoutMs)
+        }
+      })
+      .catch(error => {
+        console.error(error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const handleSelectCategory = async (categoryId: string) => {
     setSelectedCategoryId(categoryId)
     await refreshCatalog(categoryId)
@@ -646,6 +666,38 @@ export default function App() {
     setReturnVisible(false)
     setBorrowRecords([])
   }, [])
+
+  const isAwayFromHome = screen !== 'categories' || itemDialog !== null || returnVisible
+
+  useEffect(() => {
+    const updateActivity = () => {
+      lastActivityAtRef.current = Date.now()
+    }
+    const events: Array<keyof WindowEventMap> = ['pointerdown', 'touchstart', 'mousedown', 'keydown', 'wheel']
+
+    events.forEach(eventName => window.addEventListener(eventName, updateActivity, { passive: true }))
+    updateActivity()
+
+    return () => {
+      events.forEach(eventName => window.removeEventListener(eventName, updateActivity))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isAwayFromHome) {
+      lastActivityAtRef.current = Date.now()
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastActivityAtRef.current < idleTimeoutMs) return
+      setNotice({ tone: 'info', text: '长时间未操作，已返回首页。' })
+      returnHome()
+      lastActivityAtRef.current = Date.now()
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [idleTimeoutMs, isAwayFromHome, returnHome])
 
   const openReturnDialog = () => {
     setScreen('categories')

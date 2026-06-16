@@ -109,6 +109,8 @@ export interface ElectronAPI {
   getAppConfig: () => Promise<{
     skipFaceAuth: boolean
     skipFaceAuthUser: { empName: string; empWorkNo: string }
+    idleTimeoutMinutes: number
+    idleTimeoutMs: number
   }>
   toggleFullScreen: () => void
 }

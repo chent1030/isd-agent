@@ -3,6 +3,7 @@ import log from 'electron-log/main'
 import path from 'path'
 import fs from 'fs'
 import * as dotenv from 'dotenv'
+import { getAppConfigFromEnv } from './app-config'
 
 // 优先加载 resourcesPath 下的 .env（打包后），其次当前目录（开发时）
 const envPaths = [
@@ -152,13 +153,7 @@ app.whenReady().then(async () => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow()
     win?.setFullScreen(!win.isFullScreen())
   })
-  ipcMain.handle('app:get-config', () => ({
-    skipFaceAuth: isEnabledEnv(process.env.SKIP_FACE_AUTH) || isEnabledEnv(process.env.VITE_SKIP_FACE_AUTH),
-    skipFaceAuthUser: {
-      empName: process.env.SKIP_FACE_AUTH_EMP_NAME ?? process.env.VITE_SKIP_FACE_AUTH_EMP_NAME ?? '',
-      empWorkNo: process.env.SKIP_FACE_AUTH_EMP_WORK_NO ?? process.env.VITE_SKIP_FACE_AUTH_EMP_WORK_NO ?? '',
-    },
-  }))
+  ipcMain.handle('app:get-config', () => getAppConfigFromEnv(process.env))
 
   createWindow()
 
