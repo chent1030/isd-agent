@@ -1,9 +1,8 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { FaceState, Operator } from '../../types/terminal'
 
-const MAX_RECOGNITION_ATTEMPTS = 5
-const RECOGNITION_INTERVAL_MS = 220
-const CAMERA_WARMUP_MS = 800
+const FACE_CAPTURE_COUNT = 5
+const FACE_CAPTURE_INTERVAL_MS = 100
 const WORK_NO_LENGTH = 8
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
 
@@ -56,6 +55,25 @@ interface FaceGateProps {
   onAuthenticated: (operator: Operator) => void | Promise<void>
 }
 
+function pickMostFrequentOperator(results: Array<Operator | null>) {
+  const counts = new Map<string, { operator: Operator; count: number; firstIndex: number }>()
+
+  results.forEach((operator, index) => {
+    if (!operator?.empName || !operator?.empWorkNo) return
+    const key = `${operator.empWorkNo}|${operator.empName}`
+    const current = counts.get(key)
+    counts.set(key, {
+      operator,
+      count: (current?.count || 0) + 1,
+      firstIndex: current?.firstIndex ?? index,
+    })
+  })
+
+  return Array.from(counts.values()).sort((left, right) => (
+    right.count - left.count || left.firstIndex - right.firstIndex
+  ))[0]?.operator || null
+}
+
 export const FaceGate = memo(function FaceGate({
   onAuthenticated,
 }: FaceGateProps) {
@@ -106,11 +124,6 @@ export const FaceGate = memo(function FaceGate({
     })
   }, [])
 
-  const waitForCameraWarmup = useCallback(async (runId: number) => {
-    await new Promise(resolve => window.setTimeout(resolve, CAMERA_WARMUP_MS))
-    return runId === runRef.current
-  }, [])
-
   const captureFrame = useCallback(() => {
     const video = videoRef.current
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) return null
@@ -121,6 +134,17 @@ export const FaceGate = memo(function FaceGate({
     return canvas.toDataURL('image/jpeg', 0.86).split(',')[1]
   }, [])
 
+  const captureFrames = useCallback(async (runId: number) => {
+    const frames: string[] = []
+    for (let index = 0; index < FACE_CAPTURE_COUNT; index += 1) {
+      if (runId !== runRef.current) return frames
+      if (index > 0) await new Promise(resolve => window.setTimeout(resolve, FACE_CAPTURE_INTERVAL_MS))
+      const frame = captureFrame()
+      if (frame) frames.push(frame)
+    }
+    return frames
+  }, [captureFrame])
+
   const runRecognition = useCallback(async () => {
     const runId = runRef.current
     const ready = await waitForVideoReady()
@@ -129,19 +153,20 @@ export const FaceGate = memo(function FaceGate({
     setVideoReady(true)
     setState('recognizing')
     try {
-      for (let attempt = 0; attempt < MAX_RECOGNITION_ATTEMPTS; attempt += 1) {
+      const frames = await captureFrames(runId)
+      const results: Array<Operator | null> = []
+      for (const frame of frames) {
         if (runId !== runRef.current) return
-        if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, RECOGNITION_INTERVAL_MS))
-        const base64 = captureFrame()
-        if (!base64) continue
-        const result = await window.electronAPI.recognizeFace(base64)
+        const result = await window.electronAPI.recognizeFace(frame)
         if (runId !== runRef.current) return
-        if (result?.empName && result?.empWorkNo) {
-          setState('success')
-          stopCamera()
-          await onAuthenticated({ empName: result.empName, empWorkNo: result.empWorkNo })
-          return
-        }
+        results.push(result?.empName && result?.empWorkNo ? { empName: result.empName, empWorkNo: result.empWorkNo } : null)
+      }
+      const operator = pickMostFrequentOperator(results)
+      if (operator) {
+        setState('success')
+        stopCamera()
+        await onAuthenticated(operator)
+        return
       }
       stopCamera()
       setState('unmatched')
@@ -154,7 +179,7 @@ export const FaceGate = memo(function FaceGate({
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [captureFrame, onAuthenticated, stopCamera, waitForVideoReady])
+  }, [captureFrames, onAuthenticated, stopCamera, waitForVideoReady])
 
   const startCamera = useCallback(async () => {
     if (state === 'camera-loading' || state === 'camera' || state === 'recognizing') return
@@ -189,8 +214,6 @@ export const FaceGate = memo(function FaceGate({
       }
       setVideoReady(true)
       setState('camera')
-      const warmedUp = await waitForCameraWarmup(runId)
-      if (!warmedUp) return
       void runRecognition()
     } catch {
       setErrorMsg('无法访问摄像头，请检查权限')
@@ -198,7 +221,7 @@ export const FaceGate = memo(function FaceGate({
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [runRecognition, state, stopCamera, waitForCameraWarmup, waitForVideoReady])
+  }, [runRecognition, state, stopCamera, waitForVideoReady])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
