@@ -60,7 +60,10 @@ export const ReturnDialog = memo(function ReturnDialog({
         ) : (
           <div className="twin-return-content">
             {loading ? (
-              <div className="twin-empty-state">正在查询未归还记录...</div>
+              <div className="catalog-loading-state">
+                <span className="terminal-loading-spinner" />
+                <strong>正在查询未归还记录</strong>
+              </div>
             ) : records.length === 0 ? (
               <div className="twin-empty-state">当前人员没有未归还借用记录。</div>
             ) : (
@@ -96,6 +99,7 @@ export const ReturnDialog = memo(function ReturnDialog({
                         disabled={operating}
                         onClick={() => onReturn(selected, quantity)}
                       >
+                        {operating && <span className="terminal-button-spinner" />}
                         {operating ? '处理中...' : '确认归还并开门'}
                       </button>
                     </div>

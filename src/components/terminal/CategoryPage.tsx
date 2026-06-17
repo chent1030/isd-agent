@@ -29,17 +29,24 @@ const CategoryCard = memo(function CategoryCard({
 
 interface CategoryPageProps {
   categories: CabinetCategory[]
+  loading: boolean
   onSelectCategory: (categoryId: string) => void
 }
 
 export const CategoryPage = memo(function CategoryPage({
   categories,
+  loading,
   onSelectCategory,
 }: CategoryPageProps) {
   return (
     <div className="terminal-page terminal-category-page">
       <div className="catalog-category-panel">
-        {categories.length === 0 ? (
+        {loading ? (
+          <div className="catalog-loading-state">
+            <span className="terminal-loading-spinner" />
+            <strong>正在加载类别</strong>
+          </div>
+        ) : categories.length === 0 ? (
           <div className="catalog-empty-state">暂无类别</div>
         ) : categories.map((category, index) => (
           <CategoryCard

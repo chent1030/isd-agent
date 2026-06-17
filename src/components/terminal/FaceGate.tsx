@@ -62,6 +62,7 @@ export const FaceGate = memo(function FaceGate({
   const [errorMsg, setErrorMsg] = useState('')
   const [manualVisible, setManualVisible] = useState(false)
   const [manualWorkNo, setManualWorkNo] = useState('')
+  const [videoReady, setVideoReady] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const runRef = useRef(0)
@@ -71,6 +72,7 @@ export const FaceGate = memo(function FaceGate({
     runRef.current += 1
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
+    setVideoReady(false)
   }, [])
 
   const waitForVideoReady = useCallback(async () => {
@@ -112,6 +114,7 @@ export const FaceGate = memo(function FaceGate({
     const ready = await waitForVideoReady()
     if (!ready || runId !== runRef.current) return
 
+    setVideoReady(true)
     setState('recognizing')
     try {
       for (let attempt = 0; attempt < MAX_RECOGNITION_ATTEMPTS; attempt += 1) {
@@ -142,12 +145,14 @@ export const FaceGate = memo(function FaceGate({
   }, [captureFrame, onAuthenticated, stopCamera, waitForVideoReady])
 
   const startCamera = useCallback(async () => {
-    if (state === 'camera' || state === 'recognizing') return
+    if (state === 'camera-loading' || state === 'camera' || state === 'recognizing') return
     runRef.current += 1
     setErrorMsg('')
     setManualVisible(false)
-    setState('camera')
+    setVideoReady(false)
+    setState('camera-loading')
     try {
+      const runId = runRef.current
       let stream: MediaStream
       try {
         stream = await navigator.mediaDevices.getUserMedia(await getPreferredCameraConstraints())
@@ -161,6 +166,17 @@ export const FaceGate = memo(function FaceGate({
       if (videoTrack) saveCameraPreference(videoTrack)
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
+      const ready = await waitForVideoReady()
+      if (!ready || runId !== runRef.current) {
+        stopCamera()
+        setErrorMsg('摄像头画面加载失败，请重试')
+        setState('failed')
+        setManualWorkNo('')
+        setManualVisible(true)
+        return
+      }
+      setVideoReady(true)
+      setState('camera')
       void runRecognition()
     } catch {
       setErrorMsg('无法访问摄像头，请检查权限')
@@ -168,7 +184,7 @@ export const FaceGate = memo(function FaceGate({
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [runRecognition, state])
+  }, [runRecognition, state, stopCamera, waitForVideoReady])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
@@ -180,6 +196,7 @@ export const FaceGate = memo(function FaceGate({
 
   const statusText = {
     idle: '点击开始后进行身份认证',
+    'camera-loading': '正在唤起摄像头',
     camera: '摄像头已开启',
     recognizing: '正在识别操作人',
     success: '认证通过',
@@ -187,7 +204,8 @@ export const FaceGate = memo(function FaceGate({
     unmatched: '未匹配到授权身份',
   }[state]
 
-  const showVideo = state === 'camera' || state === 'recognizing'
+  const showVideo = state === 'camera-loading' || state === 'camera' || state === 'recognizing'
+  const showCameraLoading = state === 'camera-loading' || (showVideo && !videoReady)
   const canUseManualAuth = state === 'failed' || state === 'unmatched'
   const appendManualDigit = (digit: number) => {
     setManualWorkNo(current => `${current}${digit}`.slice(0, WORK_NO_LENGTH))
@@ -208,7 +226,15 @@ export const FaceGate = memo(function FaceGate({
     <div className="twin-face-gate">
       <div className={`twin-face-preview twin-face-${state}`}>
         {showVideo ? (
-          <video ref={videoRef} autoPlay playsInline muted />
+          <>
+            <video ref={videoRef} className={videoReady ? '' : 'is-waiting'} autoPlay playsInline muted />
+            {showCameraLoading && (
+              <div className="twin-camera-loading">
+                <span className="terminal-loading-spinner" />
+                <strong>正在打开摄像头</strong>
+              </div>
+            )}
+          </>
         ) : (
           <div className="twin-face-visual" aria-hidden="true">
             <span />

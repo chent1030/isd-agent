@@ -32,6 +32,7 @@ const ItemCard = memo(function ItemCard({
 
 interface ItemsPageProps {
   items: CabinetCatalogItem[]
+  loading: boolean
   selectedCategory: CabinetCategory | null
   onBack: () => void
   onSelectItem: (item: CabinetCatalogItem) => void
@@ -39,6 +40,7 @@ interface ItemsPageProps {
 
 export const ItemsPage = memo(function ItemsPage({
   items,
+  loading,
   selectedCategory,
   onBack,
   onSelectItem,
@@ -54,7 +56,12 @@ export const ItemsPage = memo(function ItemsPage({
         </div>
       </div>
       <div className="catalog-item-panel">
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="catalog-loading-state">
+            <span className="terminal-loading-spinner" />
+            <strong>正在加载物品</strong>
+          </div>
+        ) : items.length === 0 ? (
           <div className="catalog-empty-state">当前类别暂无可用物品</div>
         ) : items.map(item => (
           <ItemCard

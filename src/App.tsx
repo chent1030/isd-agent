@@ -23,7 +23,9 @@ export default function App() {
   const [itemDialog, setItemDialog] = useState<CabinetCatalogItem | null>(null)
   const [returnVisible, setReturnVisible] = useState(false)
   const [borrowRecords, setBorrowRecords] = useState<BorrowRecord[]>([])
-  const [loading, setLoading] = useState(false)
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [itemsLoading, setItemsLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [operating, setOperating] = useState(false)
   const [notice, setNotice] = useState<AppNotice | null>(null)
@@ -35,28 +37,62 @@ export default function App() {
     [categories, selectedCategoryId],
   )
 
-  const refreshCatalog = useCallback(async (categoryId = selectedCategoryId) => {
-    setLoading(true)
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true)
     try {
       const nextCategories = await window.electronAPI.getCabinetCategories()
-      const nextCategoryId = categoryId || nextCategories[0]?.id || ''
-      const nextItems = nextCategoryId ? await window.electronAPI.getCabinetCatalogItems(nextCategoryId) : []
       setCategories(nextCategories)
-      setSelectedCategoryId(nextCategoryId)
+    } catch (error) {
+      console.error(error)
+      setNotice({ tone: 'error', text: `类别数据加载失败：${getUserFacingErrorMessage(error)}` })
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }, [])
+
+  const loadItems = useCallback(async (categoryId: string) => {
+    if (!categoryId) {
+      setItems([])
+      return
+    }
+    setItemsLoading(true)
+    try {
+      const nextItems = await window.electronAPI.getCabinetCatalogItems(categoryId)
       setItems(nextItems)
     } catch (error) {
       console.error(error)
-      setNotice({ tone: 'error', text: `物品数据同步失败：${getUserFacingErrorMessage(error)}` })
+      setItems([])
+      setNotice({ tone: 'error', text: `物品数据加载失败：${getUserFacingErrorMessage(error)}` })
     } finally {
-      setLoading(false)
+      setItemsLoading(false)
     }
-  }, [selectedCategoryId])
+  }, [])
+
+  const refreshCatalog = useCallback(async (showButtonLoading = false) => {
+    if (showButtonLoading) setRefreshing(true)
+    try {
+      const nextCategories = await window.electronAPI.getCabinetCategories()
+      setCategories(nextCategories)
+      if (screen === 'items' && selectedCategoryId) {
+        const nextItems = await window.electronAPI.getCabinetCatalogItems(selectedCategoryId)
+        setItems(nextItems)
+      }
+    } catch (error) {
+      console.error(error)
+      setNotice({ tone: 'error', text: `数据刷新失败：${getUserFacingErrorMessage(error)}` })
+    } finally {
+      if (showButtonLoading) setRefreshing(false)
+    }
+  }, [screen, selectedCategoryId])
 
   useEffect(() => {
-    void refreshCatalog()
-    const timer = window.setInterval(() => void refreshCatalog(), 30000)
-    return () => window.clearInterval(timer)
-  }, [refreshCatalog])
+    void loadCategories()
+  }, [loadCategories])
+
+  useEffect(() => {
+    if (screen !== 'items') return
+    void loadItems(selectedCategoryId)
+  }, [loadItems, screen, selectedCategoryId])
 
   useEffect(() => {
     let cancelled = false
@@ -75,11 +111,11 @@ export default function App() {
     }
   }, [])
 
-  const handleSelectCategory = useCallback(async (categoryId: string) => {
+  const handleSelectCategory = useCallback((categoryId: string) => {
     setSelectedCategoryId(categoryId)
-    await refreshCatalog(categoryId)
+    setItems([])
     setScreen('items')
-  }, [refreshCatalog])
+  }, [])
 
   const returnHome = useCallback(() => {
     setScreen('categories')
@@ -213,8 +249,9 @@ export default function App() {
           <h1>行小助物品领用</h1>
         </div>
         <div className="twin-header-actions">
-          <button type="button" className="twin-utility-button" onClick={() => void refreshCatalog()}>
-            {loading ? '同步中' : '刷新数据'}
+          <button type="button" className="twin-utility-button" disabled={refreshing} onClick={() => void refreshCatalog(true)}>
+            {refreshing && <span className="terminal-button-spinner" />}
+            {refreshing ? '同步中' : '刷新数据'}
           </button>
           <button type="button" className="twin-utility-button twin-return-button" onClick={openReturnDialog}>
             归还
@@ -235,6 +272,7 @@ export default function App() {
         {screen === 'categories' && (
           <CategoryPage
             categories={categories}
+            loading={categoriesLoading}
             onSelectCategory={handleSelectCategory}
           />
         )}
@@ -242,6 +280,7 @@ export default function App() {
         {screen === 'items' && (
           <ItemsPage
             items={items}
+            loading={itemsLoading}
             selectedCategory={selectedCategory}
             onBack={showCategories}
             onSelectItem={setItemDialog}
