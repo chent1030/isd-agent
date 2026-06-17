@@ -19,13 +19,15 @@ const ItemCard = memo(function ItemCard({
       disabled={item.cabinetQuantity <= 0}
       onClick={() => onSelect(item)}
     >
-      <span>{useTypeLabel(item.useType)}</span>
-      <strong>{item.name}</strong>
-      <em>{item.spec || '无规格'}</em>
-      <div>
-        <b><small>格口内数量</small>{item.cabinetQuantity}</b>
+      <div className="catalog-item-topline">
+        <span>{useTypeLabel(item.useType)}</span>
+        <i>{getDisplayInitial(item.name)}</i>
       </div>
-      <i>{getDisplayInitial(item.name)}</i>
+      <strong>{item.name}</strong>
+      <div className="catalog-item-footline">
+        <em>{item.spec || '无规格'}</em>
+        <b><small>格口</small>{item.cabinetQuantity}</b>
+      </div>
     </button>
   )
 })
