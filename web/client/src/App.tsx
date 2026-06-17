@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/components/ui/toast'
 import { api } from '@/lib/api'
 import { getUserFacingErrorMessage } from '@/lib/error'
 import { AppHeader } from '@/components/terminal/AppHeader'
