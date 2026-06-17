@@ -3476,6 +3476,11 @@ body {
   color: #183545;
 }
 
+.twin-slot-facts strong.is-auth-required {
+  color: #c64848;
+  font-weight: 900;
+}
+
 .twin-operation-panel,
 .twin-return-content {
   display: flex;
@@ -3707,6 +3712,89 @@ body {
 .twin-face-gate .twin-dialog-actions {
   grid-column: 2;
   justify-content: flex-start;
+}
+
+.twin-manual-auth-trigger {
+  border-color: rgba(198, 72, 72, 0.28);
+  color: #9c2f2f;
+  background: #fff8f7;
+}
+
+.twin-manual-auth-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26px;
+  background: rgba(222, 234, 241, 0.84);
+  backdrop-filter: blur(8px);
+}
+
+.twin-manual-auth-panel {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid rgba(119, 151, 169, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.98), rgba(244, 250, 247, 0.94)),
+    #ffffff;
+  box-shadow: 0 24px 58px rgba(43, 91, 63, 0.18);
+}
+
+.twin-manual-auth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.twin-manual-auth-header strong {
+  color: #183545;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.twin-manual-auth-output {
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(49, 150, 182, 0.24);
+  border-radius: 8px;
+  color: #183545;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(79, 154, 110, 0.12), transparent 58%),
+    linear-gradient(180deg, #ffffff, #eef7f1);
+  font-family: Rajdhani, sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.twin-manual-auth-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.twin-manual-auth-keypad button {
+  min-height: 64px;
+  border: 1px solid rgba(89, 139, 165, 0.32);
+  border-radius: 8px;
+  color: #183545;
+  background: rgba(255, 255, 255, 0.94);
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.twin-manual-auth-keypad button:active {
+  transform: scale(0.98);
 }
 
 .twin-operator-pass {

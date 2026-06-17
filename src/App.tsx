@@ -132,6 +132,8 @@ function FaceGate({
 }) {
   const [state, setState] = useState<FaceState>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [manualVisible, setManualVisible] = useState(false)
+  const [manualWorkNo, setManualWorkNo] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const runRef = useRef(0)
@@ -199,10 +201,14 @@ function FaceGate({
       }
       stopCamera()
       setState('unmatched')
+      setManualWorkNo('')
+      setManualVisible(true)
     } catch {
       stopCamera()
       setErrorMsg('人脸识别服务异常，请重试')
       setState('failed')
+      setManualWorkNo('')
+      setManualVisible(true)
     }
   }, [captureFrame, onAuthenticated, stopCamera, waitForVideoReady])
 
@@ -228,6 +234,8 @@ function FaceGate({
     } catch {
       setErrorMsg('无法访问摄像头，请检查权限')
       setState('failed')
+      setManualWorkNo('')
+      setManualVisible(true)
     }
   }, [runRecognition])
 
@@ -243,6 +251,21 @@ function FaceGate({
   }[state]
 
   const showVideo = state === 'camera' || state === 'recognizing'
+  const canUseManualAuth = state === 'failed' || state === 'unmatched'
+  const appendManualDigit = (digit: number) => {
+    setManualWorkNo(current => `${current}${digit}`.slice(0, 20))
+  }
+  const submitManualAuth = async () => {
+    const empWorkNo = manualWorkNo.trim()
+    if (!empWorkNo) {
+      setErrorMsg('请输入工号')
+      setState('failed')
+      return
+    }
+    setManualVisible(false)
+    setState('success')
+    await onAuthenticated({ empName: `工号${empWorkNo}`, empWorkNo })
+  }
 
   return (
     <div className="twin-face-gate">
@@ -268,7 +291,46 @@ function FaceGate({
             {state === 'idle' ? '开始扫脸' : '重新扫脸'}
           </button>
         )}
+        {canUseManualAuth && (
+          <button
+            type="button"
+            className="twin-secondary-action twin-manual-auth-trigger"
+            onClick={() => {
+              stopCamera()
+              setManualWorkNo('')
+              setManualVisible(true)
+            }}
+          >
+            输入工号
+          </button>
+        )}
       </div>
+
+      {manualVisible && (
+        <div className="twin-manual-auth-backdrop" role="dialog" aria-modal="true">
+          <div className="twin-manual-auth-panel">
+            <div className="twin-manual-auth-header">
+              <strong>输入工号</strong>
+              <button type="button" className="twin-icon-button" onClick={() => setManualVisible(false)} aria-label="关闭">×</button>
+            </div>
+            <output className="twin-manual-auth-output">{manualWorkNo || '请输入工号'}</output>
+            <div className="twin-manual-auth-keypad">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
+                <button type="button" key={item} onClick={() => appendManualDigit(item)}>{item}</button>
+              ))}
+              <button type="button" onClick={() => setManualWorkNo('')}>清空</button>
+              <button type="button" onClick={() => appendManualDigit(0)}>0</button>
+              <button type="button" onClick={() => setManualWorkNo(current => current.slice(0, -1))}>删除</button>
+            </div>
+            <div className="twin-dialog-actions">
+              <button type="button" className="twin-secondary-action" onClick={() => setManualVisible(false)}>取消</button>
+              <button type="button" className="twin-primary-action" disabled={!manualWorkNo.trim()} onClick={() => void submitManualAuth()}>
+                确认工号
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -382,6 +444,8 @@ function ItemDialog({
   const maxQuantity = Math.max(item.cabinetQuantity, 1)
   const canReceiveItem = item.cabinetQuantity > 0 && item.useType !== 1
   const canBorrowItem = item.cabinetQuantity > 0 && (item.useType === 1 || item.useType === 2)
+  const canSwitchMode = item.useType === 2
+  const operationLabel = mode === 'receive' ? '领用' : '借用'
   const canProceed = quantity > 0 && quantity <= maxQuantity && !operating && (mode === 'receive' ? canReceiveItem : canBorrowItem)
 
   const proceedToFace = () => {
@@ -425,31 +489,33 @@ function ItemDialog({
             </div>
             <div>
               <span>授权</span>
-              <strong>{item.authRequired ? '需要授权' : '无需授权'}</strong>
+              <strong className={item.authRequired ? 'is-auth-required' : ''}>{item.authRequired ? '需要授权' : '无需授权'}</strong>
             </div>
           </div>
 
           <div className="twin-operation-panel">
             {step === 'quantity' ? (
               <>
-                <div className="twin-segmented">
-                  <button
-                    type="button"
-                    className={mode === 'receive' ? 'is-active' : ''}
-                    disabled={!canReceiveItem}
-                    onClick={() => setMode('receive')}
-                  >
-                    领用
-                  </button>
-                  <button
-                    type="button"
-                    className={mode === 'borrow' ? 'is-active' : ''}
-                    disabled={!canBorrowItem}
-                    onClick={() => setMode('borrow')}
-                  >
-                    借用
-                  </button>
-                </div>
+                {canSwitchMode && (
+                  <div className="twin-segmented">
+                    <button
+                      type="button"
+                      className={mode === 'receive' ? 'is-active' : ''}
+                      disabled={!canReceiveItem}
+                      onClick={() => setMode('receive')}
+                    >
+                      领用
+                    </button>
+                    <button
+                      type="button"
+                      className={mode === 'borrow' ? 'is-active' : ''}
+                      disabled={!canBorrowItem}
+                      onClick={() => setMode('borrow')}
+                    >
+                      借用
+                    </button>
+                  </div>
+                )}
 
                 <QuantityPicker
                   label="选择数量"
@@ -473,7 +539,7 @@ function ItemDialog({
               <button type="button" className="twin-secondary-action" onClick={onClose}>取消</button>
               {step === 'quantity' && (
                 <button type="button" className="twin-primary-action" disabled={!canProceed} onClick={proceedToFace}>
-                  下一步：扫脸认证
+                  {operationLabel}
                 </button>
               )}
             </div>
