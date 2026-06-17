@@ -72,6 +72,7 @@ export const FaceGate = memo(function FaceGate({
     runRef.current += 1
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
     setVideoReady(false)
   }, [])
 
@@ -225,17 +226,14 @@ export const FaceGate = memo(function FaceGate({
   return (
     <div className="twin-face-gate">
       <div className={`twin-face-preview twin-face-${state}`}>
-        {showVideo ? (
-          <>
-            <video ref={videoRef} className={videoReady ? '' : 'is-waiting'} autoPlay playsInline muted />
-            {showCameraLoading && (
-              <div className="twin-camera-loading">
-                <span className="terminal-loading-spinner" />
-                <strong>正在打开摄像头</strong>
-              </div>
-            )}
-          </>
-        ) : (
+        <video ref={videoRef} className={showVideo && videoReady ? '' : 'is-waiting'} autoPlay playsInline muted />
+        {showCameraLoading && (
+          <div className="twin-camera-loading">
+            <span className="terminal-loading-spinner" />
+            <strong>正在打开摄像头</strong>
+          </div>
+        )}
+        {!showVideo && (
           <div className="twin-face-visual" aria-hidden="true">
             <span />
             <span />
