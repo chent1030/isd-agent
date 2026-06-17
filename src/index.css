@@ -2420,6 +2420,13 @@ body {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 20%, rgba(47, 143, 103, 0.11) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 28%, rgba(49, 150, 182, 0.12) 0 2px, transparent 3px),
+    radial-gradient(circle at 36% 72%, rgba(31, 125, 165, 0.1) 0 2px, transparent 3px),
+    radial-gradient(circle at 88% 78%, rgba(47, 143, 103, 0.09) 0 2px, transparent 3px),
+    repeating-linear-gradient(90deg, transparent 0 72px, rgba(49, 150, 182, 0.045) 72px 73px),
+    repeating-linear-gradient(0deg, transparent 0 64px, rgba(82, 147, 104, 0.045) 64px 65px);
 }
 
 .twin-particle-field::before,
@@ -2433,7 +2440,6 @@ body {
     linear-gradient(90deg, transparent, rgba(47, 143, 103, 0.18), transparent),
     repeating-linear-gradient(90deg, transparent 0 58px, rgba(49, 150, 182, 0.08) 58px 60px);
   opacity: 0.52;
-  transform: perspective(680px) rotateX(62deg);
   transform-origin: bottom;
 }
 
@@ -2445,28 +2451,6 @@ body {
   background-size: 34px 34px;
   opacity: 0.36;
   transform: none;
-}
-
-.twin-particle-field span {
-  position: absolute;
-  left: var(--particle-x);
-  top: var(--particle-y);
-  width: var(--particle-size);
-  height: var(--particle-size);
-  border-radius: 999px;
-  background: rgba(28, 134, 157, 0.62);
-  box-shadow:
-    0 0 14px rgba(28, 134, 157, 0.38),
-    0 0 32px rgba(47, 143, 103, 0.16);
-  animation: terminal-particle var(--particle-duration) ease-in-out infinite;
-  animation-delay: var(--particle-delay);
-}
-
-@keyframes terminal-particle {
-  0% { opacity: 0; transform: translate3d(0, 22px, 0) scale(0.72); }
-  18% { opacity: 0.72; }
-  62% { opacity: 0.58; transform: translate3d(18px, -34px, 0) scale(1.18); }
-  100% { opacity: 0; transform: translate3d(-12px, -72px, 0) scale(0.86); }
 }
 
 .twin-header,
