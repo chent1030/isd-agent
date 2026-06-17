@@ -1,6 +1,6 @@
-import { memo, useState } from 'react'
-import { Minus, Plus } from 'lucide-react'
+import { memo } from 'react'
 import { Button } from '@/components/ui/button'
+import AnimatedCounter from '@/components/ui/animated-counter'
 import { clampQuantity } from '@/lib/shared'
 
 interface QuantityStepperProps {
@@ -24,6 +24,9 @@ export const QuantityStepper = memo(function QuantityStepper({
 
   const setQuantity = (next: number) => onChange(clampQuantity(next, safeMax))
 
+  // 按最大值决定补零位数，保证数字居中不跳动
+  const padding = safeMax >= 100 ? 3 : safeMax >= 10 ? 2 : 2
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -31,31 +34,14 @@ export const QuantityStepper = memo(function QuantityStepper({
         <span className="text-xs text-muted-foreground">最大 {safeMax}</span>
       </div>
 
-      <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-12 shrink-0"
-          disabled={displayValue <= 1}
-          onClick={() => setQuantity(displayValue - 1)}
-          aria-label="减少数量"
-        >
-          <Minus />
-        </Button>
-        <div className="flex h-12 flex-1 items-center justify-center rounded-lg border bg-muted text-2xl font-bold tabular-nums">
-          {displayValue}
-        </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-12 shrink-0"
-          disabled={displayValue >= safeMax}
-          onClick={() => setQuantity(displayValue + 1)}
-          aria-label="增加数量"
-        >
-          <Plus />
-        </Button>
-      </div>
+      <AnimatedCounter
+        value={displayValue}
+        padding={padding}
+        canDecrement={displayValue > 1}
+        canIncrement={displayValue < safeMax}
+        onDecrement={() => setQuantity(displayValue - 1)}
+        onIncrement={() => setQuantity(displayValue + 1)}
+      />
 
       <div className="flex flex-wrap gap-2">
         {quickValues.map(item => (
