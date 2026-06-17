@@ -1,10 +1,7 @@
 import { memo, useEffect, useState } from 'react'
-import { Package } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Package, Check } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { QuantityStepper } from './QuantityStepper'
 import { FaceAuth } from './FaceAuth'
@@ -25,13 +22,13 @@ export const ItemDialog = memo(function ItemDialog({
 }: ItemDialogProps) {
   const [mode, setMode] = useState<OperationMode>(item.useType === 1 ? 'borrow' : 'receive')
   const [quantity, setQuantity] = useState(1)
-  const [step, setStep] = useState<'quantity' | 'face'>('quantity')
+  const [step, setStep] = useState<'configure' | 'auth'>('configure')
   const [error, setError] = useState('')
 
   useEffect(() => {
     setMode(item.useType === 1 ? 'borrow' : 'receive')
     setQuantity(1)
-    setStep('quantity')
+    setStep('configure')
     setError('')
   }, [item])
 
@@ -42,7 +39,7 @@ export const ItemDialog = memo(function ItemDialog({
   const operationLabel = mode === 'receive' ? '领用' : '借用'
   const canProceed = quantity > 0 && quantity <= maxQuantity && !operating && (mode === 'receive' ? canReceiveItem : canBorrowItem)
 
-  const proceedToFace = () => {
+  const proceedToAuth = () => {
     if (item.cabinetQuantity <= 0) {
       setError('柜内可领数量不足，请联系管理员补货')
       return
@@ -52,7 +49,7 @@ export const ItemDialog = memo(function ItemDialog({
       return
     }
     setError('')
-    setStep('face')
+    setStep('auth')
   }
 
   const handleAuthenticated = async (operator: Operator) => {
@@ -60,143 +57,128 @@ export const ItemDialog = memo(function ItemDialog({
     await onOperate(item, mode, quantity, operator)
   }
 
-  // 快速选择数量选项
-  const quantityOptions = maxQuantity <= 20
-    ? Array.from({ length: maxQuantity }, (_, i) => i + 1)
-    : [1, 2, 3, 5, 10]
-
   return (
     <Dialog open onOpenChange={open => { if (!open && !operating) onClose() }}>
-      <DialogContent className="overflow-visible p-0 sm:max-w-2xl gap-0">
-        <DialogHeader className="border-b px-6 py-4 mb-0">
+      <DialogContent>
+        {/* 标题区 */}
+        <DialogHeader>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">{item.category || '未分类'}</Badge>
-            {item.authRequired && <Badge variant="warning">需授权</Badge>}
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              {item.category || '未分类'}
+            </span>
+            {item.authRequired && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600">
+                需授权
+              </span>
+            )}
           </div>
-          <DialogTitle className="text-2xl">{item.name}</DialogTitle>
+          <DialogTitle>{item.name}</DialogTitle>
           <DialogDescription>{item.spec || '无规格'}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col-reverse md:flex-row">
-          {/* 左侧信息面板 */}
-          <div className="flex flex-col justify-between md:w-80 md:border-r">
-            <div className="flex-1 grow">
-              <div className="border-t p-6 md:border-none">
-                <div className="flex items-center space-x-3">
-                  <div className="inline-flex shrink-0 items-center justify-center rounded-sm bg-muted p-3">
-                    <Package className="size-5 text-foreground" aria-hidden />
-                  </div>
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-medium text-foreground">物品领用</h3>
-                    <p className="text-sm text-muted-foreground">选择数量并认证身份</p>
-                  </div>
+        {/* 内容区：单栏，纵向步骤 */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* 步骤指示器 */}
+          <div className="flex items-center gap-3 text-sm">
+            <div className={`flex size-7 items-center justify-center rounded-full font-semibold ${
+              step === 'configure' ? 'bg-slate-900 text-white' : 'bg-emerald-500 text-white'
+            }`}>
+              {step === 'configure' ? '1' : <Check className="h-4 w-4" />}
+            </div>
+            <span className={step === 'configure' ? 'font-semibold text-slate-900' : 'text-slate-400'}>
+              配置领用信息
+            </span>
+            <div className="h-px flex-1 bg-slate-200" />
+            <div className={`flex size-7 items-center justify-center rounded-full font-semibold ${
+              step === 'auth' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400'
+            }`}>
+              2
+            </div>
+            <span className={step === 'auth' ? 'font-semibold text-slate-900' : 'text-slate-400'}>
+              人脸认证
+            </span>
+          </div>
+
+          {step === 'configure' && (
+            <>
+              {/* 物品摘要卡片 */}
+              <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex size-12 items-center justify-center rounded-lg bg-slate-900 text-white">
+                  <Package className="h-6 w-6" />
                 </div>
-                <Separator className="my-4" />
-                <h4 className="text-sm font-medium text-foreground">物品信息</h4>
-                <div className="mt-2 space-y-2 text-sm leading-6 text-muted-foreground">
-                  <div className="flex items-center justify-between">
-                    <span>格口内数量</span>
-                    <span className="text-2xl font-extrabold text-foreground">{item.cabinetQuantity}</span>
+                <div className="flex-1 grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs text-slate-500">格口内</div>
+                    <div className="text-xl font-bold text-slate-900">{item.cabinetQuantity}</div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>规格</span>
-                    <span className="font-medium text-foreground">{item.spec || '--'}</span>
+                  <div>
+                    <div className="text-xs text-slate-500">规格</div>
+                    <div className="font-medium text-slate-700 truncate">{item.spec || '--'}</div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>授权要求</span>
-                    <span className={`font-medium ${item.authRequired ? 'text-amber-600' : 'text-foreground'}`}>
+                  <div>
+                    <div className="text-xs text-slate-500">授权</div>
+                    <div className={`font-medium ${item.authRequired ? 'text-amber-600' : 'text-slate-700'}`}>
                       {item.authRequired ? '需要授权' : '无需授权'}
-                    </span>
-                  </div>
-                </div>
-                <h4 className="mt-6 text-sm font-medium text-foreground">操作提示</h4>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  选择数量与方式后，将进行人脸认证并自动开柜。
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t p-4">
-              <Button type="button" variant="ghost" disabled={operating} onClick={onClose}>
-                取消
-              </Button>
-              {step === 'quantity' && (
-                <Button type="button" size="sm" disabled={!canProceed} onClick={proceedToFace}>
-                  {operationLabel}
-                </Button>
-              )}
-              {step === 'face' && (
-                <Button type="button" size="sm" variant="outline" disabled={operating} onClick={() => setStep('quantity')}>
-                  返回修改数量
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* 右侧分步选择区 */}
-          <div className="flex-1 space-y-6 p-6 md:px-6 md:pb-8 md:pt-6">
-            {step === 'quantity' ? (
-              <>
-                {canSwitchMode && (
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="inline-flex size-6 items-center justify-center rounded-sm bg-muted text-sm text-foreground">1</div>
-                      <Label className="text-sm font-medium text-foreground">选择操作方式</Label>
                     </div>
-                    <Select value={mode} onValueChange={v => setMode(v as OperationMode)}>
-                      <SelectTrigger id="mode" className="w-full">
-                        <SelectValue placeholder="选择方式" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="receive" disabled={!canReceiveItem}>领用</SelectItem>
-                        <SelectItem value="borrow" disabled={!canBorrowItem}>借用</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex items-center space-x-3">
-                    <div className="inline-flex size-6 items-center justify-center rounded-sm bg-muted text-sm text-foreground">
-                      {canSwitchMode ? 2 : 1}
-                    </div>
-                    <Label className="text-sm font-medium text-foreground">选择数量</Label>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">当前最多可领 {maxQuantity} 件。</p>
-                  <div className="mt-4">
-                    <QuantityStepper label="数量" value={quantity} max={maxQuantity} onChange={setQuantity} />
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">快速选择：</span>
-                    {quantityOptions.map(q => (
-                      <Button
-                        key={q}
-                        type="button"
-                        variant={quantity === q ? 'default' : 'outline'}
-                        size="sm"
-                        className="min-w-10"
-                        onClick={() => setQuantity(Math.min(Math.max(q, 1), maxQuantity))}
-                      >
-                        {q}
-                      </Button>
-                    ))}
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="inline-flex size-6 items-center justify-center rounded-sm bg-primary text-sm font-medium text-primary-foreground">
-                    ✓
-                  </div>
-                  <Label className="text-sm font-medium text-foreground">人脸认证</Label>
-                </div>
-                <FaceAuth onAuthenticated={handleAuthenticated} />
               </div>
-            )}
 
-            {error && <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</div>}
-          </div>
+              {/* 方式选择 */}
+              {canSwitchMode && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-900">操作方式</label>
+                  <Select value={mode} onValueChange={v => setMode(v as OperationMode)}>
+                    <SelectTrigger id="mode" className="w-full bg-white">
+                      <SelectValue placeholder="选择方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="receive" disabled={!canReceiveItem}>领用</SelectItem>
+                      <SelectItem value="borrow" disabled={!canBorrowItem}>借用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* 数量选择 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-slate-900">选择数量</label>
+                  <span className="text-xs text-slate-500">最大 {maxQuantity}</span>
+                </div>
+                <QuantityStepper label="数量" value={quantity} max={maxQuantity} onChange={setQuantity} />
+              </div>
+            </>
+          )}
+
+          {step === 'auth' && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                确认信息：{operationLabel} <strong className="text-slate-900">{item.name}</strong> × <strong className="text-slate-900">{quantity}</strong>
+              </div>
+              <FaceAuth onAuthenticated={handleAuthenticated} />
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{error}</div>
+          )}
         </div>
+
+        {/* 底部操作栏 */}
+        <DialogFooter>
+          {step === 'auth' && (
+            <Button variant="outline" disabled={operating} onClick={() => setStep('configure')}>
+              返回上一步
+            </Button>
+          )}
+          <Button variant="ghost" disabled={operating} onClick={onClose}>取消</Button>
+          {step === 'configure' && (
+            <Button disabled={!canProceed} onClick={proceedToAuth}>
+              下一步：人脸认证
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
