@@ -3,6 +3,7 @@ import type { FaceState, Operator } from '../../types/terminal'
 
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
+const CAMERA_WARMUP_MS = 800
 const WORK_NO_LENGTH = 8
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
 
@@ -79,6 +80,11 @@ export const FaceGate = memo(function FaceGate({
   const waitForVideoReady = useCallback(async () => {
     const video = videoRef.current
     if (!video) return false
+    try {
+      await video.play()
+    } catch {
+      // Some Chromium builds reject play() transiently while the stream is attaching.
+    }
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) return true
 
     return new Promise<boolean>(resolve => {
@@ -98,6 +104,11 @@ export const FaceGate = memo(function FaceGate({
       video.addEventListener('loadedmetadata', onReady)
       video.addEventListener('canplay', onReady)
     })
+  }, [])
+
+  const waitForCameraWarmup = useCallback(async (runId: number) => {
+    await new Promise(resolve => window.setTimeout(resolve, CAMERA_WARMUP_MS))
+    return runId === runRef.current
   }, [])
 
   const captureFrame = useCallback(() => {
@@ -178,6 +189,8 @@ export const FaceGate = memo(function FaceGate({
       }
       setVideoReady(true)
       setState('camera')
+      const warmedUp = await waitForCameraWarmup(runId)
+      if (!warmedUp) return
       void runRecognition()
     } catch {
       setErrorMsg('无法访问摄像头，请检查权限')
@@ -185,7 +198,7 @@ export const FaceGate = memo(function FaceGate({
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [runRecognition, state, stopCamera, waitForVideoReady])
+  }, [runRecognition, state, stopCamera, waitForCameraWarmup, waitForVideoReady])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
