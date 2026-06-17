@@ -64,7 +64,10 @@ export const ItemGrid = memo(function ItemGrid({
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-5 overflow-y-auto pb-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div
+          className="overflow-y-auto pb-2"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}
+        >
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-[260px] rounded-2xl" />
           ))}
@@ -72,7 +75,10 @@ export const ItemGrid = memo(function ItemGrid({
       ) : items.length === 0 ? (
         <div className="flex h-48 items-center justify-center text-muted-foreground">当前类别暂无可用物品</div>
       ) : (
-        <div className="grid grid-cols-2 gap-5 overflow-y-auto pb-2 pr-1 sm:grid-cols-3 lg:grid-cols-4">
+        <div
+          className="overflow-y-auto pb-2 pr-1"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}
+        >
           {items.map(item => (
             <ItemCard key={item.id} item={item} onSelect={onSelect} />
           ))}
