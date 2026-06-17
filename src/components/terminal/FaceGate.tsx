@@ -1,21 +1,10 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { FaceState, Operator } from '../../types/terminal'
 
-const FACE_CAPTURE_COUNT = 5
-const FACE_CAPTURE_INTERVAL_MS = 1000
-const CAMERA_READY_TIMEOUT_MS = 8000
-const CAMERA_READY_POLL_MS = 100
-const CAMERA_STABLE_FRAME_COUNT = 2
+const MAX_RECOGNITION_ATTEMPTS = 5
+const RECOGNITION_INTERVAL_MS = 220
 const WORK_NO_LENGTH = 8
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
-
-const logFaceStep = (message: string, details?: Record<string, unknown>) => {
-  console.info(`[FaceGate] ${message}`, details || '')
-}
-
-type VideoWithFrameCallback = HTMLVideoElement & {
-  requestVideoFrameCallback?: (callback: () => void) => number
-}
 
 interface CameraPreference {
   deviceId: string
@@ -66,74 +55,6 @@ interface FaceGateProps {
   onAuthenticated: (operator: Operator) => void | Promise<void>
 }
 
-function pickMostFrequentOperator(results: Array<Operator | null>) {
-  const counts = new Map<string, { operator: Operator; count: number; firstIndex: number }>()
-
-  results.forEach((operator, index) => {
-    if (!operator?.empName || !operator?.empWorkNo) return
-    const key = `${operator.empWorkNo}|${operator.empName}`
-    const current = counts.get(key)
-    counts.set(key, {
-      operator,
-      count: (current?.count || 0) + 1,
-      firstIndex: current?.firstIndex ?? index,
-    })
-  })
-
-  return Array.from(counts.values()).sort((left, right) => (
-    right.count - left.count || left.firstIndex - right.firstIndex
-  ))[0]?.operator || null
-}
-
-function delay(ms: number) {
-  return new Promise<void>(resolve => window.setTimeout(resolve, ms))
-}
-
-function isVideoElementReady(video: HTMLVideoElement) {
-  return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-    video.videoWidth > 0 &&
-    video.videoHeight > 0
-}
-
-function getVideoFrameStats(video: HTMLVideoElement) {
-  if (!isVideoElementReady(video)) return null
-  const canvas = document.createElement('canvas')
-  canvas.width = 32
-  canvas.height = 32
-  const context = canvas.getContext('2d', { willReadFrequently: true })
-  if (!context) return null
-
-  try {
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
-    let total = 0
-    const luminance: number[] = []
-    for (let index = 0; index < pixels.length; index += 4) {
-      const value = (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3
-      luminance.push(value)
-      total += value
-    }
-    const average = total / luminance.length
-    const variance = luminance.reduce((sum, value) => sum + ((value - average) ** 2), 0) / luminance.length
-    return { average, variance }
-  } catch {
-    return null
-  }
-}
-
-async function waitForNextVideoFrame(video: HTMLVideoElement) {
-  const videoWithCallback = video as VideoWithFrameCallback
-  if (typeof videoWithCallback.requestVideoFrameCallback === 'function') {
-    await Promise.race([
-      new Promise<void>(resolve => videoWithCallback.requestVideoFrameCallback?.(() => resolve())),
-      delay(500),
-    ])
-    return
-  }
-
-  await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()))
-}
-
 export const FaceGate = memo(function FaceGate({
   onAuthenticated,
 }: FaceGateProps) {
@@ -151,79 +72,31 @@ export const FaceGate = memo(function FaceGate({
     runRef.current += 1
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
     setVideoReady(false)
   }, [])
 
-  const waitForVideoReady = useCallback(async (runId: number) => {
+  const waitForVideoReady = useCallback(async () => {
     const video = videoRef.current
     if (!video) return false
-    const startedAt = Date.now()
-    try {
-      await video.play()
-    } catch {
-      // Some Chromium builds reject play() transiently while the stream is attaching.
-    }
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) return true
 
-    while (Date.now() - startedAt < CAMERA_READY_TIMEOUT_MS) {
-      if (runId !== runRef.current) return false
-      if (isVideoElementReady(video)) return true
-      await Promise.race([
-        new Promise<void>(resolve => {
-          const onReady = () => {
-            cleanup()
-            resolve()
-          }
-          const cleanup = () => {
-            window.clearTimeout(timeout)
-            video.removeEventListener('loadedmetadata', onReady)
-            video.removeEventListener('canplay', onReady)
-            video.removeEventListener('playing', onReady)
-          }
-          const timeout = window.setTimeout(() => {
-            cleanup()
-            resolve()
-          }, CAMERA_READY_POLL_MS)
-          video.addEventListener('loadedmetadata', onReady)
-          video.addEventListener('canplay', onReady)
-          video.addEventListener('playing', onReady)
-        }),
-        delay(CAMERA_READY_POLL_MS),
-      ])
-    }
-
-    return false
-  }, [])
-
-  const waitForUsableCameraFrame = useCallback(async (runId: number) => {
-    const video = videoRef.current
-    if (!video) return false
-    const startedAt = Date.now()
-    let stableFrames = 0
-
-    while (Date.now() - startedAt < CAMERA_READY_TIMEOUT_MS) {
-      if (runId !== runRef.current) return false
-      if (!isVideoElementReady(video)) {
-        stableFrames = 0
-        await delay(CAMERA_READY_POLL_MS)
-        continue
+    return new Promise<boolean>(resolve => {
+      const timeout = window.setTimeout(() => {
+        cleanup()
+        resolve(false)
+      }, 3000)
+      const onReady = () => {
+        cleanup()
+        resolve(true)
       }
-
-      await waitForNextVideoFrame(video)
-      if (runId !== runRef.current) return false
-
-      const stats = getVideoFrameStats(video)
-      if (stats && stats.average > 3 && stats.variance > 0.5) {
-        stableFrames += 1
-        if (stableFrames >= CAMERA_STABLE_FRAME_COUNT) return true
-      } else {
-        stableFrames = 0
+      const cleanup = () => {
+        window.clearTimeout(timeout)
+        video.removeEventListener('loadedmetadata', onReady)
+        video.removeEventListener('canplay', onReady)
       }
-
-      await delay(CAMERA_READY_POLL_MS)
-    }
-
-    return false
+      video.addEventListener('loadedmetadata', onReady)
+      video.addEventListener('canplay', onReady)
+    })
   }, [])
 
   const captureFrame = useCallback(() => {
@@ -236,67 +109,39 @@ export const FaceGate = memo(function FaceGate({
     return canvas.toDataURL('image/jpeg', 0.86).split(',')[1]
   }, [])
 
-  const captureFrames = useCallback(async (runId: number) => {
-    const frames: string[] = []
-    for (let index = 0; index < FACE_CAPTURE_COUNT; index += 1) {
-      if (runId !== runRef.current) return frames
-      await delay(FACE_CAPTURE_INTERVAL_MS)
-      if (runId !== runRef.current) return frames
-      const frame = captureFrame()
-      if (frame) frames.push(frame)
-    }
-    return frames
-  }, [captureFrame])
+  const runRecognition = useCallback(async () => {
+    const runId = runRef.current
+    const ready = await waitForVideoReady()
+    if (!ready || runId !== runRef.current) return
 
-  const runRecognition = useCallback(async (runId: number) => {
-    logFaceStep('recognition started', { runId, intervalMs: FACE_CAPTURE_INTERVAL_MS, count: FACE_CAPTURE_COUNT })
-    setVideoReady(true)
     setState('recognizing')
     try {
-      const frames = await captureFrames(runId)
-      if (frames.length === 0) {
-        throw new Error('No camera frame captured')
-      }
-      logFaceStep('frames captured', { runId, count: frames.length })
-      const results: Array<Operator | null> = []
-      let requestCompleted = false
-      for (const frame of frames) {
+      for (let attempt = 0; attempt < MAX_RECOGNITION_ATTEMPTS; attempt += 1) {
         if (runId !== runRef.current) return
-        let result: { empName: string; empWorkNo: string } | null = null
-        try {
-          result = await window.electronAPI.recognizeFace(frame)
-          requestCompleted = true
-        } catch (error) {
-          console.warn('Face recognition failed for one frame, continuing with next frame.', error)
+        if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, RECOGNITION_INTERVAL_MS))
+        const base64 = captureFrame()
+        if (!base64) continue
+        const result = await window.electronAPI.recognizeFace(base64)
+        if (runId !== runRef.current) return
+        if (result?.empName && result?.empWorkNo) {
+          setState('success')
+          stopCamera()
+          await onAuthenticated({ empName: result.empName, empWorkNo: result.empWorkNo })
+          return
         }
-        if (runId !== runRef.current) return
-        results.push(result?.empName && result?.empWorkNo ? { empName: result.empName, empWorkNo: result.empWorkNo } : null)
-      }
-      if (frames.length > 0 && !requestCompleted) {
-        throw new Error('All face recognition requests failed')
-      }
-      const operator = pickMostFrequentOperator(results)
-      if (operator) {
-        logFaceStep('recognition matched', { runId, empWorkNo: operator.empWorkNo })
-        setState('success')
-        stopCamera()
-        await onAuthenticated(operator)
-        return
       }
       stopCamera()
-      logFaceStep('recognition unmatched', { runId })
       setState('unmatched')
       setManualWorkNo('')
       setManualVisible(true)
-    } catch (error) {
+    } catch {
       stopCamera()
-      console.warn('[FaceGate] recognition failed', error)
       setErrorMsg('人脸识别服务异常，请重试')
       setState('failed')
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [captureFrames, onAuthenticated, stopCamera, waitForUsableCameraFrame, waitForVideoReady])
+  }, [captureFrame, onAuthenticated, stopCamera, waitForVideoReady])
 
   const startCamera = useCallback(async () => {
     if (state === 'camera-loading' || state === 'camera' || state === 'recognizing') return
@@ -320,10 +165,8 @@ export const FaceGate = memo(function FaceGate({
       if (videoTrack) saveCameraPreference(videoTrack)
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
-      logFaceStep('camera stream attached', { runId, label: videoTrack?.label || '' })
-      const ready = await waitForVideoReady(runId)
-      const usable = ready && await waitForUsableCameraFrame(runId)
-      if (!usable || runId !== runRef.current) {
+      const ready = await waitForVideoReady()
+      if (!ready || runId !== runRef.current) {
         stopCamera()
         setErrorMsg('摄像头画面加载失败，请重试')
         setState('failed')
@@ -331,17 +174,16 @@ export const FaceGate = memo(function FaceGate({
         setManualVisible(true)
         return
       }
-      logFaceStep('camera frame usable', { runId })
       setVideoReady(true)
       setState('camera')
-      void runRecognition(runId)
+      void runRecognition()
     } catch {
       setErrorMsg('无法访问摄像头，请检查权限')
       setState('failed')
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [runRecognition, state, stopCamera, waitForUsableCameraFrame, waitForVideoReady])
+  }, [runRecognition, state, stopCamera, waitForVideoReady])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
