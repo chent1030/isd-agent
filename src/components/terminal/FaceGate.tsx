@@ -383,12 +383,6 @@ export const FaceGate = memo(function FaceGate({
     <div className="twin-face-gate">
       <div className={`twin-face-preview twin-face-${state}`}>
         <video ref={videoRef} className={showVideo && videoReady ? '' : 'is-waiting'} autoPlay playsInline muted />
-        {showCameraLoading && (
-          <div className="twin-camera-loading">
-            <span className="terminal-loading-spinner" />
-            <strong>正在打开摄像头</strong>
-          </div>
-        )}
         {!showVideo && (
           <div className="twin-face-visual" aria-hidden="true">
             <span />
@@ -401,6 +395,12 @@ export const FaceGate = memo(function FaceGate({
       <div className="twin-face-copy">
         <strong>{statusText}</strong>
         <span>认证成功后才会执行开柜和业务记录。</span>
+        {showCameraLoading && (
+          <div className="twin-camera-loading">
+            <span className="terminal-loading-spinner" />
+            <strong>正在打开摄像头</strong>
+          </div>
+        )}
       </div>
       <div className="twin-dialog-actions">
         {(state === 'failed' || state === 'unmatched') && (
