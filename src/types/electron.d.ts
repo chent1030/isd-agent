@@ -95,6 +95,8 @@ export interface CabinetReturnPayload {
   quantity: number
   operator: { empName: string; empWorkNo: string }
   remark?: string
+  cabinetNo?: string | number
+  slotNo?: number
 }
 
 export interface ElectronAPI {

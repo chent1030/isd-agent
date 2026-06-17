@@ -4,6 +4,7 @@ import type {
   CabinetCatalogItem,
   CabinetCategory,
 } from './types/electron'
+import { getUserFacingErrorMessage } from './user-facing-error'
 
 type Operator = { empName: string; empWorkNo: string }
 type OperationMode = 'receive' | 'borrow'
@@ -91,13 +92,6 @@ function useTypeLabel(useType: number | null) {
 
 function getDisplayInitial(value?: string) {
   return (value || '物').trim().slice(0, 1)
-}
-
-function getErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
-  return message
-    .replace(/^参数异常[:：]\s*/, '')
-    .replace(/^柜机接口请求失败[:：]\s*/, '')
 }
 
 function ParticleField() {
@@ -625,7 +619,7 @@ export default function App() {
       setItems(nextItems)
     } catch (error) {
       console.error(error)
-      setNotice({ tone: 'error', text: `物品数据同步失败：${getErrorMessage(error)}` })
+      setNotice({ tone: 'error', text: `物品数据同步失败：${getUserFacingErrorMessage(error)}` })
     } finally {
       setLoading(false)
     }
@@ -722,7 +716,7 @@ export default function App() {
       })
     } catch (error) {
       console.error(error)
-      setNotice({ tone: 'error', text: `${mode === 'receive' ? '领用' : '借用'}失败：${getErrorMessage(error)}` })
+      setNotice({ tone: 'error', text: `${mode === 'receive' ? '领用' : '借用'}失败：${getUserFacingErrorMessage(error)}` })
     } finally {
       setOperating(false)
       returnHome()
@@ -738,7 +732,7 @@ export default function App() {
       setNotice({ tone: 'info', text: `已查询到 ${records.length} 条未归还记录。` })
     } catch (error) {
       console.error(error)
-      setNotice({ tone: 'error', text: `未归还记录查询失败：${getErrorMessage(error)}` })
+      setNotice({ tone: 'error', text: `未归还记录查询失败：${getUserFacingErrorMessage(error)}` })
     } finally {
       setRecordsLoading(false)
     }
@@ -758,12 +752,14 @@ export default function App() {
         quantity,
         operator: lastOperator,
         remark: `终端归还：${lastOperator.empName}`,
+        cabinetNo: record.cabinetNo,
+        slotNo: record.slotNo,
       })
       await refreshCatalog()
       setNotice({ tone: 'success', text: `${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。` })
     } catch (error) {
       console.error(error)
-      setNotice({ tone: 'error', text: `归还失败：${getErrorMessage(error)}` })
+      setNotice({ tone: 'error', text: `归还失败：${getUserFacingErrorMessage(error)}` })
     } finally {
       setOperating(false)
       returnHome()

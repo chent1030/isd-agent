@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import net from 'net'
+import { normalizeBorrowRecordLocation } from '../cabinet-record'
 
 interface OperatorIdentity {
   empName?: string
@@ -519,9 +520,8 @@ async function fetchOpenBorrowRecords(operator: OperatorIdentity) {
       itemName: record?.itemName || record?.name || '',
       category: record?.category || '',
       spec: record?.spec || '',
-      cabinetName: record?.cabinetName || '',
-      cabinetNo: record?.cabinetNo,
-      slotNo: record?.slotNo,
+      cabinetName: record?.cabinetName || record?.cabinet_name || '',
+      ...normalizeBorrowRecordLocation(record),
       quantity: toNumber(record?.quantity, 0),
       returnedQuantity: toNumber(record?.returnedQuantity, 0),
       pendingQuantity: toNumber(record?.pendingQuantity ?? record?.quantity, 0),
@@ -591,12 +591,16 @@ export function registerCabinetHandlers() {
     quantity = 1,
     operator,
     remark,
+    cabinetNo,
+    slotNo,
   }: {
     borrowRecordId: string | number
     itemId?: string | number
     quantity?: number
     operator?: OperatorIdentity
     remark?: string
+    cabinetNo?: string | number
+    slotNo?: number
   }) => {
     const safeOperator = normalizeOperator(operator)
     if (!borrowRecordId) throw new Error('缺少借用记录 ID')
@@ -610,13 +614,19 @@ export function registerCabinetHandlers() {
     const record = getPageRecords(recordPayload)
       .find(current => String(current?.id ?? current?.borrowRecordId ?? '') === String(borrowRecordId))
     if (!record) throw new Error('未找到可归还的借用记录')
-    if (!record.cabinetNo || !record.slotNo) throw new Error('借用记录缺少柜号或格口号')
+    const recordLocation = normalizeBorrowRecordLocation(record)
+    const selectedLocation = normalizeBorrowRecordLocation({ cabinetNo, slotNo })
+    const returnLocation = {
+      cabinetNo: recordLocation.cabinetNo || selectedLocation.cabinetNo,
+      slotNo: recordLocation.slotNo || selectedLocation.slotNo,
+    }
+    if (!returnLocation.cabinetNo || !returnLocation.slotNo) throw new Error('借用记录缺少柜号或格口号')
 
     await openSlotDoor({
       id: String(itemId),
       name: String(record.itemName || '归还物品'),
-      cabinetNo: record.cabinetNo,
-      slotNo: record.slotNo,
+      cabinetNo: returnLocation.cabinetNo,
+      slotNo: returnLocation.slotNo,
       stock: quantity,
     })
     return requestCabinet('/cabinet/borrow/return', undefined, safeOperator, {
