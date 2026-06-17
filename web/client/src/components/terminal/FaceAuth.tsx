@@ -226,7 +226,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
 
       {(state === 'failed' || state === 'unmatched') && (
         <div className="flex gap-2">
-          <Button variant="default" size="lg" onClick={startCamera}>
+          <Button variant="default" size="lg" className="btn-shine" onClick={startCamera}>
             <RefreshCw />
             重新扫脸
           </Button>
@@ -242,7 +242,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       )}
 
       {state === 'idle' && (
-        <Button size="lg" onClick={startCamera}>
+        <Button size="lg" className="btn-shine" onClick={startCamera}>
           <Camera />
           开始认证
         </Button>

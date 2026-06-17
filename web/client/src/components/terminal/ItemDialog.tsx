@@ -174,7 +174,7 @@ export const ItemDialog = memo(function ItemDialog({
           )}
           <Button variant="ghost" disabled={operating} onClick={onClose}>取消</Button>
           {step === 'configure' && (
-            <Button disabled={!canProceed} onClick={proceedToAuth}>
+            <Button className="btn-shine" disabled={!canProceed} onClick={proceedToAuth}>
               下一步：人脸认证
             </Button>
           )}

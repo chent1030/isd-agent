@@ -168,7 +168,7 @@ export const ReturnDialog = memo(function ReturnDialog({
         <DialogFooter>
           <Button variant="ghost" disabled={operating} onClick={onClose}>取消</Button>
           {selected && operator && (
-            <Button disabled={operating} onClick={() => onReturn(selected, quantity)}>
+            <Button className="btn-shine" disabled={operating} onClick={() => onReturn(selected, quantity)}>
               {operating ? '处理中…' : '确认归还并开门'}
             </Button>
           )}

@@ -20,7 +20,7 @@ export function AppHeader({ refreshing, onRefresh, onReturn }: AppHeaderProps) {
           <RefreshCw className={refreshing ? 'animate-spin' : ''} />
           {refreshing ? '同步中' : '刷新'}
         </Button>
-        <Button variant="destructive" size="lg" onClick={onReturn}>
+        <Button variant="destructive" size="lg" className="btn-shine" onClick={onReturn}>
           <Undo2 />
           归还
         </Button>
