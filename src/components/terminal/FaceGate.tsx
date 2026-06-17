@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { FaceState, Operator } from '../../types/terminal'
 
 const FACE_CAPTURE_COUNT = 5
-const FACE_CAPTURE_INTERVAL_MS = 100
+const FACE_CAPTURE_INTERVAL_MS = 300
 const WORK_NO_LENGTH = 8
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
 
@@ -155,11 +155,21 @@ export const FaceGate = memo(function FaceGate({
     try {
       const frames = await captureFrames(runId)
       const results: Array<Operator | null> = []
+      let requestCompleted = false
       for (const frame of frames) {
         if (runId !== runRef.current) return
-        const result = await window.electronAPI.recognizeFace(frame)
+        let result: { empName: string; empWorkNo: string } | null = null
+        try {
+          result = await window.electronAPI.recognizeFace(frame)
+          requestCompleted = true
+        } catch (error) {
+          console.warn('Face recognition failed for one frame, continuing with next frame.', error)
+        }
         if (runId !== runRef.current) return
         results.push(result?.empName && result?.empWorkNo ? { empName: result.empName, empWorkNo: result.empWorkNo } : null)
+      }
+      if (frames.length > 0 && !requestCompleted) {
+        throw new Error('All face recognition requests failed')
       }
       const operator = pickMostFrequentOperator(results)
       if (operator) {
