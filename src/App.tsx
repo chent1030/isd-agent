@@ -16,6 +16,7 @@ type AppNotice = { tone: NoticeTone; text: string }
 const MAX_RECOGNITION_ATTEMPTS = 5
 const RECOGNITION_INTERVAL_MS = 220
 const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000
+const WORK_NO_LENGTH = 8
 const CAMERA_PREFERENCE_KEY = 'isd-agent.camera.preference.v1'
 const CATEGORY_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#8a6eb8', '#c35f4c', '#4f7d51']
 const ITEM_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#c35f4c']
@@ -137,6 +138,7 @@ function FaceGate({
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const runRef = useRef(0)
+  const hasStartedRef = useRef(false)
 
   const stopCamera = useCallback(() => {
     runRef.current += 1
@@ -213,8 +215,10 @@ function FaceGate({
   }, [captureFrame, onAuthenticated, stopCamera, waitForVideoReady])
 
   const startCamera = useCallback(async () => {
+    if (state === 'camera' || state === 'recognizing') return
     runRef.current += 1
     setErrorMsg('')
+    setManualVisible(false)
     setState('camera')
     try {
       let stream: MediaStream
@@ -237,9 +241,15 @@ function FaceGate({
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [runRecognition])
+  }, [runRecognition, state])
 
   useEffect(() => () => stopCamera(), [stopCamera])
+
+  useEffect(() => {
+    if (hasStartedRef.current) return
+    hasStartedRef.current = true
+    void startCamera()
+  }, [startCamera])
 
   const statusText = {
     idle: '点击开始后进行身份认证',
@@ -253,12 +263,12 @@ function FaceGate({
   const showVideo = state === 'camera' || state === 'recognizing'
   const canUseManualAuth = state === 'failed' || state === 'unmatched'
   const appendManualDigit = (digit: number) => {
-    setManualWorkNo(current => `${current}${digit}`.slice(0, 20))
+    setManualWorkNo(current => `${current}${digit}`.slice(0, WORK_NO_LENGTH))
   }
   const submitManualAuth = async () => {
     const empWorkNo = manualWorkNo.trim()
-    if (!empWorkNo) {
-      setErrorMsg('请输入工号')
+    if (empWorkNo.length !== WORK_NO_LENGTH) {
+      setErrorMsg(`请输入${WORK_NO_LENGTH}位工号`)
       setState('failed')
       return
     }
@@ -286,9 +296,9 @@ function FaceGate({
         <span>认证成功后才会执行开柜和业务记录。</span>
       </div>
       <div className="twin-dialog-actions">
-        {(state === 'idle' || state === 'failed' || state === 'unmatched') && (
+        {(state === 'failed' || state === 'unmatched') && (
           <button type="button" className="twin-primary-action" onClick={startCamera}>
-            {state === 'idle' ? '开始扫脸' : '重新扫脸'}
+            重新扫脸
           </button>
         )}
         {canUseManualAuth && (
@@ -313,7 +323,8 @@ function FaceGate({
               <strong>输入工号</strong>
               <button type="button" className="twin-icon-button" onClick={() => setManualVisible(false)} aria-label="关闭">×</button>
             </div>
-            <output className="twin-manual-auth-output">{manualWorkNo || '请输入工号'}</output>
+            <output className="twin-manual-auth-output">{manualWorkNo || `请输入${WORK_NO_LENGTH}位工号`}</output>
+            <div className="twin-manual-auth-hint">{manualWorkNo.length}/{WORK_NO_LENGTH}</div>
             <div className="twin-manual-auth-keypad">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
                 <button type="button" key={item} onClick={() => appendManualDigit(item)}>{item}</button>
@@ -322,10 +333,10 @@ function FaceGate({
               <button type="button" onClick={() => appendManualDigit(0)}>0</button>
               <button type="button" onClick={() => setManualWorkNo(current => current.slice(0, -1))}>删除</button>
             </div>
-            <div className="twin-dialog-actions">
+            <div className="twin-manual-auth-actions">
               <button type="button" className="twin-secondary-action" onClick={() => setManualVisible(false)}>取消</button>
-              <button type="button" className="twin-primary-action" disabled={!manualWorkNo.trim()} onClick={() => void submitManualAuth()}>
-                确认工号
+              <button type="button" className="twin-primary-action" disabled={manualWorkNo.trim().length !== WORK_NO_LENGTH} onClick={() => void submitManualAuth()}>
+                确认
               </button>
             </div>
           </div>
