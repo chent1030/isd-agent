@@ -1,0 +1,14 @@
+{
+  "name": "isd-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ISD 柜机物品领用 Web 端（Fastify + React + shadcn）",
+  "scripts": {
+    "dev": "pnpm --filter server dev",
+    "dev:client": "pnpm --filter client dev",
+    "dev:all": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter server start"
+  },
+  "license": "ISC"
+}
