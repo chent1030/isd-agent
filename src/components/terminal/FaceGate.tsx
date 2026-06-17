@@ -62,7 +62,6 @@ export const FaceGate = memo(function FaceGate({
   const [errorMsg, setErrorMsg] = useState('')
   const [manualVisible, setManualVisible] = useState(false)
   const [manualWorkNo, setManualWorkNo] = useState('')
-  const [videoReady, setVideoReady] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const runRef = useRef(0)
@@ -72,7 +71,6 @@ export const FaceGate = memo(function FaceGate({
     runRef.current += 1
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
-    setVideoReady(false)
   }, [])
 
   const waitForVideoReady = useCallback(async () => {
@@ -148,10 +146,8 @@ export const FaceGate = memo(function FaceGate({
     runRef.current += 1
     setErrorMsg('')
     setManualVisible(false)
-    setVideoReady(false)
     setState('camera-loading')
     try {
-      const runId = runRef.current
       let stream: MediaStream
       try {
         stream = await navigator.mediaDevices.getUserMedia(await getPreferredCameraConstraints())
@@ -165,16 +161,6 @@ export const FaceGate = memo(function FaceGate({
       if (videoTrack) saveCameraPreference(videoTrack)
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
-      const ready = await waitForVideoReady()
-      if (!ready || runId !== runRef.current) {
-        stopCamera()
-        setErrorMsg('摄像头画面加载失败，请重试')
-        setState('failed')
-        setManualWorkNo('')
-        setManualVisible(true)
-        return
-      }
-      setVideoReady(true)
       setState('camera')
       void runRecognition()
     } catch {
@@ -183,7 +169,7 @@ export const FaceGate = memo(function FaceGate({
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [runRecognition, state, stopCamera, waitForVideoReady])
+  }, [runRecognition, state])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
@@ -204,7 +190,7 @@ export const FaceGate = memo(function FaceGate({
   }[state]
 
   const showVideo = state === 'camera-loading' || state === 'camera' || state === 'recognizing'
-  const showCameraLoading = state === 'camera-loading' || (showVideo && !videoReady)
+  const showCameraLoading = state === 'camera-loading'
   const canUseManualAuth = state === 'failed' || state === 'unmatched'
   const appendManualDigit = (digit: number) => {
     setManualWorkNo(current => `${current}${digit}`.slice(0, WORK_NO_LENGTH))
@@ -224,8 +210,9 @@ export const FaceGate = memo(function FaceGate({
   return (
     <div className="twin-face-gate">
       <div className={`twin-face-preview twin-face-${state}`}>
-        <video ref={videoRef} className={showVideo && videoReady ? '' : 'is-waiting'} autoPlay playsInline muted />
-        {!showVideo && (
+        {showVideo ? (
+          <video ref={videoRef} autoPlay playsInline muted />
+        ) : (
           <div className="twin-face-visual" aria-hidden="true">
             <span />
             <span />
