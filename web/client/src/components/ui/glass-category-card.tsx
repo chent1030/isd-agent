@@ -50,9 +50,9 @@ export function GlassCategoryCard({
       whileTap={{ scale: 0.98 }}
       className={cn('group relative w-full text-left focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 rounded-2xl', className)}
     >
-      <Card className="group relative h-full overflow-hidden rounded-2xl border-border/50 bg-card/30 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10">
-        {/* 顶部色块区（替代博客图片） */}
-        <div className="relative aspect-[16/9] overflow-hidden">
+      <Card className="group relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-border/50 bg-card/30 backdrop-blur-md transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10">
+        {/* 顶部色块区：flex-1 撑满剩余高度 */}
+        <div className="relative min-h-[180px] flex-1 overflow-hidden">
           {/* 首字母大色块 */}
           <div
             className="absolute inset-0 flex items-center justify-center transition-transform duration-500 group-hover:scale-110"
@@ -60,7 +60,7 @@ export function GlassCategoryCard({
               background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
             }}
           >
-            <span className="text-7xl font-black text-white/95 drop-shadow-lg select-none">
+            <span className="text-8xl font-black text-white/95 drop-shadow-lg select-none">
               {initial}
             </span>
           </div>
@@ -94,8 +94,8 @@ export function GlassCategoryCard({
           </div>
         </div>
 
-        {/* 内容区 */}
-        <div className="flex flex-col gap-4 p-5">
+        {/* 内容区：固定高度，贴底 */}
+        <div className="flex flex-shrink-0 flex-col gap-4 p-5">
           <div className="space-y-2">
             <h3 className="text-xl font-semibold leading-tight tracking-tight text-foreground transition-colors group-hover:text-primary">
               {name}

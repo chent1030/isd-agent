@@ -13,9 +13,9 @@ interface CategoryGridProps {
 export const CategoryGrid = memo(function CategoryGrid({ categories, loading, onSelect }: CategoryGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid h-full grid-cols-3 gap-5">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-[340px] rounded-2xl" />
+          <Skeleton key={i} className="h-full min-h-[300px] rounded-2xl" />
         ))}
       </div>
     )
@@ -23,12 +23,12 @@ export const CategoryGrid = memo(function CategoryGrid({ categories, loading, on
 
   if (categories.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">暂无类别</div>
+      <div className="flex h-full items-center justify-center text-muted-foreground">暂无类别</div>
     )
   }
 
   return (
-    <div className="flex flex-wrap justify-center gap-5">
+    <div className="grid h-full grid-cols-3 gap-5">
       {categories.map((category, index) => (
         <GlassCategoryCard
           key={category.id}
@@ -38,7 +38,7 @@ export const CategoryGrid = memo(function CategoryGrid({ categories, loading, on
           index={index}
           tags={[`${category.itemCount} 种`]}
           onSelect={() => onSelect(category.id)}
-          className="w-full max-w-[360px] flex-1 basis-[280px]"
+          className="h-full min-h-0"
         />
       ))}
     </div>
