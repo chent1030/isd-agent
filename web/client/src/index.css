@@ -98,11 +98,17 @@
 }
 
 
-/* 扫光 hover 效果：伪元素斜向高光在 hover 时划过 */
+/* 扫光 hover 效果：伪元素斜向高光在 hover 时划过，置于内容下方 */
 @layer utilities {
   .btn-shine {
     position: relative;
     overflow: hidden;
+    isolation: isolate;
+  }
+  /* 让按钮内的文字/图标始终在高光之上 */
+  .btn-shine > * {
+    position: relative;
+    z-index: 1;
   }
   .btn-shine::before {
     content: '';
@@ -115,6 +121,7 @@
     background-repeat: no-repeat;
     transition: background-position 1000ms ease;
     pointer-events: none;
+    z-index: 0;
   }
   .btn-shine:hover::before {
     background-position: -100% 0;
