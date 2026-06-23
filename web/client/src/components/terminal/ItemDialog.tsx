@@ -60,13 +60,13 @@ export const ItemDialog = memo(function ItemDialog({
   return (
     <Dialog open onOpenChange={open => { if (!open && !operating) onClose() }}>
       <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+        <DialogHeader className="bg-white">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">
+            <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
               {item.category || '未分类'}
             </span>
             {item.authRequired && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
+              <span className="inline-flex items-center gap-1 rounded-md bg-red-100 px-2.5 py-1 text-xs font-black text-red-700">
                 <ShieldCheck className="size-3.5" />
                 需授权
               </span>
@@ -76,47 +76,59 @@ export const ItemDialog = memo(function ItemDialog({
           <DialogDescription>{item.spec || '暂无规格信息'}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <StepBadge active={step === 'configure'} done={step === 'auth'} index={1} label="确认信息" />
-            <div className="h-px bg-slate-200" />
-            <StepBadge active={step === 'auth'} done={false} index={2} label="身份认证" />
+        <div className="flex-1 space-y-5 overflow-y-auto bg-slate-100 px-6 py-5">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <StepBadge active={step === 'configure'} done={step === 'auth'} index={1} label="确认信息" />
+              <div className="h-px bg-slate-200" />
+              <StepBadge active={step === 'auth'} done={false} index={2} label="身份认证" />
+            </div>
           </div>
 
           {step === 'configure' && (
-            <>
-              <div className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="flex size-14 items-center justify-center rounded-md bg-slate-950 text-white">
-                  <Package className="size-7" />
+            <div className="grid gap-5 lg:grid-cols-[1fr_1.15fr]">
+              <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-14 items-center justify-center rounded-lg bg-slate-950 text-white">
+                    <Package className="size-7" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-500">物品信息</div>
+                    <div className="truncate text-xl font-black text-slate-950">{item.name}</div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+
+                <div className="grid grid-cols-2 gap-3">
                   <Metric label="柜内库存" value={String(item.cabinetQuantity)} />
-                  <Metric label="规格" value={item.spec || '--'} />
-                  <Metric label="授权" value={item.authRequired ? '需要' : '无需'} tone={item.authRequired ? 'warning' : 'default'} />
+                  <Metric label="授权" value={item.authRequired ? '需要' : '无需'} tone={item.authRequired ? 'danger' : 'default'} />
                 </div>
-              </div>
 
-              {canSwitchMode && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">操作方式</label>
-                  <Select value={mode} onValueChange={v => setMode(v as OperationMode)}>
-                    <SelectTrigger id="mode" className="h-12 w-full bg-white text-base">
-                      <SelectValue placeholder="选择方式" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="receive" disabled={!canReceiveItem}>领用</SelectItem>
-                      <SelectItem value="borrow" disabled={!canBorrowItem}>借用</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                <Metric label="规格" value={item.spec || '--'} wide />
+              </section>
 
-              <QuantityStepper label={`${operationLabel}数量`} value={quantity} max={maxQuantity} onChange={setQuantity} />
-            </>
+              <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                {canSwitchMode && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">操作方式</label>
+                    <Select value={mode} onValueChange={v => setMode(v as OperationMode)}>
+                      <SelectTrigger id="mode" className="h-12 w-full bg-white text-base">
+                        <SelectValue placeholder="选择方式" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="receive" disabled={!canReceiveItem}>领用</SelectItem>
+                        <SelectItem value="borrow" disabled={!canBorrowItem}>借用</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <QuantityStepper label={`${operationLabel}数量`} value={quantity} max={maxQuantity} onChange={setQuantity} />
+              </section>
+            </div>
           )}
 
           {step === 'auth' && (
-            <div className="space-y-4">
+            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-base text-teal-900">
                 请确认：{operationLabel} <strong>{item.name}</strong> x <strong>{quantity}</strong>
               </div>
@@ -129,7 +141,7 @@ export const ItemDialog = memo(function ItemDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="bg-white">
           {step === 'auth' && (
             <Button variant="outline" size="lg" disabled={operating} onClick={() => setStep('configure')}>
               返回上一步
@@ -160,11 +172,21 @@ function StepBadge({ active, done, index, label }: { active: boolean; done: bool
   )
 }
 
-function Metric({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'warning' }) {
+function Metric({
+  label,
+  value,
+  tone = 'default',
+  wide = false,
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'danger'
+  wide?: boolean
+}) {
   return (
-    <div className="min-w-0 rounded-md bg-white px-3 py-2">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={`mt-1 truncate text-lg font-black ${tone === 'warning' ? 'text-amber-700' : 'text-slate-950'}`}>{value}</div>
+    <div className={`min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 ${wide ? 'col-span-full' : ''}`}>
+      <div className="text-xs font-semibold text-slate-500">{label}</div>
+      <div className={`mt-1 truncate text-lg font-black ${tone === 'danger' ? 'text-red-700' : 'text-slate-950'}`}>{value}</div>
     </div>
   )
 }

@@ -38,10 +38,15 @@ function DialogContent({ className, children, style, ...props }: React.Component
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed left-1/2 top-1/2 z-[9999] flex max-h-[calc(100vh-4rem)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-950 shadow-2xl',
+          'fixed z-[9999] flex max-h-[calc(100vh-4rem)] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-950 shadow-2xl',
           className,
         )}
-        style={style}
+        style={{
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          ...style,
+        }}
         {...props}
       >
         {children}

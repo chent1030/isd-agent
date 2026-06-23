@@ -56,23 +56,28 @@ export const QuantityStepper = memo(function QuantityStepper({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {quickValues.map(item => (
-          <Button
-            key={item}
-            type="button"
-            variant={displayValue === item ? 'default' : 'outline'}
-            size="lg"
-            className="min-w-14"
-            onClick={() => setQuantity(item)}
-          >
-            {item}
-          </Button>
-        ))}
+        {quickValues.map(item => {
+          const active = displayValue === item
+          return (
+            <Button
+              key={item}
+              type="button"
+              variant={active ? 'default' : 'outline'}
+              size="lg"
+              className="min-w-14"
+              style={active ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' } : undefined}
+              onClick={() => setQuantity(item)}
+            >
+              {item}
+            </Button>
+          )
+        })}
         {safeMax > 6 && (
           <Button
             type="button"
             variant={displayValue === safeMax ? 'default' : 'outline'}
             size="lg"
+            style={displayValue === safeMax ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' } : undefined}
             onClick={() => setQuantity(safeMax)}
           >
             全部 ({safeMax})
