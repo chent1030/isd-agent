@@ -106,10 +106,17 @@ export default function App() {
   }, [])
 
   const returnHome = useCallback(() => {
+    setSelectedCategoryId('')
+    setItems([])
+    setItemDialog(null)
+    setReturnVisible(false)
+    setBorrowRecords([])
+    setLastOperator(null)
     setScreen('categories')
   }, [])
 
-  const isAwayFromHome = screen === 'items'
+  const isHomeView = screen === 'categories' && !itemDialog && !returnVisible
+  const shouldAutoReturnHome = !isHomeView && !operating
 
   useEffect(() => {
     const updateActivity = () => {
@@ -122,7 +129,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!isAwayFromHome) {
+    if (!shouldAutoReturnHome) {
       lastActivityAtRef.current = Date.now()
       return
     }
@@ -133,7 +140,7 @@ export default function App() {
       lastActivityAtRef.current = Date.now()
     }, 1000)
     return () => window.clearInterval(timer)
-  }, [idleTimeoutMs, isAwayFromHome, returnHome])
+  }, [idleTimeoutMs, returnHome, shouldAutoReturnHome])
 
   const handleSelectItem = useCallback((item: CabinetCatalogItem) => {
     setItemDialog(item)
@@ -221,7 +228,7 @@ export default function App() {
             items={items}
             loading={itemsLoading}
             selectedCategory={selectedCategory}
-            onBack={() => setScreen('categories')}
+            onBack={returnHome}
             onSelect={handleSelectItem}
           />
         )}
