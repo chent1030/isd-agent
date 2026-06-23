@@ -7,6 +7,11 @@ import { env } from './env.js'
 import { registerCabinetRoutes } from './cabinet/routes.js'
 import { registerFaceRoutes } from './face/routes.js'
 
+if (env.allowInsecureTls) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+  console.warn('[tls] TLS certificate verification is disabled by ALLOW_INSECURE_TLS')
+}
+
 async function main() {
   const app = Fastify({
     logger: {

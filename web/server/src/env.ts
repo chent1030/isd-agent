@@ -2,15 +2,15 @@ import * as dotenv from 'dotenv'
 import path from 'node:path'
 import fs from 'node:fs'
 
-// 加载 .env：优先 server 目录，其次 web 根目录
+// 加载 .env：优先 server 目录，其次 web 根目录，最后项目根目录补齐通用配置。
 const envCandidates = [
   path.join(process.cwd(), '.env'),
   path.join(process.cwd(), '..', '.env'),
+  path.join(process.cwd(), '..', '..', '.env'),
 ]
 for (const candidate of envCandidates) {
   if (fs.existsSync(candidate)) {
     dotenv.config({ path: candidate })
-    break
   }
 }
 
@@ -38,6 +38,7 @@ export const env = {
   port: toNumber(process.env.PORT, 3000),
 
   faceApiUrl: process.env.FACE_API_URL ?? '',
+  allowInsecureTls: isEnabledEnv(process.env.ALLOW_INSECURE_TLS),
 
   skipFaceAuth: isEnabledEnv(process.env.SKIP_FACE_AUTH),
   skipFaceAuthUser: {
