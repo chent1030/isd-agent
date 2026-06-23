@@ -21,8 +21,14 @@ export const QuantityStepper = memo(function QuantityStepper({
   const quickValues = safeMax <= 6
     ? Array.from({ length: safeMax }, (_, index) => index + 1)
     : [1, 2, 3, 5].filter(item => item <= safeMax)
+  const showKeypad = safeMax > 6
 
   const setQuantity = (next: number) => onChange(clampQuantity(next, safeMax))
+  const appendDigit = (digit: number) => {
+    const nextText = `${displayValue === 0 ? '' : displayValue}${digit}`
+    setQuantity(Number(nextText))
+  }
+  const removeDigit = () => setQuantity(Math.floor(displayValue / 10) || 1)
 
   return (
     <div className="space-y-3">
@@ -86,6 +92,46 @@ export const QuantityStepper = memo(function QuantityStepper({
           </Button>
         )}
       </div>
+
+      {showKeypad && (
+        <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-100 p-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
+            <button
+              type="button"
+              key={item}
+              className="h-12 rounded-lg text-lg font-black shadow-sm"
+              style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+              onClick={() => appendDigit(item)}
+            >
+              {item}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="h-12 rounded-lg text-sm font-black shadow-sm"
+            style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+            onClick={() => setQuantity(1)}
+          >
+            清空
+          </button>
+          <button
+            type="button"
+            className="h-12 rounded-lg text-lg font-black shadow-sm"
+            style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+            onClick={() => appendDigit(0)}
+          >
+            0
+          </button>
+          <button
+            type="button"
+            className="h-12 rounded-lg text-sm font-black shadow-sm"
+            style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+            onClick={removeDigit}
+          >
+            删除
+          </button>
+        </div>
+      )}
     </div>
   )
 })
