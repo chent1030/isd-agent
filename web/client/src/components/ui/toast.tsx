@@ -48,24 +48,24 @@ export interface ToasterRef {
 }
 
 const variantStyles: Record<Variant, string> = {
-  default: 'bg-card border-border text-foreground',
-  success: 'bg-card border-green-600/50',
-  error: 'bg-card border-destructive/50',
-  warning: 'bg-card border-amber-600/50',
+  default: 'border-slate-300 bg-white text-slate-950',
+  success: 'border-green-600 bg-green-50 text-green-950',
+  error: 'border-red-700 bg-red-50 text-red-950',
+  warning: 'border-amber-600 bg-amber-50 text-amber-950',
 }
 
 const titleColor: Record<Variant, string> = {
-  default: 'text-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
+  default: 'text-slate-950',
+  success: 'text-green-800',
+  error: 'text-red-800',
+  warning: 'text-amber-800',
 }
 
 const iconColor: Record<Variant, string> = {
-  default: 'text-muted-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
+  default: 'text-slate-600',
+  success: 'text-green-700',
+  error: 'text-red-700',
+  warning: 'text-amber-700',
 }
 
 const variantIcons: Record<Variant, React.ComponentType<{ className?: string }>> = {
@@ -106,8 +106,9 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
               animate="animate"
               exit="exit"
               transition={{ duration: 0.3, ease: 'easeOut' }}
+              style={{ zIndex: 12000 }}
               className={cn(
-                'flex items-center justify-between w-full max-w-xs p-3 rounded-xl border shadow-md',
+                'relative z-[12000] flex w-full max-w-sm items-center justify-between rounded-lg border p-4 shadow-2xl',
                 variantStyles[variant]
               )}
             >
@@ -117,7 +118,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                   {title && (
                     <h3
                       className={cn(
-                        'text-xs font-medium leading-none',
+                        'text-base font-black leading-tight',
                         titleColor[variant],
                         highlightTitle && titleColor['success'] // override for meeting case
                       )}
@@ -125,7 +126,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                       {title}
                     </h3>
                   )}
-                  <p className="text-xs text-muted-foreground">{message}</p>
+                  <p className="text-sm font-semibold text-slate-800">{message}</p>
                 </div>
               </div>
 
@@ -209,10 +210,20 @@ export function registerToaster(ref: ToasterRef | null) {
 }
 
 function emit(message: string, variant: CallVariant, title?: string) {
-  toasterRef?.show({
+  const props = {
     message,
     variant: variantMap[variant],
     title,
+    position: 'top-center',
+    duration: 4000,
+  } as const
+
+  if (toasterRef) {
+    toasterRef.show(props)
+    return
+  }
+
+  sonnerToast(message, {
     position: 'top-center',
     duration: 4000,
   })

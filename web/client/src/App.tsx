@@ -141,16 +141,18 @@ export default function App() {
 
   const handleOperateItem = useCallback(async (item: CabinetCatalogItem, mode: OperationMode, quantity: number, operator: Operator) => {
     setOperating(true)
+    let shouldCloseDialog = false
     try {
       const result = await api.operateItem({ action: mode, itemId: item.id, quantity, operator })
       const openedCount = Array.isArray(result?.locations) ? result.locations.length : 0
       await refreshCatalog()
       toast.success(`${operator.empName} 已完成${mode === 'receive' ? '领用' : '借用'}：${item.name} x ${quantity}${openedCount ? `，已打开 ${openedCount} 个格口` : ''}`)
+      shouldCloseDialog = true
     } catch (error) {
-      toast.error(`${mode === 'receive' ? '领用' : '借用'}失败：${getUserFacingErrorMessage(error)}`)
+      toast.error(getUserFacingErrorMessage(error), `${mode === 'receive' ? '领用' : '借用'}失败`)
     } finally {
       setOperating(false)
-      setItemDialog(null)
+      if (shouldCloseDialog) setItemDialog(null)
     }
   }, [refreshCatalog])
 
