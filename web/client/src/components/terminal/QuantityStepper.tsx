@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import { Minus, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { clampQuantity } from '@/lib/shared'
 
 interface QuantityStepperProps {
@@ -33,29 +32,33 @@ export const QuantityStepper = memo(function QuantityStepper({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-900">{label}</span>
-        <span className="text-sm text-slate-500">最多 {safeMax}</span>
+        <span className="text-sm font-bold" style={{ color: '#0f172a' }}>{label}</span>
+        <span className="text-sm font-bold" style={{ color: '#4b6475' }}>最大 {safeMax}</span>
       </div>
 
-      <div className="grid grid-cols-[4rem_1fr_4rem] items-stretch overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="grid grid-cols-[4.75rem_1fr_4.75rem] items-stretch overflow-hidden rounded-lg shadow-sm ring-1" style={{ backgroundColor: '#ffffff', boxShadow: '0 8px 22px rgba(15,23,42,0.08)' }}>
         <button
           type="button"
           disabled={displayValue <= 1}
-          className="flex min-h-16 items-center justify-center transition-colors disabled:cursor-not-allowed"
-          style={displayValue <= 1 ? { backgroundColor: '#e2e8f0', color: '#94a3b8' } : { backgroundColor: '#f1f5f9', color: '#0f172a' }}
+          className="flex min-h-16 items-center justify-center transition disabled:cursor-not-allowed"
+          style={displayValue <= 1
+            ? { backgroundColor: '#dbe4ea', color: '#7b8d9a' }
+            : { backgroundColor: '#eef3f6', color: '#10233a' }}
           onClick={() => setQuantity(displayValue - 1)}
           aria-label="减少"
         >
           <Minus className="size-8" strokeWidth={3} />
         </button>
-        <div className="flex min-h-16 items-center justify-center bg-white text-5xl font-black tabular-nums text-slate-950">
+        <div className="flex min-h-16 items-center justify-center text-5xl font-black tabular-nums" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
           {displayValue}
         </div>
         <button
           type="button"
           disabled={displayValue >= safeMax}
-          className="flex min-h-16 items-center justify-center transition-colors disabled:cursor-not-allowed"
-          style={displayValue >= safeMax ? { backgroundColor: '#e2e8f0', color: '#94a3b8' } : { backgroundColor: '#0f766e', color: '#ffffff' }}
+          className="flex min-h-16 items-center justify-center transition disabled:cursor-not-allowed"
+          style={displayValue >= safeMax
+            ? { backgroundColor: '#dbe4ea', color: '#7b8d9a' }
+            : { backgroundColor: '#08735f', color: '#ffffff' }}
           onClick={() => setQuantity(displayValue + 1)}
           aria-label="增加"
         >
@@ -63,43 +66,42 @@ export const QuantityStepper = memo(function QuantityStepper({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {quickValues.map(item => {
           const active = displayValue === item
           return (
-            <Button
+            <button
               key={item}
               type="button"
-              variant={active ? 'default' : 'outline'}
-              size="lg"
-              className="min-w-14"
-              style={active ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' } : undefined}
+              className="h-11 rounded-md text-base font-black shadow-sm transition"
+              style={active
+                ? { backgroundColor: '#111827', color: '#ffffff' }
+                : { backgroundColor: '#f8fafc', color: '#10233a', boxShadow: 'inset 0 0 0 1px #cbd5e1' }}
               onClick={() => setQuantity(item)}
             >
               {item}
-            </Button>
+            </button>
           )
         })}
-        {safeMax > 6 && (
-          <Button
-            type="button"
-            variant={displayValue === safeMax ? 'default' : 'outline'}
-            size="lg"
-            style={displayValue === safeMax ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' } : undefined}
-            onClick={() => setQuantity(safeMax)}
-          >
-            全部 ({safeMax})
-          </Button>
-        )}
+        <button
+          type="button"
+          className="h-11 rounded-md text-sm font-black shadow-sm transition"
+          style={displayValue === safeMax
+            ? { backgroundColor: '#111827', color: '#ffffff' }
+            : { backgroundColor: '#f8fafc', color: '#10233a', boxShadow: 'inset 0 0 0 1px #cbd5e1' }}
+          onClick={() => setQuantity(safeMax)}
+        >
+          全部
+        </button>
       </div>
 
       {showKeypad && (
-        <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-100 p-2">
+        <div className="grid grid-cols-3 gap-2 rounded-lg p-2" style={{ backgroundColor: '#e5edf2' }}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
             <button
               type="button"
               key={item}
-              className="h-12 rounded-lg text-lg font-black shadow-sm"
+              className="h-11 rounded-md text-xl font-black shadow-sm transition active:scale-[0.98]"
               style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
               onClick={() => appendDigit(item)}
             >
@@ -108,7 +110,7 @@ export const QuantityStepper = memo(function QuantityStepper({
           ))}
           <button
             type="button"
-            className="h-12 rounded-lg text-sm font-black shadow-sm"
+            className="h-11 rounded-md text-sm font-black shadow-sm transition active:scale-[0.98]"
             style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
             onClick={() => setQuantity(1)}
           >
@@ -116,7 +118,7 @@ export const QuantityStepper = memo(function QuantityStepper({
           </button>
           <button
             type="button"
-            className="h-12 rounded-lg text-lg font-black shadow-sm"
+            className="h-11 rounded-md text-xl font-black shadow-sm transition active:scale-[0.98]"
             style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
             onClick={() => appendDigit(0)}
           >
@@ -124,7 +126,7 @@ export const QuantityStepper = memo(function QuantityStepper({
           </button>
           <button
             type="button"
-            className="h-12 rounded-lg text-sm font-black shadow-sm"
+            className="h-11 rounded-md text-sm font-black shadow-sm transition active:scale-[0.98]"
             style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
             onClick={removeDigit}
           >
