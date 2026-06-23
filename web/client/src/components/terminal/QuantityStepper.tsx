@@ -31,15 +31,16 @@ export const QuantityStepper = memo(function QuantityStepper({
         <span className="text-sm text-slate-500">最多 {safeMax}</span>
       </div>
 
-      <div className="grid grid-cols-[4rem_1fr_4rem] items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="grid grid-cols-[4rem_1fr_4rem] items-stretch overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
         <button
           type="button"
           disabled={displayValue <= 1}
-          className="flex min-h-16 items-center justify-center bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-300"
+          className="flex min-h-16 items-center justify-center transition-colors disabled:cursor-not-allowed"
+          style={displayValue <= 1 ? { backgroundColor: '#e2e8f0', color: '#94a3b8' } : { backgroundColor: '#f1f5f9', color: '#0f172a' }}
           onClick={() => setQuantity(displayValue - 1)}
           aria-label="减少"
         >
-          <Minus className="size-7" />
+          <Minus className="size-8" strokeWidth={3} />
         </button>
         <div className="flex min-h-16 items-center justify-center bg-white text-5xl font-black tabular-nums text-slate-950">
           {displayValue}
@@ -47,11 +48,12 @@ export const QuantityStepper = memo(function QuantityStepper({
         <button
           type="button"
           disabled={displayValue >= safeMax}
-          className="flex min-h-16 items-center justify-center bg-teal-700 text-white transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          className="flex min-h-16 items-center justify-center transition-colors disabled:cursor-not-allowed"
+          style={displayValue >= safeMax ? { backgroundColor: '#e2e8f0', color: '#94a3b8' } : { backgroundColor: '#0f766e', color: '#ffffff' }}
           onClick={() => setQuantity(displayValue + 1)}
           aria-label="增加"
         >
-          <Plus className="size-7" />
+          <Plus className="size-8" strokeWidth={3} />
         </button>
       </div>
 

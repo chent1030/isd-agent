@@ -109,8 +109,6 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
               </div>
             </div>
 
-            <p className="mt-3 line-clamp-1 min-h-5 text-sm text-slate-500">{spec || '暂无规格信息'}</p>
-
             <div className="mt-4 flex items-end justify-between gap-3 border-t border-slate-200 pt-3">
               <div className={cn('rounded-md px-3 py-2 ring-1', stockClassName(quantity))}>
                 <div className="text-xs font-bold opacity-80">库存</div>
