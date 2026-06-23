@@ -60,9 +60,9 @@ export const ItemDialog = memo(function ItemDialog({
   return (
     <Dialog open onOpenChange={open => { if (!open && !operating) onClose() }}>
       <DialogContent className="sm:max-w-3xl">
-        <DialogHeader className="border-b-0 bg-slate-950 text-white">
+        <DialogHeader className="border-b-0" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
           <div className="flex flex-wrap items-center gap-2 pr-10">
-            <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-bold text-slate-100">
+            <span className="rounded-md px-2.5 py-1 text-xs font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#f8fafc' }}>
               {item.category || '未分类'}
             </span>
             {item.authRequired && (
@@ -75,46 +75,46 @@ export const ItemDialog = memo(function ItemDialog({
               </span>
             )}
           </div>
-          <DialogTitle className="text-white">{item.name}</DialogTitle>
+          <DialogTitle style={{ color: '#ffffff' }}>{item.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto bg-gradient-to-br from-slate-100 via-slate-50 to-teal-50 px-6 py-5">
-          <div className="flex items-center justify-between rounded-2xl bg-white/85 p-4 shadow-sm">
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5" style={{ backgroundColor: '#f1f5f9', color: '#0f172a' }}>
+          <div className="flex items-center justify-between rounded-2xl p-4 shadow-sm" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
             <StepBadge active={step === 'configure'} done={step === 'auth'} index={1} label="确认信息" />
-            <div className="mx-4 h-px flex-1 bg-slate-200" />
+            <div className="mx-4 h-px flex-1" style={{ backgroundColor: '#cbd5e1' }} />
             <StepBadge active={step === 'auth'} done={false} index={2} label="身份认证" />
           </div>
 
           {step === 'configure' && (
             <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-              <section className="relative overflow-hidden rounded-2xl bg-slate-950 p-5 text-white shadow-sm">
-                <div className="absolute -right-8 -top-8 size-32 rounded-full bg-teal-400/20" />
+              <section className="relative overflow-hidden rounded-2xl p-5 shadow-sm" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
+                <div className="absolute -right-8 -top-8 size-32 rounded-full" style={{ backgroundColor: 'rgba(45, 212, 191, 0.18)' }} />
                 <div className="relative z-10 flex h-full min-h-[260px] flex-col justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-16 items-center justify-center rounded-2xl bg-white/12">
+                    <div className="flex size-16 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#ffffff' }}>
                       <Package className="size-8" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-slate-300">当前物品</div>
-                      <div className="mt-1 line-clamp-2 text-2xl font-black">{item.name}</div>
+                      <div className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>当前物品</div>
+                      <div className="mt-1 line-clamp-2 text-2xl font-black" style={{ color: '#ffffff' }}>{item.name}</div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-sm font-semibold text-slate-300">柜内库存</div>
+                    <div className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>柜内库存</div>
                     <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-7xl font-black tabular-nums">{item.cabinetQuantity}</span>
-                      <span className="text-lg font-bold text-slate-300">件</span>
+                      <span className="text-7xl font-black tabular-nums" style={{ color: '#ffffff' }}>{item.cabinetQuantity}</span>
+                      <span className="text-lg font-bold" style={{ color: '#cbd5e1' }}>件</span>
                     </div>
                   </div>
                 </div>
               </section>
 
-              <section className="rounded-2xl bg-white/90 p-5 shadow-sm">
+              <section className="rounded-2xl p-5 shadow-sm" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
                 <div className="space-y-5">
                   {canSwitchMode && (
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-900">操作方式</label>
+                      <label className="text-sm font-semibold" style={{ color: '#0f172a' }}>操作方式</label>
                       <Select value={mode} onValueChange={v => setMode(v as OperationMode)}>
                         <SelectTrigger id="mode" className="h-12 w-full bg-white text-base">
                           <SelectValue placeholder="选择方式" />
@@ -134,8 +134,8 @@ export const ItemDialog = memo(function ItemDialog({
           )}
 
           {step === 'auth' && (
-            <div className="space-y-4 rounded-2xl bg-white/90 p-5 shadow-sm">
-              <div className="rounded-xl bg-teal-50 p-4 text-base text-teal-900">
+            <div className="space-y-4 rounded-2xl p-5 shadow-sm" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
+              <div className="rounded-xl p-4 text-base" style={{ backgroundColor: '#ecfdf5', color: '#064e3b' }}>
                 请确认：{operationLabel} <strong>{item.name}</strong> x <strong>{quantity}</strong>
               </div>
               <FaceAuth onAuthenticated={handleAuthenticated} />
@@ -143,11 +143,11 @@ export const ItemDialog = memo(function ItemDialog({
           )}
 
           {error && (
-            <div className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</div>
+            <div className="rounded-md px-3 py-2 text-sm font-semibold" style={{ backgroundColor: '#fef2f2', color: '#b91c1c' }}>{error}</div>
           )}
         </div>
 
-        <DialogFooter className="border-t-0 bg-white">
+        <DialogFooter className="border-t-0" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
           {step === 'auth' && (
             <Button variant="outline" size="lg" disabled={operating} onClick={() => setStep('configure')}>
               返回上一步
@@ -168,12 +168,16 @@ export const ItemDialog = memo(function ItemDialog({
 function StepBadge({ active, done, index, label }: { active: boolean; done: boolean; index: number; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div className={`flex size-8 items-center justify-center rounded-full text-sm font-black ${
-        done ? 'bg-emerald-600 text-white' : active ? 'bg-slate-950 text-white' : 'bg-slate-200 text-slate-500'
-      }`}>
+      <div
+        className="flex size-8 items-center justify-center rounded-full text-sm font-black"
+        style={{
+          backgroundColor: done ? '#059669' : active ? '#0f172a' : '#e2e8f0',
+          color: done || active ? '#ffffff' : '#64748b',
+        }}
+      >
         {done ? <Check className="size-4" /> : index}
       </div>
-      <span className={active ? 'font-bold text-slate-950' : 'font-medium text-slate-500'}>{label}</span>
+      <span className="font-bold" style={{ color: active ? '#0f172a' : '#64748b' }}>{label}</span>
     </div>
   )
 }
