@@ -13,9 +13,9 @@ interface CategoryGridProps {
 export const CategoryGrid = memo(function CategoryGrid({ categories, loading, onSelect }: CategoryGridProps) {
   if (loading) {
     return (
-      <div className="grid h-full auto-rows-[220px] grid-cols-[repeat(auto-fit,minmax(250px,1fr))] content-start gap-4 overflow-y-auto pr-1">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-full rounded-lg" />
+      <div className="grid h-full grid-cols-3 gap-5">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-full min-h-[360px] rounded-lg" />
         ))}
       </div>
     )
@@ -30,7 +30,7 @@ export const CategoryGrid = memo(function CategoryGrid({ categories, loading, on
   }
 
   return (
-    <div className="grid h-full auto-rows-[220px] grid-cols-[repeat(auto-fit,minmax(250px,1fr))] content-start gap-4 overflow-y-auto pr-1">
+    <div className="grid h-full grid-cols-3 gap-5">
       {categories.map((category, index) => (
         <GlassCategoryCard
           key={category.id}
@@ -38,8 +38,9 @@ export const CategoryGrid = memo(function CategoryGrid({ categories, loading, on
           itemCount={category.itemCount}
           accent={CATEGORY_ACCENTS[index % CATEGORY_ACCENTS.length]}
           index={index}
-          tags={['分类入口']}
+          tags={['主入口']}
           onSelect={() => onSelect(category.id)}
+          className="h-full min-h-0"
         />
       ))}
     </div>
