@@ -14,7 +14,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
 
-  // 204 或空体
+  // 204 或空响应
   if (res.status === 204) return undefined as T
 
   const text = await res.text()

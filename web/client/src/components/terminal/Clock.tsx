@@ -10,10 +10,10 @@ export const Clock = memo(function Clock() {
 
   return (
     <div className="text-right tabular-nums leading-tight">
-      <div className="text-2xl font-semibold text-foreground">
+      <div className="text-2xl font-semibold text-white">
         {now.toLocaleTimeString('zh-CN', { hour12: false })}
       </div>
-      <div className="text-xs text-muted-foreground">{now.toLocaleDateString('zh-CN')}</div>
+      <div className="text-xs text-slate-300">{now.toLocaleDateString('zh-CN')}</div>
     </div>
   )
 })

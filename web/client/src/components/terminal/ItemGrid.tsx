@@ -14,7 +14,6 @@ interface ItemGridProps {
   onSelect: (item: CabinetCatalogItem) => void
 }
 
-// accent 颜色 → gradient 变体映射
 const ACCENT_TO_GRADIENT: ItemCardGradient[] = ['green', 'gray', 'orange', 'purple']
 
 const ItemCard = memo(function ItemCard({
@@ -54,31 +53,32 @@ export const ItemGrid = memo(function ItemGrid({
   onSelect,
 }: ItemGridProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-foreground">{selectedCategory?.name || '选择物品'}</h2>
-        <Button variant="outline" size="lg" onClick={onBack}>
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="flex shrink-0 items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-500">当前分类</p>
+          <h2 className="truncate text-3xl font-black tracking-normal text-slate-950">
+            {selectedCategory?.name || '选择物品'}
+          </h2>
+        </div>
+        <Button variant="outline" size="xl" onClick={onBack}>
           <ArrowLeft />
-          返回类别
+          返回分类
         </Button>
       </div>
 
       {loading ? (
-        <div
-          className="overflow-y-auto pb-2"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}
-        >
+        <div className="grid min-h-0 flex-1 auto-rows-[238px] grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 overflow-y-auto pb-2 pr-1">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-[260px] rounded-2xl" />
+            <Skeleton key={i} className="h-full rounded-lg" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex h-48 items-center justify-center text-muted-foreground">当前类别暂无可用物品</div>
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/70 text-lg font-medium text-slate-500">
+          当前分类暂无可用物品
+        </div>
       ) : (
-        <div
-          className="overflow-y-auto pb-2 pr-1"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}
-        >
+        <div className="grid min-h-0 flex-1 auto-rows-[238px] grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 overflow-y-auto pb-2 pr-1">
           {items.map(item => (
             <ItemCard key={item.id} item={item} onSelect={onSelect} />
           ))}

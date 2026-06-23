@@ -87,7 +87,6 @@ export default function App() {
     void loadItems(selectedCategoryId)
   }, [loadItems, screen, selectedCategoryId])
 
-  // 加载应用配置（闲置超时）
   useEffect(() => {
     let cancelled = false
     api.getAppConfig()
@@ -110,9 +109,8 @@ export default function App() {
     setScreen('categories')
   }, [])
 
-  const isAwayFromHome = screen !== 'items'
+  const isAwayFromHome = screen === 'items'
 
-  // 闲置检测
   useEffect(() => {
     const updateActivity = () => {
       lastActivityAtRef.current = Date.now()
@@ -124,7 +122,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (isAwayFromHome) {
+    if (!isAwayFromHome) {
       lastActivityAtRef.current = Date.now()
       return
     }
@@ -190,7 +188,7 @@ export default function App() {
         slotNo: record.slotNo,
       })
       await refreshCatalog()
-      toast.success(`${lastOperator.empName} 已归还：${record.itemName} x ${quantity}。`)
+      toast.success(`${lastOperator.empName} 已归还：${record.itemName} x ${quantity}`)
     } catch (error) {
       toast.error(`归还失败：${getUserFacingErrorMessage(error)}`)
     } finally {
@@ -211,10 +209,10 @@ export default function App() {
   }, [])
 
   return (
-    <main className="flex h-screen flex-col gap-4 overflow-hidden bg-background p-4">
+    <main className="terminal-surface flex h-screen flex-col gap-4 overflow-hidden p-4">
       <AppHeader refreshing={refreshing} onRefresh={() => void refreshCatalog(true)} onReturn={openReturn} />
 
-      <section className="min-h-0 flex-1 overflow-hidden">
+      <section className="terminal-panel min-h-0 flex-1 overflow-hidden rounded-lg p-5">
         {screen === 'categories' && (
           <CategoryGrid categories={categories} loading={categoriesLoading} onSelect={handleSelectCategory} />
         )}

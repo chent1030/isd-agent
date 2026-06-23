@@ -4,52 +4,52 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.98 0.01 230);
-  --foreground: oklch(0.21 0.04 230);
+  --radius: 0.5rem;
+  --background: oklch(0.965 0.012 238);
+  --foreground: oklch(0.19 0.035 245);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.04 230);
+  --card-foreground: oklch(0.19 0.035 245);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.04 230);
-  --primary: oklch(0.52 0.11 230);
-  --primary-foreground: oklch(0.98 0.01 230);
-  --secondary: oklch(0.95 0.02 230);
-  --secondary-foreground: oklch(0.28 0.05 230);
-  --muted: oklch(0.96 0.01 230);
-  --muted-foreground: oklch(0.55 0.03 230);
-  --accent: oklch(0.94 0.03 180);
-  --accent-foreground: oklch(0.28 0.06 180);
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.98 0.01 230);
-  --border: oklch(0.9 0.02 230);
-  --input: oklch(0.9 0.02 230);
-  --ring: oklch(0.52 0.11 230);
-  --chart-1: oklch(0.6 0.12 160);
-  --chart-2: oklch(0.6 0.11 230);
-  --chart-3: oklch(0.7 0.15 70);
-  --chart-4: oklch(0.65 0.18 350);
+  --popover-foreground: oklch(0.19 0.035 245);
+  --primary: oklch(0.42 0.105 190);
+  --primary-foreground: oklch(0.985 0.006 190);
+  --secondary: oklch(0.93 0.018 235);
+  --secondary-foreground: oklch(0.24 0.04 245);
+  --muted: oklch(0.94 0.014 235);
+  --muted-foreground: oklch(0.49 0.032 245);
+  --accent: oklch(0.9 0.055 92);
+  --accent-foreground: oklch(0.3 0.055 80);
+  --destructive: oklch(0.55 0.19 25);
+  --destructive-foreground: oklch(0.985 0.006 25);
+  --border: oklch(0.86 0.02 238);
+  --input: oklch(0.86 0.02 238);
+  --ring: oklch(0.42 0.105 190);
+  --chart-1: oklch(0.55 0.12 180);
+  --chart-2: oklch(0.56 0.13 260);
+  --chart-3: oklch(0.66 0.13 85);
+  --chart-4: oklch(0.58 0.16 25);
 }
 
 .dark {
-  --background: oklch(0.16 0.02 230);
-  --foreground: oklch(0.92 0.01 230);
-  --card: oklch(0.2 0.02 230);
-  --card-foreground: oklch(0.92 0.01 230);
-  --popover: oklch(0.2 0.02 230);
-  --popover-foreground: oklch(0.92 0.01 230);
-  --primary: oklch(0.68 0.12 230);
-  --primary-foreground: oklch(0.16 0.02 230);
-  --secondary: oklch(0.27 0.03 230);
-  --secondary-foreground: oklch(0.92 0.01 230);
-  --muted: oklch(0.27 0.03 230);
-  --muted-foreground: oklch(0.7 0.02 230);
-  --accent: oklch(0.3 0.04 180);
-  --accent-foreground: oklch(0.92 0.02 180);
-  --destructive: oklch(0.7 0.19 22);
-  --destructive-foreground: oklch(0.16 0.02 230);
+  --background: oklch(0.17 0.025 245);
+  --foreground: oklch(0.94 0.012 245);
+  --card: oklch(0.22 0.025 245);
+  --card-foreground: oklch(0.94 0.012 245);
+  --popover: oklch(0.22 0.025 245);
+  --popover-foreground: oklch(0.94 0.012 245);
+  --primary: oklch(0.7 0.12 185);
+  --primary-foreground: oklch(0.14 0.025 245);
+  --secondary: oklch(0.28 0.03 245);
+  --secondary-foreground: oklch(0.94 0.012 245);
+  --muted: oklch(0.28 0.03 245);
+  --muted-foreground: oklch(0.72 0.02 245);
+  --accent: oklch(0.34 0.055 92);
+  --accent-foreground: oklch(0.94 0.012 92);
+  --destructive: oklch(0.67 0.18 24);
+  --destructive-foreground: oklch(0.14 0.025 245);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.12 230);
+  --ring: oklch(0.7 0.12 185);
 }
 
 @theme inline {
@@ -86,47 +86,71 @@
   * {
     border-color: var(--border);
   }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
+    margin: 0;
     background-color: var(--background);
     color: var(--foreground);
-    font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
   }
-  html, body, #root {
-    height: 100%;
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
 }
 
-
-/* 扫光 hover 效果：伪元素斜向高光在 hover 时划过，置于内容下方 */
 @layer utilities {
+  .terminal-surface {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.38)),
+      radial-gradient(circle at 12% 0%, rgba(15, 118, 110, 0.12), transparent 34%),
+      radial-gradient(circle at 88% 8%, rgba(202, 138, 4, 0.12), transparent 30%),
+      var(--background);
+  }
+
+  .terminal-panel {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  }
+
   .btn-shine {
     position: relative;
     overflow: hidden;
     isolation: isolate;
   }
-  /* 让按钮内的文字/图标始终在高光之上 */
+
   .btn-shine > * {
     position: relative;
     z-index: 1;
   }
+
   .btn-shine::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background-image: linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.5) 50%, transparent 75%, transparent 100%);
+    background-image: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
     background-size: 250% 250%;
     background-position: 200% 0;
     background-repeat: no-repeat;
-    transition: background-position 1000ms ease;
+    transition: background-position 900ms ease;
     pointer-events: none;
     z-index: 0;
   }
+
   .btn-shine:hover::before {
     background-position: -100% 0;
-  }
-  .dark .btn-shine::before {
-    background-image: linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.3) 50%, transparent 75%, transparent 100%);
   }
 }

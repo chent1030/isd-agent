@@ -1,5 +1,5 @@
-export const CATEGORY_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#8a6eb8', '#c35f4c', '#4f7d51']
-export const ITEM_ACCENTS = ['#2f8f67', '#1f7da5', '#9a6f2f', '#c35f4c']
+export const CATEGORY_ACCENTS = ['#0f766e', '#2563eb', '#ca8a04', '#7c3aed', '#dc2626', '#16a34a']
+export const ITEM_ACCENTS = ['#0f766e', '#2563eb', '#ca8a04', '#dc2626']
 
 export function formatDateTime(value?: string) {
   if (!value) return '--'

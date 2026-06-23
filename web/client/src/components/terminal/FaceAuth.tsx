@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ScanFace, Keyboard, Camera, RefreshCw } from 'lucide-react'
+import { Camera, Keyboard, RefreshCw, ScanFace, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import type { FaceState, Operator } from '@/types/api'
@@ -59,10 +59,10 @@ interface FaceAuthProps {
 }
 
 const STATUS_TEXT: Record<FaceState, string> = {
-  idle: '点击开始后进行身份认证',
-  'camera-loading': '正在唤起摄像头',
+  idle: '等待开始认证',
+  'camera-loading': '正在启动摄像头',
   camera: '摄像头已开启',
-  recognizing: '正在识别操作人',
+  recognizing: '正在识别操作人员',
   success: '认证通过',
   failed: '认证异常',
   unmatched: '未匹配到授权身份',
@@ -138,7 +138,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       setManualVisible(true)
     } catch {
       stopCamera()
-      setErrorMsg('人脸识别服务异常，请重试')
+      setErrorMsg('人脸识别服务异常，请重试。')
       setState('failed')
       setManualWorkNo('')
       setManualVisible(true)
@@ -168,7 +168,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       setState('camera')
       void runRecognition()
     } catch {
-      setErrorMsg('无法访问摄像头，请检查权限')
+      setErrorMsg('无法访问摄像头，请检查浏览器权限。')
       setState('failed')
       setManualWorkNo('')
       setManualVisible(true)
@@ -189,10 +189,11 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
   const appendDigit = (digit: number) => {
     setManualWorkNo(current => `${current}${digit}`.slice(0, WORK_NO_LENGTH))
   }
+
   const submitManualAuth = async () => {
     const empWorkNo = manualWorkNo.trim()
     if (empWorkNo.length !== WORK_NO_LENGTH) {
-      setErrorMsg(`请输入${WORK_NO_LENGTH}位工号`)
+      setErrorMsg(`请输入 ${WORK_NO_LENGTH} 位工号。`)
       setState('failed')
       return
     }
@@ -203,28 +204,28 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
 
   return (
     <div className="flex flex-col items-center gap-5">
-      <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-2xl border-2 border-primary/30 bg-muted shadow-inner">
+      <div className="relative aspect-[4/3] w-full max-w-[420px] overflow-hidden rounded-lg border border-slate-300 bg-slate-100 shadow-inner">
         {showVideo ? (
           <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <ScanFace className="size-20 opacity-40" />
+          <div className="flex h-full w-full items-center justify-center text-slate-400">
+            <ScanFace className="size-24" />
           </div>
         )}
         {(state === 'recognizing' || state === 'camera') && (
-          <div className="absolute inset-x-4 top-1/2 h-0.5 animate-pulse bg-primary/70 shadow-[0_0_12px] shadow-primary/50" />
+          <div className="absolute inset-x-6 top-1/2 h-1 animate-pulse rounded-full bg-teal-500 shadow-[0_0_18px] shadow-teal-400/70" />
         )}
-        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-          <span className={`size-2 rounded-full ${state === 'recognizing' ? 'animate-pulse bg-amber-400' : state === 'success' ? 'bg-emerald-400' : 'bg-primary'}`} />
+        <div className="absolute left-3 top-3 flex items-center gap-2 rounded-md bg-slate-950/80 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur">
+          <span className={`size-2.5 rounded-full ${state === 'recognizing' ? 'animate-pulse bg-amber-400' : state === 'success' ? 'bg-emerald-400' : 'bg-teal-400'}`} />
           {STATUS_TEXT[state]}
         </div>
       </div>
 
-      <p className="text-center text-sm text-muted-foreground">
-        {errorMsg && state === 'failed' ? errorMsg : '认证成功后才会执行开柜和业务记录'}
+      <p className="text-center text-sm text-slate-500">
+        {errorMsg && state === 'failed' ? errorMsg : '认证通过后，系统将继续执行开柜和业务记录。'}
       </p>
 
-      {(state === 'failed' || state === 'unmatched') && (
+      {canUseManualAuth && (
         <div className="flex gap-2">
           <Button variant="default" size="lg" className="btn-shine" onClick={startCamera}>
             <RefreshCw />
@@ -249,31 +250,34 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       )}
 
       {manualVisible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-xs rounded-xl border bg-card p-5 shadow-lg">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-lg border bg-white p-5 text-slate-950 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <strong className="text-base">输入工号</strong>
-              <Button variant="ghost" size="icon" className="size-8" onClick={() => setManualVisible(false)} aria-label="关闭">×</Button>
+              <strong className="text-lg">输入工号</strong>
+              <Button variant="ghost" size="icon" className="size-9" onClick={() => setManualVisible(false)} aria-label="关闭">
+                <X className="size-5" />
+              </Button>
             </div>
-            <div className="mb-1 rounded-lg border bg-muted px-3 py-2.5 text-center text-lg font-semibold tabular-nums">
-              {manualWorkNo || `请输入${WORK_NO_LENGTH}位工号`}
+            <div className="mb-1 rounded-lg border bg-slate-50 px-3 py-3 text-center text-2xl font-black tabular-nums">
+              {manualWorkNo || `请输入 ${WORK_NO_LENGTH} 位工号`}
             </div>
-            <div className="mb-3 text-right text-xs text-muted-foreground">
+            <div className="mb-3 text-right text-xs text-slate-500">
               {manualWorkNo.length}/{WORK_NO_LENGTH}
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
-                <Button key={item} variant="outline" className="h-12 text-lg" onClick={() => appendDigit(item)}>
+                <Button key={item} variant="outline" className="h-14 text-xl" onClick={() => appendDigit(item)}>
                   {item}
                 </Button>
               ))}
-              <Button variant="outline" className="h-12" onClick={() => setManualWorkNo('')}>清空</Button>
-              <Button variant="outline" className="h-12 text-lg" onClick={() => appendDigit(0)}>0</Button>
-              <Button variant="outline" className="h-12" onClick={() => setManualWorkNo(c => c.slice(0, -1))}>删除</Button>
+              <Button variant="outline" className="h-14" onClick={() => setManualWorkNo('')}>清空</Button>
+              <Button variant="outline" className="h-14 text-xl" onClick={() => appendDigit(0)}>0</Button>
+              <Button variant="outline" className="h-14" onClick={() => setManualWorkNo(c => c.slice(0, -1))}>删除</Button>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setManualVisible(false)}>取消</Button>
+              <Button variant="outline" size="lg" className="flex-1" onClick={() => setManualVisible(false)}>取消</Button>
               <Button
+                size="lg"
                 className="flex-1"
                 disabled={manualWorkNo.trim().length !== WORK_NO_LENGTH}
                 onClick={() => void submitManualAuth()}
