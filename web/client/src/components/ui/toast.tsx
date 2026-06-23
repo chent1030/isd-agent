@@ -90,13 +90,13 @@ const variantIcons: Record<Variant, React.ComponentType<{ className?: string }>>
 }
 
 const toastAnimation = {
-  initial: { opacity: 0, y: 50, scale: 0.95 },
+  initial: { opacity: 0, y: 36, scale: 0.97 },
   animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: 50, scale: 0.95 },
+  exit: { opacity: 0, y: 28, scale: 0.97 },
 }
 
 const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
-  ({ defaultPosition = 'bottom-right' }, ref) => {
+  ({ defaultPosition = 'bottom-center' }, ref) => {
     const toastReference = useRef<ReturnType<typeof sonnerToast.custom> | null>(null)
 
     useImperativeHandle(ref, () => ({
@@ -111,6 +111,15 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
         highlightTitle,
       }) {
         const Icon = variantIcons[variant]
+        const toastStyle: React.CSSProperties = {
+          ...variantInlineStyles[variant],
+          zIndex: 20000,
+          width: 'min(520px, calc(100vw - 32px))',
+          boxShadow:
+            variant === 'error'
+              ? '0 26px 70px rgba(127, 29, 29, 0.45)'
+              : '0 22px 60px rgba(15, 23, 42, 0.22)',
+        }
 
         toastReference.current = sonnerToast.custom(
           (toastId) => (
@@ -120,14 +129,14 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
               animate="animate"
               exit="exit"
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ ...variantInlineStyles[variant], zIndex: 12000 }}
+              style={toastStyle}
               className={cn(
-                'relative z-[12000] flex w-full max-w-sm items-center justify-between rounded-lg border p-4 shadow-2xl',
+                'relative z-[20000] flex items-center justify-between gap-4 rounded-lg border-2 p-4 shadow-2xl',
                 variantStyles[variant]
               )}
             >
-              <div className="flex items-start gap-2">
-                <Icon className={cn('h-4 w-4 mt-0.5 flex-shrink-0', iconColor[variant])} />
+              <div className="flex min-w-0 items-start gap-3">
+                <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', iconColor[variant])} />
                 <div className="space-y-0.5">
                   {title && (
                     <h3
@@ -140,7 +149,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                       {title}
                     </h3>
                   )}
-                  <p className={cn('text-sm font-semibold', messageColor[variant])}>{message}</p>
+                  <p className={cn('text-base font-bold leading-snug', messageColor[variant])}>{message}</p>
                 </div>
               </div>
 
@@ -191,10 +200,12 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
 
     return (
       <SonnerToaster
-        className="z-[12000]"
+        className="z-[20000]"
         position={defaultPosition}
-        style={{ zIndex: 12000 }}
-        toastOptions={{ unstyled: true, className: 'z-[12000] flex justify-end' }}
+        offset={{ bottom: 28, top: 112 }}
+        mobileOffset={{ bottom: 24, top: 112 }}
+        style={{ zIndex: 20000, '--width': 'min(520px, calc(100vw - 32px))' } as React.CSSProperties}
+        toastOptions={{ unstyled: true, className: 'z-[20000] flex justify-center' }}
       />
     )
   }
@@ -231,7 +242,6 @@ function emit(message: string, variant: CallVariant, title?: string) {
     message,
     variant: variantMap[variant],
     title,
-    position: 'top-center',
     duration: 4000,
   } as const
 
@@ -241,7 +251,7 @@ function emit(message: string, variant: CallVariant, title?: string) {
   }
 
   sonnerToast(message, {
-    position: 'top-center',
+    position: 'bottom-center',
     duration: 4000,
   })
 }

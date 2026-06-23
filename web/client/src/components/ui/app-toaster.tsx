@@ -15,5 +15,5 @@ export function AppToaster() {
     return () => registerToaster(null)
   }, [])
 
-  return <Toaster ref={ref} defaultPosition="top-center" />
+  return <Toaster ref={ref} defaultPosition="bottom-center" />
 }
