@@ -28,6 +28,16 @@ const stockClassName = (quantity: number) => {
   return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const normalized = hex.replace('#', '')
+  if (normalized.length !== 6) return `rgba(15, 23, 42, ${alpha})`
+  const value = Number.parseInt(normalized, 16)
+  const red = (value >> 16) & 255
+  const green = (value >> 8) & 255
+  const blue = value & 255
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+}
+
 const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>(
   (
     {
@@ -45,6 +55,9 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
     },
     ref,
   ) => {
+    const accentSoft = hexToRgba(accent, 0.13)
+    const accentFaint = hexToRgba(accent, 0.07)
+
     return (
       <motion.div
         ref={ref}
@@ -62,9 +75,19 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
             disabled ? 'cursor-not-allowed' : 'cursor-pointer',
             className,
           )}
+          style={{
+            background: `linear-gradient(135deg, ${accentSoft} 0%, #ffffff 38%, #f8fafc 100%)`,
+          }}
         >
+          <div className="pointer-events-none absolute right-0 top-0 h-24 w-28 rounded-bl-[2rem]" style={{ backgroundColor: accentFaint }} />
+          <div className="pointer-events-none absolute bottom-0 left-10 h-1.5 w-28 rounded-t-full" style={{ backgroundColor: accent }} />
+          <div className="pointer-events-none absolute bottom-4 right-4 flex gap-1.5 opacity-50">
+            <span className="h-7 w-2 rounded-full bg-slate-300" />
+            <span className="h-10 w-2 rounded-full" style={{ backgroundColor: accent }} />
+            <span className="h-5 w-2 rounded-full bg-slate-300" />
+          </div>
           <div className="w-1.5 shrink-0" style={{ backgroundColor: accent }} />
-          <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
+          <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-between p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -78,7 +101,7 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
                 </div>
                 <h3 className="mt-2 line-clamp-2 text-xl font-black leading-tight tracking-normal text-slate-950">{name}</h3>
               </div>
-              <div className="rounded-md bg-slate-100 p-2 text-slate-500">
+              <div className="rounded-md bg-white/80 p-2 text-slate-500 shadow-sm ring-1 ring-slate-200">
                 <Package className="size-5" />
               </div>
             </div>
