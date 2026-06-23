@@ -38,7 +38,6 @@ export const CategoryGrid = memo(function CategoryGrid({ categories, loading, on
           itemCount={category.itemCount}
           accent={CATEGORY_ACCENTS[index % CATEGORY_ACCENTS.length]}
           index={index}
-          tags={['主入口']}
           onSelect={() => onSelect(category.id)}
           className="h-full min-h-0"
         />

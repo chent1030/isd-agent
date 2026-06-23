@@ -22,22 +22,21 @@ function getCategoryIcon(name: string): LucideIcon {
 }
 
 function getFilledSlots(itemCount: number, index: number) {
-  const minimum = 4 + (index % 3)
-  const fromCount = Math.min(9, Math.max(3, Math.ceil(itemCount / 2)))
-  return Math.min(9, Math.max(minimum, fromCount))
+  const minimum = 2 + (index % 2)
+  const fromCount = Math.min(4, Math.max(2, Math.ceil(itemCount / 4)))
+  return Math.min(4, Math.max(minimum, fromCount))
 }
 
 export function GlassCategoryCard({
   name,
   itemCount = 0,
   accent = '#0f766e',
-  tags,
   onSelect,
   index = 0,
   className,
 }: GlassCategoryCardProps) {
   const Icon = getCategoryIcon(name)
-  const filledSlots = getFilledSlots(itemCount, index)
+  const filledBars = getFilledSlots(itemCount, index)
 
   return (
     <motion.button
@@ -57,14 +56,7 @@ export function GlassCategoryCard({
       <div className="flex min-w-0 flex-1 flex-col p-6 pt-7">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex flex-wrap gap-2">
-              {(tags?.length ? tags : ['主入口']).map(tag => (
-                <span key={tag} className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <h3 className="mt-4 line-clamp-2 text-4xl font-black leading-tight tracking-normal text-slate-950">{name}</h3>
+            <h3 className="line-clamp-2 text-4xl font-black leading-tight tracking-normal text-slate-950">{name}</h3>
           </div>
 
           <div className="flex size-16 shrink-0 items-center justify-center rounded-lg text-white shadow-sm" style={{ backgroundColor: accent }}>
@@ -73,21 +65,39 @@ export function GlassCategoryCard({
         </div>
 
         <div className="my-8 flex flex-1 items-center justify-center">
-          <div className="grid w-full max-w-[300px] grid-cols-3 gap-3">
-            {Array.from({ length: 9 }).map((_, slotIndex) => {
-              const filled = slotIndex < filledSlots
-              return (
-                <div
-                  key={slotIndex}
-                  className="aspect-square rounded-lg border shadow-inner"
-                  style={{
-                    borderColor: filled ? accent : '#e2e8f0',
-                    background: filled ? accent : '#f8fafc',
-                    opacity: filled ? 0.95 : 1,
-                  }}
-                />
-              )
-            })}
+          <div className="relative flex h-full min-h-[190px] w-full max-w-[330px] flex-col justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="absolute right-5 top-5 flex size-14 items-center justify-center rounded-xl bg-white text-slate-300 shadow-sm">
+              <Icon className="size-8" />
+            </div>
+            <div className="absolute -bottom-8 -left-2 text-[8rem] font-black leading-none text-slate-200/70">
+              {String(index + 1).padStart(2, '0')}
+            </div>
+            <div className="relative z-10 space-y-4">
+              {Array.from({ length: 4 }).map((_, barIndex) => {
+                const filled = barIndex < filledBars
+                const width = `${92 - barIndex * 12}%`
+                return (
+                  <div key={barIndex} className="flex items-center gap-3">
+                    <div
+                      className="h-4 rounded-full"
+                      style={{
+                        width,
+                        backgroundColor: filled ? accent : '#e2e8f0',
+                        opacity: filled ? 0.95 : 1,
+                      }}
+                    />
+                    <div
+                      className="size-4 rounded-full"
+                      style={{
+                        backgroundColor: filled ? accent : '#cbd5e1',
+                        opacity: filled ? 0.95 : 1,
+                      }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="relative z-10 mt-6 h-2 w-24 rounded-full" style={{ backgroundColor: accent }} />
           </div>
         </div>
 
