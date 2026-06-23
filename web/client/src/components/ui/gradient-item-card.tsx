@@ -93,7 +93,10 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">{badgeText}</span>
                   {authRequired && (
-                    <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-xs font-black text-red-700">
+                    <span
+                      className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-black"
+                      style={{ backgroundColor: '#b91c1c', color: '#ffffff' }}
+                    >
                       <ShieldCheck className="size-3.5" />
                       需授权
                     </span>

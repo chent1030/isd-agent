@@ -66,7 +66,10 @@ export const ItemDialog = memo(function ItemDialog({
               {item.category || '未分类'}
             </span>
             {item.authRequired && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-red-100 px-2.5 py-1 text-xs font-black text-red-700">
+              <span
+                className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-black"
+                style={{ backgroundColor: '#b91c1c', color: '#ffffff' }}
+              >
                 <ShieldCheck className="size-3.5" />
                 需授权
               </span>
