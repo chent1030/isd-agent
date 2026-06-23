@@ -21,10 +21,14 @@ function getCategoryIcon(name: string): LucideIcon {
   return Boxes
 }
 
-function getFilledSlots(itemCount: number, index: number) {
-  const minimum = 2 + (index % 2)
-  const fromCount = Math.min(4, Math.max(2, Math.ceil(itemCount / 4)))
-  return Math.min(4, Math.max(minimum, fromCount))
+function hexToRgba(hex: string, alpha: number) {
+  const normalized = hex.replace('#', '')
+  if (normalized.length !== 6) return `rgba(15, 23, 42, ${alpha})`
+  const value = Number.parseInt(normalized, 16)
+  const red = (value >> 16) & 255
+  const green = (value >> 8) & 255
+  const blue = value & 255
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }
 
 export function GlassCategoryCard({
@@ -36,7 +40,8 @@ export function GlassCategoryCard({
   className,
 }: GlassCategoryCardProps) {
   const Icon = getCategoryIcon(name)
-  const filledBars = getFilledSlots(itemCount, index)
+  const accentSoft = hexToRgba(accent, 0.1)
+  const accentFaint = hexToRgba(accent, 0.06)
 
   return (
     <motion.button
@@ -65,39 +70,19 @@ export function GlassCategoryCard({
         </div>
 
         <div className="my-8 flex flex-1 items-center justify-center">
-          <div className="relative flex h-full min-h-[190px] w-full max-w-[330px] flex-col justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <div className="absolute right-5 top-5 flex size-14 items-center justify-center rounded-xl bg-white text-slate-300 shadow-sm">
-              <Icon className="size-8" />
-            </div>
-            <div className="absolute -bottom-8 -left-2 text-[8rem] font-black leading-none text-slate-200/70">
+          <div
+            className="relative flex h-full min-h-[210px] w-full max-w-[340px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+            style={{
+              background: `linear-gradient(145deg, ${accentFaint} 0%, #f8fafc 48%, #ffffff 100%)`,
+            }}
+          >
+            <div className="absolute -right-8 -top-8 size-36 rounded-[2rem]" style={{ backgroundColor: accentSoft }} />
+            <div className="absolute -bottom-10 -left-4 text-[9rem] font-black leading-none text-slate-200/80">
               {String(index + 1).padStart(2, '0')}
             </div>
-            <div className="relative z-10 space-y-4">
-              {Array.from({ length: 4 }).map((_, barIndex) => {
-                const filled = barIndex < filledBars
-                const width = `${92 - barIndex * 12}%`
-                return (
-                  <div key={barIndex} className="flex items-center gap-3">
-                    <div
-                      className="h-4 rounded-full"
-                      style={{
-                        width,
-                        backgroundColor: filled ? accent : '#e2e8f0',
-                        opacity: filled ? 0.95 : 1,
-                      }}
-                    />
-                    <div
-                      className="size-4 rounded-full"
-                      style={{
-                        backgroundColor: filled ? accent : '#cbd5e1',
-                        opacity: filled ? 0.95 : 1,
-                      }}
-                    />
-                  </div>
-                )
-              })}
+            <div className="relative z-10 flex size-32 items-center justify-center rounded-3xl text-white shadow-lg shadow-slate-300/40" style={{ backgroundColor: accent }}>
+              <Icon className="size-16" />
             </div>
-            <div className="relative z-10 mt-6 h-2 w-24 rounded-full" style={{ backgroundColor: accent }} />
           </div>
         </div>
 
