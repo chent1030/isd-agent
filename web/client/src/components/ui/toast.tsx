@@ -48,10 +48,17 @@ export interface ToasterRef {
 }
 
 const variantStyles: Record<Variant, string> = {
-  default: 'border-slate-300 bg-white text-slate-950',
-  success: 'border-green-600 bg-green-50 text-green-950',
-  error: 'border-red-950 bg-red-700 text-white',
-  warning: 'border-amber-600 bg-amber-50 text-amber-950',
+  default: '',
+  success: '',
+  error: '',
+  warning: '',
+}
+
+const variantInlineStyles: Record<Variant, React.CSSProperties> = {
+  default: { backgroundColor: '#ffffff', borderColor: '#cbd5e1', color: '#0f172a' },
+  success: { backgroundColor: '#ecfdf5', borderColor: '#16a34a', color: '#052e16' },
+  error: { backgroundColor: '#b91c1c', borderColor: '#7f1d1d', color: '#ffffff' },
+  warning: { backgroundColor: '#fffbeb', borderColor: '#d97706', color: '#451a03' },
 }
 
 const titleColor: Record<Variant, string> = {
@@ -113,7 +120,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
               animate="animate"
               exit="exit"
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ zIndex: 12000 }}
+              style={{ ...variantInlineStyles[variant], zIndex: 12000 }}
               className={cn(
                 'relative z-[12000] flex w-full max-w-sm items-center justify-between rounded-lg border p-4 shadow-2xl',
                 variantStyles[variant]
