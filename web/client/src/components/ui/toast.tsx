@@ -50,22 +50,29 @@ export interface ToasterRef {
 const variantStyles: Record<Variant, string> = {
   default: 'border-slate-300 bg-white text-slate-950',
   success: 'border-green-600 bg-green-50 text-green-950',
-  error: 'border-red-700 bg-red-50 text-red-950',
+  error: 'border-red-950 bg-red-700 text-white',
   warning: 'border-amber-600 bg-amber-50 text-amber-950',
 }
 
 const titleColor: Record<Variant, string> = {
   default: 'text-slate-950',
   success: 'text-green-800',
-  error: 'text-red-800',
+  error: 'text-white',
   warning: 'text-amber-800',
 }
 
 const iconColor: Record<Variant, string> = {
   default: 'text-slate-600',
   success: 'text-green-700',
-  error: 'text-red-700',
+  error: 'text-white',
   warning: 'text-amber-700',
+}
+
+const messageColor: Record<Variant, string> = {
+  default: 'text-slate-800',
+  success: 'text-green-950',
+  error: 'text-white',
+  warning: 'text-amber-950',
 }
 
 const variantIcons: Record<Variant, React.ComponentType<{ className?: string }>> = {
@@ -126,7 +133,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                       {title}
                     </h3>
                   )}
-                  <p className="text-sm font-semibold text-slate-800">{message}</p>
+                  <p className={cn('text-sm font-semibold', messageColor[variant])}>{message}</p>
                 </div>
               </div>
 
@@ -159,10 +166,13 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                     sonnerToast.dismiss(toastId)
                     onDismiss?.()
                   }}
-                  className="rounded-full p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                  className={cn(
+                    'rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-ring',
+                    variant === 'error' ? 'text-white hover:bg-white/15' : 'hover:bg-muted/50 dark:hover:bg-muted/30',
+                  )}
                   aria-label="Dismiss notification"
                 >
-                  <X className="h-3 w-3 text-muted-foreground" />
+                  <X className={cn('h-3 w-3', variant === 'error' ? 'text-white' : 'text-muted-foreground')} />
                 </button>
               </div>
             </motion.div>
