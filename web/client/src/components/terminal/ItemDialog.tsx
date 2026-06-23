@@ -213,7 +213,7 @@ export const ItemDialog = memo(function ItemDialog({
                 : { backgroundColor: '#cbd5e1', borderColor: '#cbd5e1', color: '#64748b' }}
               onClick={proceedToAuth}
             >
-              下一步：人脸认证
+              {operationLabel}
             </Button>
           )}
         </DialogFooter>
