@@ -155,7 +155,15 @@ export const ItemDialog = memo(function ItemDialog({
           )}
           <Button variant="ghost" size="lg" disabled={operating} onClick={onClose}>取消</Button>
           {step === 'configure' && (
-            <Button size="lg" className="btn-shine" disabled={!canProceed} onClick={proceedToAuth}>
+            <Button
+              size="lg"
+              className="btn-shine"
+              disabled={!canProceed}
+              style={canProceed
+                ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }
+                : { backgroundColor: '#cbd5e1', borderColor: '#cbd5e1', color: '#64748b' }}
+              onClick={proceedToAuth}
+            >
               下一步：人脸认证
             </Button>
           )}
