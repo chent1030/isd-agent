@@ -88,7 +88,7 @@ export const ItemDialog = memo(function ItemDialog({
 
         <div className="flex-1 overflow-hidden px-6 py-5" style={{ backgroundColor: '#e8eef2', color: '#0f172a' }}>
           {step === 'configure' && (
-            <div className="grid h-full min-h-0 gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+            <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)] gap-5">
               <section
                 className="relative overflow-hidden rounded-lg p-5 shadow-sm"
                 style={{ backgroundColor: '#10233a', color: '#ffffff' }}
@@ -164,7 +164,7 @@ export const ItemDialog = memo(function ItemDialog({
           )}
 
           {step === 'auth' && (
-            <div className="grid h-full min-h-0 gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+            <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)] gap-5">
               <section className="rounded-lg p-5 shadow-sm" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
                 <div className="flex h-full min-h-[360px] flex-col justify-between">
                   <div>
