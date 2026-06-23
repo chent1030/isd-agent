@@ -173,8 +173,10 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
 
     return (
       <SonnerToaster
+        className="z-[12000]"
         position={defaultPosition}
-        toastOptions={{ unstyled: true, className: 'flex justify-end' }}
+        style={{ zIndex: 12000 }}
+        toastOptions={{ unstyled: true, className: 'z-[12000] flex justify-end' }}
       />
     )
   }

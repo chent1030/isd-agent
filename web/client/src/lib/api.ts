@@ -18,10 +18,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 204) return undefined as T
 
   const text = await res.text()
-  const data = text ? JSON.parse(text) : null
+  let data: unknown = null
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    data = text ? { message: text } : null
+  }
 
   if (!res.ok) {
-    const message = data?.message || `请求失败 (${res.status})`
+    const message = typeof data === 'object' && data && 'message' in data && typeof data.message === 'string'
+      ? data.message
+      : `请求失败 (${res.status})`
     throw new Error(message)
   }
 
