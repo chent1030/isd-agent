@@ -5,7 +5,9 @@ const LOCK_SOCKET_TIMEOUT = 3000
 const PROTOCOL_HEADER = Buffer.from([0x73, 0x74, 0x61, 0x72])
 const PROTOCOL_FOOTER = Buffer.from([0x65, 0x6e, 0x64, 0x6f])
 const CMD_OPEN_SINGLE_LOCK = 0x9a
+const CMD_OPEN_ALL_LOCKS = 0xa0
 const MIN_RESPONSE_LENGTH = 10
+const BOARD_STATUS_RESPONSE_LENGTH = 12
 
 export interface LockTarget {
   cabinetNo: string | number
@@ -40,6 +42,17 @@ export function bufferToHex(buffer: Buffer) {
   return Array.from(buffer)
     .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
     .join(' ')
+}
+
+function getLockStatusFromBoardSnapshot(frame: Buffer, lockNumber: number): OpenLockResult['status'] {
+  if (!Number.isInteger(lockNumber) || lockNumber < 1 || lockNumber > 24) return 'unknown'
+
+  const statusByteIndex = 6 + Math.floor((lockNumber - 1) / 8)
+  const bitIndex = (lockNumber - 1) % 8
+  const statusByte = frame[statusByteIndex]
+  if (statusByte === undefined) return 'unknown'
+
+  return ((statusByte >> bitIndex) & 1) === 1 ? 'open' : 'closed'
 }
 
 function sendLockCommand(commandBytes: Buffer): Promise<Buffer> {
@@ -95,6 +108,20 @@ export function parseOpenLockResponse(response: Buffer, boardAddr: number, lockN
       boardAddr,
       lockNumber,
       status: matchingFrame[7] === 0x00 ? 'closed' : 'open',
+    }
+  }
+
+  const boardStatusFrame = frames.find(frame =>
+    frame.length >= BOARD_STATUS_RESPONSE_LENGTH &&
+    frame[4] === CMD_OPEN_ALL_LOCKS &&
+    frame[5] === boardAddr
+  )
+  if (boardStatusFrame) {
+    return {
+      boardAddr,
+      lockNumber,
+      status: getLockStatusFromBoardSnapshot(boardStatusFrame, lockNumber),
+      rawResponseHex: bufferToHex(response),
     }
   }
 
