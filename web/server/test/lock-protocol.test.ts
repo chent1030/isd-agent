@@ -52,6 +52,25 @@ test('parses open then closed status frames from the same connection', () => {
   assert.equal(parseOpenLockResponse(response, 0x02, 0x03).status, 'closed')
 })
 
+test('parses 0x60 lock status frames as open and closed states', () => {
+  const response = Buffer.concat([
+    Buffer.from([
+      0x73, 0x74, 0x61, 0x72,
+      0x60, 0x02, 0x03, 0x11, 0x70,
+      0x65, 0x6e, 0x64, 0x6f,
+    ]),
+    Buffer.from([
+      0x73, 0x74, 0x61, 0x72,
+      0x60, 0x02, 0x03, 0x00, 0x61,
+      0x65, 0x6e, 0x64, 0x6f,
+    ]),
+  ])
+
+  const results = parseOpenLockResponses(response, 0x02, 0x03)
+
+  assert.deepEqual(results.map(result => result.status), ['open', 'closed'])
+})
+
 test('still rejects responses without a protocol header', () => {
   const response = Buffer.from([
     0x00, 0x01, 0x02, 0x03,

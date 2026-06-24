@@ -6,6 +6,7 @@ const DOOR_CLOSE_TIMEOUT_MS = 30000
 const PROTOCOL_HEADER = Buffer.from([0x73, 0x74, 0x61, 0x72])
 const PROTOCOL_FOOTER = Buffer.from([0x65, 0x6e, 0x64, 0x6f])
 const CMD_OPEN_SINGLE_LOCK = 0x9a
+const CMD_LOCK_STATUS = 0x60
 const CMD_OPEN_ALL_LOCKS = 0xa0
 const MIN_RESPONSE_LENGTH = 10
 const BOARD_STATUS_RESPONSE_LENGTH = 12
@@ -141,7 +142,7 @@ export function parseOpenLockResponses(response: Buffer, boardAddr: number, lock
   const results: OpenLockResult[] = []
   for (const frame of frames) {
     if (
-      frame[4] === CMD_OPEN_SINGLE_LOCK &&
+      (frame[4] === CMD_OPEN_SINGLE_LOCK || frame[4] === CMD_LOCK_STATUS) &&
       frame[5] === boardAddr &&
       frame[6] === lockNumber
     ) {
