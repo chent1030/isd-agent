@@ -231,7 +231,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
             variant="default"
             size="lg"
             className="btn-shine"
-            style={{ backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }}
+            style={{ background: 'linear-gradient(145deg, #14b8a6, #0d9488)', borderColor: '#0d9488', color: '#ffffff' }}
             onClick={startCamera}
           >
             <RefreshCw />
@@ -252,7 +252,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
         <Button
           size="lg"
           className="btn-shine"
-          style={{ backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }}
+          style={{ background: 'linear-gradient(145deg, #14b8a6, #0d9488)', borderColor: '#0d9488', color: '#ffffff' }}
           onClick={startCamera}
         >
           <Camera />
@@ -261,43 +261,57 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       )}
 
       {manualVisible && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-sm rounded-lg border bg-white p-5 text-slate-950 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <strong className="text-lg">输入工号</strong>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
+          <div
+            className="w-full max-w-sm overflow-hidden rounded-lg bg-white text-slate-950 shadow-2xl"
+            style={{ boxShadow: '0 28px 70px rgba(15,23,42,0.24), inset 0 1px 0 rgba(255,255,255,0.96)' }}
+          >
+            <div
+              className="flex items-center justify-between px-5 py-4"
+              style={{
+                background: 'linear-gradient(135deg, #ecfeff 0%, #f0f9ff 58%, #fff7ed 100%)',
+                boxShadow: 'inset 0 -1px 0 rgba(20,184,166,0.16)',
+              }}
+            >
+              <strong className="text-lg text-slate-950">输入工号</strong>
               <Button variant="ghost" size="icon" className="size-9" onClick={() => setManualVisible(false)} aria-label="关闭">
                 <X className="size-5" />
               </Button>
             </div>
-            <div className="mb-1 rounded-lg border bg-slate-50 px-3 py-3 text-center text-2xl font-black tabular-nums">
-              {manualWorkNo || `请输入 ${WORK_NO_LENGTH} 位工号`}
-            </div>
-            <div className="mb-3 text-right text-xs text-slate-500">
-              {manualWorkNo.length}/{WORK_NO_LENGTH}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
-                <Button key={item} variant="outline" className="h-14 text-xl" onClick={() => appendDigit(item)}>
-                  {item}
-                </Button>
-              ))}
-              <Button variant="outline" className="h-14" onClick={() => setManualWorkNo('')}>清空</Button>
-              <Button variant="outline" className="h-14 text-xl" onClick={() => appendDigit(0)}>0</Button>
-              <Button variant="outline" className="h-14" onClick={() => setManualWorkNo(c => c.slice(0, -1))}>删除</Button>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Button variant="outline" size="lg" className="flex-1" onClick={() => setManualVisible(false)}>取消</Button>
-              <Button
-                size="lg"
-                className="flex-1"
-                disabled={manualWorkNo.trim().length !== WORK_NO_LENGTH}
-                style={manualWorkNo.trim().length === WORK_NO_LENGTH
-                  ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }
-                  : { backgroundColor: '#dbe4ea', borderColor: '#dbe4ea', color: '#334155', opacity: 1 }}
-                onClick={() => void submitManualAuth()}
+            <div className="p-5" style={{ backgroundColor: '#f8feff' }}>
+              <div
+                className="mb-1 rounded-lg px-3 py-3 text-center text-2xl font-black tabular-nums"
+                style={{ backgroundColor: '#ffffff', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.18)' }}
               >
-                <span>确认</span>
-              </Button>
+                {manualWorkNo || `请输入 ${WORK_NO_LENGTH} 位工号`}
+              </div>
+              <div className="mb-3 text-right text-xs text-slate-500">
+                {manualWorkNo.length}/{WORK_NO_LENGTH}
+              </div>
+              <div className="grid grid-cols-3 gap-2 rounded-lg p-2" style={{ backgroundColor: '#e0f7fa' }}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
+                  <Button key={item} variant="outline" className="h-14 border-teal-100 bg-white text-xl text-slate-950" onClick={() => appendDigit(item)}>
+                    {item}
+                  </Button>
+                ))}
+                <Button variant="outline" className="h-14 border-teal-100 bg-white text-slate-950" onClick={() => setManualWorkNo('')}>清空</Button>
+                <Button variant="outline" className="h-14 border-teal-100 bg-white text-xl text-slate-950" onClick={() => appendDigit(0)}>0</Button>
+                <Button variant="outline" className="h-14 border-teal-100 bg-white text-slate-950" onClick={() => setManualWorkNo(c => c.slice(0, -1))}>删除</Button>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button variant="outline" size="lg" className="flex-1 border-teal-100 bg-white text-slate-700" onClick={() => setManualVisible(false)}>取消</Button>
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  disabled={manualWorkNo.trim().length !== WORK_NO_LENGTH}
+                  style={manualWorkNo.trim().length === WORK_NO_LENGTH
+                    ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', borderColor: '#0d9488', color: '#ffffff' }
+                    : { backgroundColor: '#e0f2fe', borderColor: '#e0f2fe', color: '#334155', opacity: 1 }}
+                  onClick={() => void submitManualAuth()}
+                >
+                  <span>确认</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

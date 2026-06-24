@@ -24,7 +24,7 @@ function DialogOverlay({ className, style, ...props }: React.ComponentProps<type
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn('fixed inset-0 z-[9998] bg-slate-950/70', className)}
+      className={cn('fixed inset-0 z-[9998] bg-slate-950/55 backdrop-blur-[2px]', className)}
       style={style}
       {...props}
     />
@@ -38,7 +38,7 @@ function DialogContent({ className, children, style, ...props }: React.Component
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed z-[9999] flex max-h-[calc(100vh-4rem)] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-950 shadow-2xl',
+          'fixed z-[9999] flex max-h-[calc(100vh-4rem)] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-lg border-0 bg-white text-slate-950 shadow-2xl',
           className,
         )}
         style={{
@@ -51,7 +51,7 @@ function DialogContent({ className, children, style, ...props }: React.Component
       >
         {children}
         <DialogPrimitive.Close
-          className="absolute right-4 top-4 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="absolute right-4 top-4 rounded-md p-1 text-teal-700 transition-colors hover:bg-teal-50 hover:text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-300"
           aria-label="关闭"
         >
           <XIcon className="size-5" />
@@ -66,7 +66,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn('flex shrink-0 flex-col gap-1.5 border-b border-slate-200 bg-slate-50 px-6 py-4', className)}
+      className={cn('flex shrink-0 flex-col gap-1.5 border-b border-teal-100 bg-gradient-to-br from-cyan-50 via-sky-50 to-orange-50 px-6 py-4', className)}
       {...props}
     />
   )
@@ -76,7 +76,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn('flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-6 py-3 sm:flex-row sm:justify-end', className)}
+      className={cn('flex shrink-0 flex-col-reverse gap-2 border-t border-teal-100 bg-white px-6 py-3 sm:flex-row sm:justify-end', className)}
       {...props}
     />
   )

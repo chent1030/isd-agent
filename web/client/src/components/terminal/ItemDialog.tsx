@@ -59,11 +59,18 @@ export const ItemDialog = memo(function ItemDialog({
   return (
     <Dialog open onOpenChange={open => { if (!open && !operating) onClose() }}>
       <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[1100px] border-0 p-0">
-        <DialogHeader className="border-b-0 px-6 py-4" style={{ backgroundColor: '#111827', color: '#ffffff' }}>
+        <DialogHeader
+          className="border-b-0 px-6 py-4"
+          style={{
+            background: 'linear-gradient(135deg, #ecfeff 0%, #f0f9ff 58%, #fff7ed 100%)',
+            color: '#0f172a',
+            boxShadow: 'inset 0 -1px 0 rgba(20,184,166,0.16)',
+          }}
+        >
           <div className="flex flex-wrap items-center gap-2 pr-10">
             <span
               className="rounded-md px-2.5 py-1 text-xs font-bold"
-              style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#f8fafc' }}
+              style={{ backgroundColor: 'rgba(255,255,255,0.78)', color: '#0f766e', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.18)' }}
             >
               {item.category || '未分类'}
             </span>
@@ -81,17 +88,21 @@ export const ItemDialog = memo(function ItemDialog({
               </span>
             )}
           </div>
-          <DialogTitle className="line-clamp-1 pr-10 text-3xl" style={{ color: '#ffffff' }}>
+          <DialogTitle className="line-clamp-1 pr-10 text-3xl" style={{ color: '#0f172a' }}>
             {item.name}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden px-6 py-5" style={{ backgroundColor: '#e8eef2', color: '#0f172a' }}>
+        <div className="flex-1 overflow-hidden px-6 py-5" style={{ backgroundColor: '#eefbff', color: '#0f172a' }}>
           {step === 'configure' && (
             <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)] gap-5">
               <section
                 className="relative overflow-hidden rounded-lg p-5 shadow-sm"
-                style={{ backgroundColor: '#10233a', color: '#ffffff' }}
+                style={{
+                  background: 'linear-gradient(155deg, #ffffff 0%, #ecfeff 58%, #f0fdfa 100%)',
+                  color: '#0f172a',
+                  boxShadow: '0 18px 38px rgba(15,118,110,0.10), inset 0 1px 0 rgba(255,255,255,0.96)',
+                }}
               >
                 <div
                   className="absolute inset-x-0 bottom-0 h-28"
@@ -101,25 +112,25 @@ export const ItemDialog = memo(function ItemDialog({
                   <div className="flex items-center gap-3">
                     <div
                       className="flex size-16 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#ffffff' }}
+                      style={{ backgroundColor: '#ccfbf1', color: '#0f766e' }}
                     >
                       <Package className="size-8" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>当前物品</div>
-                      <div className="mt-1 line-clamp-3 text-2xl font-black leading-tight" style={{ color: '#ffffff' }}>
+                      <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>当前物品</div>
+                      <div className="mt-1 line-clamp-3 text-2xl font-black leading-tight" style={{ color: '#0f172a' }}>
                         {item.name}
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>柜内库存</div>
+                    <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>柜内库存</div>
                     <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-7xl font-black tabular-nums" style={{ color: '#ffffff' }}>
+                      <span className="text-7xl font-black tabular-nums" style={{ color: '#0f172a' }}>
                         {item.cabinetQuantity}
                       </span>
-                      <span className="text-lg font-bold" style={{ color: '#b6c5d6' }}>件</span>
+                      <span className="text-lg font-bold" style={{ color: '#0f766e' }}>件</span>
                     </div>
                   </div>
                 </div>
@@ -137,7 +148,7 @@ export const ItemDialog = memo(function ItemDialog({
                         disabled={!canReceiveItem}
                         className="h-12 rounded-md text-base font-black transition disabled:cursor-not-allowed disabled:opacity-45"
                         style={mode === 'receive'
-                          ? { backgroundColor: '#111827', color: '#ffffff' }
+                          ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }
                           : { backgroundColor: '#ffffff', color: '#334155' }}
                         onClick={() => setMode('receive')}
                       >
@@ -148,7 +159,7 @@ export const ItemDialog = memo(function ItemDialog({
                         disabled={!canBorrowItem}
                         className="h-12 rounded-md text-base font-black transition disabled:cursor-not-allowed disabled:opacity-45"
                         style={mode === 'borrow'
-                          ? { backgroundColor: '#111827', color: '#ffffff' }
+                          ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }
                           : { backgroundColor: '#ffffff', color: '#334155' }}
                         onClick={() => setMode('borrow')}
                       >
@@ -165,14 +176,21 @@ export const ItemDialog = memo(function ItemDialog({
 
           {step === 'auth' && (
             <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)] gap-5">
-              <section className="rounded-lg p-5 shadow-sm" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
+              <section
+                className="rounded-lg p-5 shadow-sm"
+                style={{
+                  background: 'linear-gradient(155deg, #ffffff 0%, #ecfeff 58%, #f0fdfa 100%)',
+                  color: '#0f172a',
+                  boxShadow: '0 18px 38px rgba(15,118,110,0.10), inset 0 1px 0 rgba(255,255,255,0.96)',
+                }}
+              >
                 <div className="flex h-full min-h-[360px] flex-col justify-between">
                   <div>
-                    <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>{operationLabel}物品</div>
+                    <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>{operationLabel}物品</div>
                     <div className="mt-2 line-clamp-4 text-2xl font-black leading-tight">{item.name}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>{operationLabel}数量</div>
+                    <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>{operationLabel}数量</div>
                     <div className="mt-2 text-7xl font-black tabular-nums">{quantity}</div>
                   </div>
                 </div>
@@ -209,7 +227,7 @@ export const ItemDialog = memo(function ItemDialog({
               className="btn-shine"
               disabled={!canProceed}
               style={canProceed
-                ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }
+                ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', borderColor: '#0d9488', color: '#ffffff' }
                 : { backgroundColor: '#cbd5e1', borderColor: '#cbd5e1', color: '#64748b' }}
               onClick={proceedToAuth}
             >

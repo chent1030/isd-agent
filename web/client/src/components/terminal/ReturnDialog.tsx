@@ -50,11 +50,18 @@ export const ReturnDialog = memo(function ReturnDialog({
   return (
     <Dialog open onOpenChange={open => { if (!open && !operating) onClose() }}>
       <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[1120px] border-0 p-0">
-        <DialogHeader className="border-b-0 px-6 py-4" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
+        <DialogHeader
+          className="border-b-0 px-6 py-4"
+          style={{
+            background: 'linear-gradient(135deg, #ecfeff 0%, #f0f9ff 58%, #fff7ed 100%)',
+            color: '#0f172a',
+            boxShadow: 'inset 0 -1px 0 rgba(20,184,166,0.16)',
+          }}
+        >
           <div className="flex items-center gap-2 pr-10">
             <span
               className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-black"
-              style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#ffffff' }}
+              style={{ backgroundColor: 'rgba(255,255,255,0.78)', color: '#0f766e', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.18)' }}
             >
               <RotateCcw className="size-4" />
               借用归还
@@ -68,12 +75,12 @@ export const ReturnDialog = memo(function ReturnDialog({
               </span>
             )}
           </div>
-          <DialogTitle className="pr-10 text-3xl" style={{ color: '#ffffff' }}>
+          <DialogTitle className="pr-10 text-3xl" style={{ color: '#0f172a' }}>
             {operator ? '选择未归还记录' : '归还物品'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden px-6 py-5" style={{ backgroundColor: '#e8eef2', color: '#0f172a' }}>
+        <div className="flex-1 overflow-hidden px-6 py-5" style={{ backgroundColor: '#eefbff', color: '#0f172a' }}>
           <div className="grid h-full min-h-[520px] grid-cols-[340px_minmax(0,1fr)] gap-5">
             <aside
               className="relative overflow-hidden rounded-lg p-5 shadow-sm"
@@ -94,8 +101,8 @@ export const ReturnDialog = memo(function ReturnDialog({
                   <div
                     className="flex size-12 items-center justify-center rounded-lg"
                     style={operator
-                      ? { backgroundColor: '#08735f', color: '#ffffff' }
-                      : { backgroundColor: '#dbe4ea', color: '#10233a' }}
+                      ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }
+                      : { backgroundColor: '#dff7f2', color: '#0f766e' }}
                   >
                     {operator ? <Check className="size-7" strokeWidth={3} /> : <ScanFace className="size-7" />}
                   </div>
@@ -103,15 +110,22 @@ export const ReturnDialog = memo(function ReturnDialog({
 
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {operator ? (
-                    <div className="flex h-full flex-col justify-between rounded-lg p-5" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
+                    <div
+                      className="flex h-full flex-col justify-between rounded-lg p-5"
+                      style={{
+                        background: 'linear-gradient(155deg, #ffffff 0%, #ecfeff 58%, #f0fdfa 100%)',
+                        color: '#0f172a',
+                        boxShadow: '0 18px 38px rgba(15,118,110,0.10), inset 0 1px 0 rgba(255,255,255,0.96)',
+                      }}
+                    >
                       <div>
-                        <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>待归还记录</div>
+                        <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>待归还记录</div>
                         <div className="mt-3 flex items-baseline gap-2">
                           <span className="text-7xl font-black tabular-nums">{records.length}</span>
-                          <span className="text-lg font-bold" style={{ color: '#b6c5d6' }}>条</span>
+                          <span className="text-lg font-bold" style={{ color: '#0f766e' }}>条</span>
                         </div>
                       </div>
-                      <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#e8eef2' }}>
+                      <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ backgroundColor: '#dff7f2', color: '#0f766e' }}>
                         {selected ? `当前选中：${selected.itemName}` : loading ? '正在查询记录' : '暂无待归还记录'}
                       </div>
                     </div>
@@ -155,7 +169,7 @@ export const ReturnDialog = memo(function ReturnDialog({
                             key={record.id}
                             className="w-full rounded-lg p-4 text-left shadow-sm transition active:scale-[0.99]"
                             style={active
-                              ? { backgroundColor: '#e7f6ef', color: '#0f172a', boxShadow: 'inset 0 0 0 2px #08735f, 0 10px 24px rgba(8,115,95,0.14)' }
+                              ? { backgroundColor: '#ecfeff', color: '#0f172a', boxShadow: 'inset 0 0 0 2px #14b8a6, 0 10px 24px rgba(20,184,166,0.14)' }
                               : { backgroundColor: '#f8fafc', color: '#0f172a', boxShadow: 'inset 0 0 0 1px #dbe4ea' }}
                             onClick={() => setSelectedId(String(record.id))}
                           >
@@ -163,7 +177,7 @@ export const ReturnDialog = memo(function ReturnDialog({
                               <strong className="line-clamp-2 text-xl font-black leading-tight">{record.itemName}</strong>
                               <span
                                 className="shrink-0 rounded-md px-3 py-1.5 text-base font-black"
-                                style={{ backgroundColor: active ? '#08735f' : '#f59e0b', color: '#ffffff' }}
+                                style={{ backgroundColor: active ? '#14b8a6' : '#fb7185', color: '#ffffff' }}
                               >
                                 待还 {record.pendingQuantity}
                               </span>
@@ -185,15 +199,22 @@ export const ReturnDialog = memo(function ReturnDialog({
                   {selected && (
                     <div className="border-l border-slate-200 p-5" style={{ backgroundColor: '#f4f8fb' }}>
                       <div className="flex h-full flex-col gap-4">
-                        <div className="rounded-lg p-5" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
-                          <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>归还物品</div>
+                        <div
+                          className="rounded-lg p-5"
+                          style={{
+                            background: 'linear-gradient(155deg, #ffffff 0%, #ecfeff 58%, #f0fdfa 100%)',
+                            color: '#0f172a',
+                            boxShadow: '0 18px 38px rgba(15,118,110,0.10), inset 0 1px 0 rgba(255,255,255,0.96)',
+                          }}
+                        >
+                          <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>归还物品</div>
                           <div className="mt-2 line-clamp-3 text-2xl font-black leading-tight">{selected.itemName}</div>
                           <div className="mt-5 flex items-end justify-between">
                             <div>
-                              <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>待归还</div>
+                              <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>待归还</div>
                               <div className="mt-1 text-6xl font-black tabular-nums">{selected.pendingQuantity}</div>
                             </div>
-                            <span className="pb-2 text-lg font-bold" style={{ color: '#b6c5d6' }}>件</span>
+                            <span className="pb-2 text-lg font-bold" style={{ color: '#0f766e' }}>件</span>
                           </div>
                         </div>
 
@@ -219,7 +240,7 @@ export const ReturnDialog = memo(function ReturnDialog({
               size="xl"
               className="btn-shine"
               disabled={operating}
-              style={{ backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }}
+              style={{ background: 'linear-gradient(145deg, #14b8a6, #0d9488)', borderColor: '#0d9488', color: '#ffffff' }}
               onClick={() => onReturn(selected, quantity)}
             >
               {operating ? '处理中...' : '确认归还'}

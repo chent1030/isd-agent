@@ -36,14 +36,20 @@ export const QuantityStepper = memo(function QuantityStepper({
         <span className="text-sm font-bold" style={{ color: '#4b6475' }}>最大 {safeMax}</span>
       </div>
 
-      <div className="grid grid-cols-[4.75rem_1fr_4.75rem] items-stretch overflow-hidden rounded-lg shadow-sm ring-1" style={{ backgroundColor: '#ffffff', boxShadow: '0 8px 22px rgba(15,23,42,0.08)' }}>
+      <div
+        className="grid grid-cols-[4.75rem_1fr_4.75rem] items-stretch overflow-hidden rounded-lg"
+        style={{
+          backgroundColor: '#ffffff',
+          boxShadow: '0 18px 36px rgba(15, 118, 110, 0.12), inset 0 0 0 1px rgba(20,184,166,0.14)',
+        }}
+      >
         <button
           type="button"
           disabled={displayValue <= 1}
           className="flex min-h-16 items-center justify-center transition disabled:cursor-not-allowed"
           style={displayValue <= 1
-            ? { backgroundColor: '#dbe4ea', color: '#7b8d9a' }
-            : { backgroundColor: '#eef3f6', color: '#10233a' }}
+            ? { backgroundColor: '#e0f2fe', color: '#7b8d9a' }
+            : { backgroundColor: '#dff7f2', color: '#08735f' }}
           onClick={() => setQuantity(displayValue - 1)}
           aria-label="减少"
         >
@@ -57,8 +63,8 @@ export const QuantityStepper = memo(function QuantityStepper({
           disabled={displayValue >= safeMax}
           className="flex min-h-16 items-center justify-center transition disabled:cursor-not-allowed"
           style={displayValue >= safeMax
-            ? { backgroundColor: '#dbe4ea', color: '#7b8d9a' }
-            : { backgroundColor: '#08735f', color: '#ffffff' }}
+            ? { backgroundColor: '#e0f2fe', color: '#7b8d9a' }
+            : { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }}
           onClick={() => setQuantity(displayValue + 1)}
           aria-label="增加"
         >
@@ -75,8 +81,8 @@ export const QuantityStepper = memo(function QuantityStepper({
               type="button"
               className="h-11 rounded-md text-base font-black shadow-sm transition"
               style={active
-                ? { backgroundColor: '#111827', color: '#ffffff' }
-                : { backgroundColor: '#f8fafc', color: '#10233a', boxShadow: 'inset 0 0 0 1px #cbd5e1' }}
+                ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }
+                : { backgroundColor: '#f8fafc', color: '#0f766e', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.2)' }}
               onClick={() => setQuantity(item)}
             >
               {item}
@@ -87,8 +93,8 @@ export const QuantityStepper = memo(function QuantityStepper({
           type="button"
           className="h-11 rounded-md text-sm font-black shadow-sm transition"
           style={displayValue === safeMax
-            ? { backgroundColor: '#111827', color: '#ffffff' }
-            : { backgroundColor: '#f8fafc', color: '#10233a', boxShadow: 'inset 0 0 0 1px #cbd5e1' }}
+            ? { background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }
+            : { backgroundColor: '#f8fafc', color: '#0f766e', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.2)' }}
           onClick={() => setQuantity(safeMax)}
         >
           全部
@@ -96,7 +102,7 @@ export const QuantityStepper = memo(function QuantityStepper({
       </div>
 
       {showKeypad && (
-        <div className="grid grid-cols-3 gap-2 rounded-lg p-2" style={{ backgroundColor: '#e5edf2' }}>
+        <div className="grid grid-cols-3 gap-2 rounded-lg p-2" style={{ backgroundColor: '#e0f7fa' }}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(item => (
             <button
               type="button"

@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, Boxes, ClipboardList, PackageCheck, PenLine, type LucideIcon } from 'lucide-react'
+import { Boxes, ClipboardList, PackageCheck, PenLine, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface GlassCategoryCardProps {
@@ -113,16 +113,6 @@ export function GlassCategoryCard({
               <span className="text-base font-bold text-slate-500">种</span>
             </div>
           </div>
-          <span
-            className="inline-flex h-12 items-center gap-2 rounded-lg px-5 text-base font-bold text-white transition-transform group-hover:translate-x-1"
-            style={{
-              background: 'linear-gradient(145deg, #162033, #0f172a)',
-              boxShadow: '0 12px 24px rgba(15,23,42,0.18), inset 0 1px 0 rgba(255,255,255,0.12)',
-            }}
-          >
-            进入
-            <ArrowRight className="size-5" />
-          </span>
         </div>
       </div>
     </motion.button>
