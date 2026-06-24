@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseOpenLockResponse } from '../src/cabinet/lock-protocol.js'
+import { parseOpenLockResponse, parseOpenLockResponses } from '../src/cabinet/lock-protocol.js'
 
 test('keeps business flow alive when lock board ack command differs after opening', () => {
   const response = Buffer.from([
@@ -30,6 +30,26 @@ test('parses board status snapshot response for the target lock', () => {
   assert.equal(result.status, 'open')
   assert.equal(result.boardAddr, 0x02)
   assert.equal(result.lockNumber, 0x03)
+})
+
+test('parses open then closed status frames from the same connection', () => {
+  const response = Buffer.concat([
+    Buffer.from([
+      0x73, 0x74, 0x61, 0x72,
+      0x9a, 0x02, 0x03, 0x11, 0x8a,
+      0x65, 0x6e, 0x64, 0x6f,
+    ]),
+    Buffer.from([
+      0x73, 0x74, 0x61, 0x72,
+      0x9a, 0x02, 0x03, 0x00, 0x99,
+      0x65, 0x6e, 0x64, 0x6f,
+    ]),
+  ])
+
+  const results = parseOpenLockResponses(response, 0x02, 0x03)
+
+  assert.deepEqual(results.map(result => result.status), ['open', 'closed'])
+  assert.equal(parseOpenLockResponse(response, 0x02, 0x03).status, 'closed')
 })
 
 test('still rejects responses without a protocol header', () => {
