@@ -40,9 +40,9 @@ export function GlassCategoryCard({
   className,
 }: GlassCategoryCardProps) {
   const Icon = getCategoryIcon(name)
-  const accentSoft = hexToRgba(accent, 0.18)
-  const accentFaint = hexToRgba(accent, 0.08)
-  const accentGlow = hexToRgba(accent, 0.28)
+  const accentSoft = hexToRgba(accent, 0.14)
+  const accentFaint = hexToRgba(accent, 0.055)
+  const accentGlow = hexToRgba(accent, 0.18)
 
   return (
     <motion.button
@@ -58,12 +58,13 @@ export function GlassCategoryCard({
         className,
       )}
       style={{
-        background: `linear-gradient(160deg, #ffffff 0%, ${accentFaint} 52%, #f8fafc 100%)`,
-        boxShadow: `0 24px 60px rgba(15, 23, 42, 0.13), 0 16px 36px ${accentGlow}`,
+        background: `linear-gradient(155deg, rgba(255,255,255,0.98) 0%, #ffffff 40%, ${accentFaint} 100%)`,
+        boxShadow: '0 26px 60px rgba(15, 23, 42, 0.10), 0 8px 22px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255,255,255,0.95)',
       }}
     >
-      <div className="absolute -right-16 -top-16 size-48 rounded-full blur-2xl" style={{ backgroundColor: accentSoft }} />
-      <div className="absolute inset-x-8 top-0 h-1.5 rounded-b-full" style={{ backgroundColor: accent }} />
+      <div className="absolute -right-20 -top-20 size-56 rounded-full blur-3xl" style={{ backgroundColor: accentSoft }} />
+      <div className="absolute -bottom-24 left-8 size-52 rounded-full blur-3xl" style={{ backgroundColor: hexToRgba(accent, 0.08) }} />
+      <div className="absolute inset-x-10 top-0 h-1 rounded-b-full" style={{ backgroundColor: accent }} />
       <div className="flex min-w-0 flex-1 flex-col p-6 pt-7">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -72,7 +73,10 @@ export function GlassCategoryCard({
 
           <div
             className="flex size-16 shrink-0 items-center justify-center rounded-lg text-white"
-            style={{ backgroundColor: accent, boxShadow: `0 14px 28px ${accentGlow}` }}
+            style={{
+              background: `linear-gradient(145deg, ${hexToRgba(accent, 0.92)}, ${accent})`,
+              boxShadow: `0 16px 34px ${accentGlow}, inset 0 1px 0 rgba(255,255,255,0.28)`,
+            }}
           >
             <Icon className="size-9" />
           </div>
@@ -82,8 +86,8 @@ export function GlassCategoryCard({
           <div
             className="relative flex h-full min-h-[210px] w-full max-w-[340px] items-center justify-center overflow-hidden rounded-[28px]"
             style={{
-              background: `radial-gradient(circle at 76% 22%, ${accentSoft}, transparent 30%), linear-gradient(145deg, #ffffff 0%, ${accentFaint} 58%, #f8fafc 100%)`,
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.95), 0 18px 36px rgba(15,23,42,0.08)',
+              background: `radial-gradient(circle at 78% 20%, ${accentSoft}, transparent 32%), linear-gradient(145deg, rgba(255,255,255,0.96) 0%, ${accentFaint} 62%, #f8fafc 100%)`,
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -1px 0 rgba(15,23,42,0.035), 0 18px 38px rgba(15,23,42,0.075)',
             }}
           >
             <div className="absolute -bottom-10 -left-4 text-[9rem] font-black leading-none text-white/80 drop-shadow-sm">
@@ -91,7 +95,10 @@ export function GlassCategoryCard({
             </div>
             <div
               className="relative z-10 flex size-32 items-center justify-center rounded-[2rem] text-white"
-              style={{ backgroundColor: accent, boxShadow: `0 22px 42px ${accentGlow}` }}
+              style={{
+                background: `linear-gradient(145deg, ${hexToRgba(accent, 0.9)}, ${accent})`,
+                boxShadow: `0 24px 46px ${accentGlow}, inset 0 1px 0 rgba(255,255,255,0.26)`,
+              }}
             >
               <Icon className="size-16" />
             </div>
@@ -108,7 +115,10 @@ export function GlassCategoryCard({
           </div>
           <span
             className="inline-flex h-12 items-center gap-2 rounded-lg px-5 text-base font-bold text-white transition-transform group-hover:translate-x-1"
-            style={{ backgroundColor: '#0f172a', boxShadow: '0 12px 24px rgba(15,23,42,0.18)' }}
+            style={{
+              background: 'linear-gradient(145deg, #162033, #0f172a)',
+              boxShadow: '0 12px 24px rgba(15,23,42,0.18), inset 0 1px 0 rgba(255,255,255,0.12)',
+            }}
           >
             进入
             <ArrowRight className="size-5" />
