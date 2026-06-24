@@ -1,6 +1,6 @@
-import { Fragment, memo, useEffect, useMemo, useState } from 'react'
-import { Check, RotateCcw } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { memo, useEffect, useMemo, useState } from 'react'
+import { Check, Clock3, PackageCheck, RotateCcw, ScanFace } from 'lucide-react'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FaceAuth } from './FaceAuth'
@@ -47,122 +47,182 @@ export const ReturnDialog = memo(function ReturnDialog({
     await onAuthenticated(nextOperator)
   }
 
-  const step = !operator ? 0 : !selected ? 1 : 2
-
   return (
     <Dialog open onOpenChange={open => { if (!open && !operating) onClose() }}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <span className="inline-flex w-fit items-center gap-1 rounded-md bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">
-            <RotateCcw className="size-3.5" />
-            借用归还
-          </span>
-          <DialogTitle>{operator ? `${operator.empName} 的归还记录` : '物品归还'}</DialogTitle>
+      <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[1120px] border-0 p-0">
+        <DialogHeader className="border-b-0 px-6 py-4" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
+          <div className="flex items-center gap-2 pr-10">
+            <span
+              className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-black"
+              style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#ffffff' }}
+            >
+              <RotateCcw className="size-4" />
+              借用归还
+            </span>
+            {operator && (
+              <span
+                className="rounded-md px-3 py-1.5 text-sm font-bold"
+                style={{ backgroundColor: '#e7f6ef', color: '#07543f' }}
+              >
+                {operator.empName}
+              </span>
+            )}
+          </div>
+          <DialogTitle className="pr-10 text-3xl" style={{ color: '#ffffff' }}>
+            {operator ? '选择未归还记录' : '归还物品'}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2">
-            {[
-              { n: 1, label: '身份认证' },
-              { n: 2, label: '选择记录' },
-              { n: 3, label: '确认归还' },
-            ].map((s, index) => {
-              const done = step > s.n - 1
-              const active = step === s.n - 1
-              return (
-                <Fragment key={s.n}>
-                  <div key={s.n} className="flex items-center gap-2">
-                    <div className={`flex size-8 items-center justify-center rounded-full text-sm font-black ${
-                      done ? 'bg-emerald-600 text-white' : active ? 'bg-slate-950 text-white' : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {done ? <Check className="size-4" /> : s.n}
+        <div className="flex-1 overflow-hidden px-6 py-5" style={{ backgroundColor: '#e8eef2', color: '#0f172a' }}>
+          <div className="grid h-full min-h-[520px] grid-cols-[340px_minmax(0,1fr)] gap-5">
+            <aside
+              className="relative overflow-hidden rounded-lg p-5 shadow-sm"
+              style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+            >
+              <div
+                className="absolute inset-x-0 top-0 h-24"
+                style={{ background: 'linear-gradient(180deg, rgba(20,184,166,0.18), rgba(20,184,166,0))' }}
+              />
+              <div className="relative z-10 flex h-full flex-col">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-bold" style={{ color: '#4b6475' }}>身份认证</div>
+                    <div className="mt-1 text-xl font-black text-slate-950">
+                      {operator ? operator.empName : '请进行人脸认证'}
                     </div>
-                    <span className={active ? 'font-bold text-slate-950' : 'font-medium text-slate-500'}>{s.label}</span>
                   </div>
-                  {index < 2 && <div key={`line-${s.n}`} className="h-px bg-slate-200" />}
-                </Fragment>
-              )
-            })}
-          </div>
+                  <div
+                    className="flex size-12 items-center justify-center rounded-lg"
+                    style={operator
+                      ? { backgroundColor: '#08735f', color: '#ffffff' }
+                      : { backgroundColor: '#dbe4ea', color: '#10233a' }}
+                  >
+                    {operator ? <Check className="size-7" strokeWidth={3} /> : <ScanFace className="size-7" />}
+                  </div>
+                </div>
 
-          {!operator && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-base text-slate-600">
-                请先完成人脸认证。认证通过后，系统会自动查询当前人员的未归还借用记录。
-              </div>
-              <FaceAuth onAuthenticated={handleAuthenticated} />
-            </div>
-          )}
-
-          {operator && loading && (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 rounded-lg" />
-              ))}
-              <p className="py-2 text-center text-sm text-slate-500">正在查询未归还记录...</p>
-            </div>
-          )}
-
-          {operator && !loading && records.length === 0 && (
-            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white text-base font-medium text-slate-500">
-              当前人员没有未归还借用记录。
-            </div>
-          )}
-
-          {operator && !loading && records.length > 0 && (
-            <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-900">选择未归还记录</label>
-                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                  {records.map(record => (
-                    <button
-                      type="button"
-                      key={record.id}
-                      className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                        String(record.id) === String(selected?.id)
-                          ? 'border-teal-700 bg-teal-50 ring-1 ring-teal-700'
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
-                      onClick={() => setSelectedId(String(record.id))}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <strong className="line-clamp-1 text-lg text-slate-950">{record.itemName}</strong>
-                        <span className="shrink-0 rounded-md bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-700">
-                          未归还 {record.pendingQuantity}
-                        </span>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {operator ? (
+                    <div className="flex h-full flex-col justify-between rounded-lg p-5" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
+                      <div>
+                        <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>待归还记录</div>
+                        <div className="mt-3 flex items-baseline gap-2">
+                          <span className="text-7xl font-black tabular-nums">{records.length}</span>
+                          <span className="text-lg font-bold" style={{ color: '#b6c5d6' }}>条</span>
+                        </div>
                       </div>
-                      <p className="mt-2 text-sm text-slate-500">
-                        {record.cabinetName || '柜体'} {record.slotNo ? `· ${record.slotNo} 号格` : ''}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">借出：{formatDateTime(record.borrowTime)}</p>
-                    </button>
+                      <div className="rounded-md px-4 py-3 text-sm font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#e8eef2' }}>
+                        {selected ? `当前选中：${selected.itemName}` : loading ? '正在查询记录' : '暂无待归还记录'}
+                      </div>
+                    </div>
+                  ) : (
+                    <FaceAuth onAuthenticated={handleAuthenticated} />
+                  )}
+                </div>
+              </div>
+            </aside>
+
+            <section
+              className="flex min-h-0 flex-col overflow-hidden rounded-lg shadow-sm"
+              style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+            >
+              {operator && loading && (
+                <div className="flex-1 space-y-3 overflow-hidden p-5">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-lg" />
                   ))}
                 </div>
-              </div>
+              )}
 
-              {selected && (
-                <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div>
-                    <div className="text-sm font-medium text-slate-500">待归还物品</div>
-                    <div className="mt-1 text-2xl font-black text-slate-950">{selected.itemName}</div>
+              {operator && !loading && records.length === 0 && (
+                <div className="flex flex-1 items-center justify-center p-6">
+                  <div className="flex w-full max-w-md flex-col items-center rounded-lg p-8 text-center" style={{ backgroundColor: '#f8fafc' }}>
+                    <PackageCheck className="mb-4 size-16 text-emerald-700" />
+                    <div className="text-2xl font-black text-slate-950">没有未归还记录</div>
                   </div>
-                  <QuantityStepper
-                    label="归还数量"
-                    value={quantity}
-                    max={selected.pendingQuantity || 1}
-                    onChange={setQuantity}
-                  />
                 </div>
               )}
-            </div>
-          )}
+
+              {operator && !loading && records.length > 0 && (
+                <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_360px] gap-0">
+                  <div className="min-h-0 overflow-y-auto p-5">
+                    <div className="grid gap-3">
+                      {records.map(record => {
+                        const active = String(record.id) === String(selected?.id)
+                        return (
+                          <button
+                            type="button"
+                            key={record.id}
+                            className="w-full rounded-lg p-4 text-left shadow-sm transition active:scale-[0.99]"
+                            style={active
+                              ? { backgroundColor: '#e7f6ef', color: '#0f172a', boxShadow: 'inset 0 0 0 2px #08735f, 0 10px 24px rgba(8,115,95,0.14)' }
+                              : { backgroundColor: '#f8fafc', color: '#0f172a', boxShadow: 'inset 0 0 0 1px #dbe4ea' }}
+                            onClick={() => setSelectedId(String(record.id))}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <strong className="line-clamp-2 text-xl font-black leading-tight">{record.itemName}</strong>
+                              <span
+                                className="shrink-0 rounded-md px-3 py-1.5 text-base font-black"
+                                style={{ backgroundColor: active ? '#08735f' : '#f59e0b', color: '#ffffff' }}
+                              >
+                                待还 {record.pendingQuantity}
+                              </span>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold" style={{ color: '#4b6475' }}>
+                              <span>{record.cabinetName || '柜体'}</span>
+                              {record.slotNo ? <span>{record.slotNo} 号格</span> : null}
+                              <span className="inline-flex items-center gap-1">
+                                <Clock3 className="size-4" />
+                                {formatDateTime(record.borrowTime)}
+                              </span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {selected && (
+                    <div className="border-l border-slate-200 p-5" style={{ backgroundColor: '#f4f8fb' }}>
+                      <div className="flex h-full flex-col gap-4">
+                        <div className="rounded-lg p-5" style={{ backgroundColor: '#10233a', color: '#ffffff' }}>
+                          <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>归还物品</div>
+                          <div className="mt-2 line-clamp-3 text-2xl font-black leading-tight">{selected.itemName}</div>
+                          <div className="mt-5 flex items-end justify-between">
+                            <div>
+                              <div className="text-sm font-semibold" style={{ color: '#b6c5d6' }}>待归还</div>
+                              <div className="mt-1 text-6xl font-black tabular-nums">{selected.pendingQuantity}</div>
+                            </div>
+                            <span className="pb-2 text-lg font-bold" style={{ color: '#b6c5d6' }}>件</span>
+                          </div>
+                        </div>
+
+                        <QuantityStepper
+                          label="归还数量"
+                          value={quantity}
+                          max={selected.pendingQuantity || 1}
+                          onChange={setQuantity}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" size="lg" disabled={operating} onClick={onClose}>取消</Button>
+        <DialogFooter className="border-t-0 px-6 py-4" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
+          <Button variant="ghost" size="xl" disabled={operating} onClick={onClose}>取消</Button>
           {selected && operator && (
-            <Button size="lg" className="btn-shine" disabled={operating} onClick={() => onReturn(selected, quantity)}>
-              {operating ? '处理中...' : '确认归还并开柜'}
+            <Button
+              size="xl"
+              className="btn-shine"
+              disabled={operating}
+              style={{ backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }}
+              onClick={() => onReturn(selected, quantity)}
+            >
+              {operating ? '处理中...' : '确认归还'}
             </Button>
           )}
         </DialogFooter>
