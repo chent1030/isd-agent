@@ -36,6 +36,7 @@ const DEFAULT_IDLE_TIMEOUT_MINUTES = 5
 
 export const env = {
   port: toNumber(process.env.PORT, 3000),
+  apiPrefix: normalizeApiPrefix(process.env.ISD_API_PREFIX),
 
   faceApiUrl: process.env.FACE_API_URL ?? '',
   allowInsecureTls: isEnabledEnv(process.env.ALLOW_INSECURE_TLS),
@@ -63,6 +64,12 @@ export const env = {
   twinRightCabinetNo: String(firstDefined(process.env.CABINET_TWIN_RIGHT_CABINET_NO, process.env.CABINET_RIGHT_CABINET_NO) || DEFAULT_TWIN_RIGHT_CABINET_NO).trim(),
 
   webClientDist: process.env.WEB_CLIENT_DIST ?? '',
+}
+
+function normalizeApiPrefix(value: string | undefined) {
+  const raw = String(value || '/isd-api').trim()
+  const withLeadingSlash = raw.startsWith('/') ? raw : `/${raw}`
+  return withLeadingSlash.replace(/\/+$/, '')
 }
 
 export const appConfig = {

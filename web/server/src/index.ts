@@ -30,11 +30,11 @@ async function main() {
   })
 
   // 业务路由
-  await app.register(registerCabinetRoutes)
-  await app.register(registerFaceRoutes)
+  await app.register(registerCabinetRoutes, { prefix: env.apiPrefix })
+  await app.register(registerFaceRoutes, { prefix: env.apiPrefix })
 
   // 健康检查
-  app.get('/api/health', async () => ({ ok: true, ts: Date.now() }))
+  app.get(`${env.apiPrefix}/health`, async () => ({ ok: true, ts: Date.now() }))
 
   // 生产：托管前端静态资源（单端口部署）
   const clientDist = env.webClientDist
@@ -47,13 +47,14 @@ async function main() {
       wildcard: false,
     })
 
-    // SPA fallback：非 /api 路由都返回 index.html
+    // SPA fallback：非 ISD API 路由都返回 index.html
     app.setNotFoundHandler((request, reply) => {
-      if (request.url.startsWith('/api/')) {
+      if (request.url.startsWith(`${env.apiPrefix}/`)) {
         return reply.code(404).send({ code: 404, message: 'Not Found' })
       }
       return reply.sendFile('index.html')
     })
+    app.log.info(`[api] API prefix: ${env.apiPrefix}`)
     app.log.info(`[static] 托管前端资源: ${clientDist}`)
   } else {
     app.log.info('[static] 未配置 WEB_CLIENT_DIST，仅运行 API 模式')

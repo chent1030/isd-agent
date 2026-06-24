@@ -21,7 +21,7 @@ function getAxiosMessage(error: unknown) {
 }
 
 export async function registerFaceRoutes(app: FastifyInstance) {
-  app.post('/api/face/recognize', async (request, reply) => {
+  app.post('/face/recognize', async (request, reply) => {
     const { image } = request.body as { image?: string }
     if (!image) {
       return reply.code(400).send({ code: 400, message: '缺少人脸图像数据' })

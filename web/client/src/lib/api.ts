@@ -8,6 +8,18 @@ import type {
   Operator,
 } from '@/types/api'
 
+const API_BASE_PATH = normalizeApiBasePath(import.meta.env.VITE_API_BASE_PATH)
+
+function normalizeApiBasePath(value: unknown) {
+  const raw = String(value || '/isd-api').trim()
+  const withLeadingSlash = raw.startsWith('/') ? raw : `/${raw}`
+  return withLeadingSlash.replace(/\/+$/, '')
+}
+
+function apiPath(path: string) {
+  return `${API_BASE_PATH}${path.startsWith('/') ? path : `/${path}`}`
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
@@ -36,35 +48,35 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getAppConfig: () => request<AppConfig>('/api/app/config'),
+  getAppConfig: () => request<AppConfig>(apiPath('/app/config')),
 
   recognizeFace: (imageBase64: string) =>
-    request<{ empName: string; empWorkNo: string } | null>('/api/face/recognize', {
+    request<{ empName: string; empWorkNo: string } | null>(apiPath('/face/recognize'), {
       method: 'POST',
       body: JSON.stringify({ image: imageBase64 }),
     }),
 
-  getCategories: () => request<CabinetCategory[]>('/api/cabinet/categories'),
+  getCategories: () => request<CabinetCategory[]>(apiPath('/cabinet/categories')),
 
   getCatalogItems: (categoryId?: string) =>
     request<CabinetCatalogItem[]>(
-      `/api/cabinet/catalog-items${categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : ''}`,
+      apiPath(`/cabinet/catalog-items${categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : ''}`),
     ),
 
   operateItem: (payload: CabinetOperationPayload) =>
     request<{ item: CabinetCatalogItem; locations: unknown[]; doorResults: unknown[] }>(
-      '/api/cabinet/operate',
+      apiPath('/cabinet/operate'),
       { method: 'POST', body: JSON.stringify(payload) },
     ),
 
   getBorrowRecords: (operator: Operator) =>
-    request<BorrowRecord[]>('/api/cabinet/borrow-records', {
+    request<BorrowRecord[]>(apiPath('/cabinet/borrow-records'), {
       method: 'POST',
       body: JSON.stringify({ operator }),
     }),
 
   returnRecord: (payload: CabinetReturnPayload) =>
-    request<unknown>('/api/cabinet/return', {
+    request<unknown>(apiPath('/cabinet/return'), {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

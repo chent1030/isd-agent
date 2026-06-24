@@ -13,10 +13,10 @@ import { appConfig } from '../env.js'
 
 export async function registerCabinetRoutes(app: FastifyInstance) {
   // 应用配置（非敏感）
-  app.get('/api/app/config', async () => appConfig)
+  app.get('/app/config', async () => appConfig)
 
   // 分类列表
-  app.get('/api/cabinet/categories', async (_request, reply) => {
+  app.get('/cabinet/categories', async (_request, reply) => {
     try {
       const items = buildCatalogItems(await fetchAvailableItems())
       return buildCategories(items)
@@ -27,7 +27,7 @@ export async function registerCabinetRoutes(app: FastifyInstance) {
   })
 
   // 某分类下的物品（或全部）
-  app.get('/api/cabinet/catalog-items', async (request, reply) => {
+  app.get('/cabinet/catalog-items', async (request, reply) => {
     try {
       const { categoryId } = request.query as { categoryId?: string }
       const items = buildCatalogItems(await fetchAvailableItems())
@@ -39,7 +39,7 @@ export async function registerCabinetRoutes(app: FastifyInstance) {
   })
 
   // 领用/借用（含 TCP 开柜 + 业务落库）
-  app.post('/api/cabinet/operate', async (request, reply) => {
+  app.post('/cabinet/operate', async (request, reply) => {
     try {
       const payload = request.body as {
         action: 'receive' | 'borrow'
@@ -60,7 +60,7 @@ export async function registerCabinetRoutes(app: FastifyInstance) {
   })
 
   // 未归还借用记录
-  app.post('/api/cabinet/borrow-records', async (request, reply) => {
+  app.post('/cabinet/borrow-records', async (request, reply) => {
     try {
       const { operator } = request.body as { operator: { empName?: string; empWorkNo?: string } }
       return await fetchOpenBorrowRecords(operator)
@@ -71,7 +71,7 @@ export async function registerCabinetRoutes(app: FastifyInstance) {
   })
 
   // 归还
-  app.post('/api/cabinet/return', async (request, reply) => {
+  app.post('/cabinet/return', async (request, reply) => {
     try {
       const payload = request.body as {
         borrowRecordId: string | number
