@@ -39,7 +39,6 @@ const ItemCard = memo(function ItemCard({
       badgeText={useTypeLabel(item.useType)}
       gradient={gradient}
       disabled={disabled}
-      ctaText={item.useType === 1 ? '选择借用' : '选择领用'}
       onSelect={() => onSelect(item)}
     />
   )

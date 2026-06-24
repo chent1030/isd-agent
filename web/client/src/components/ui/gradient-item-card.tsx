@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, LockKeyhole, Package, ShieldCheck } from 'lucide-react'
+import { Package, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type ItemCardGradient = 'orange' | 'gray' | 'purple' | 'green'
@@ -18,7 +18,6 @@ export interface GradientItemCardProps {
   badgeText: string
   onSelect?: () => void
   disabled?: boolean
-  ctaText?: string
   gradient?: ItemCardGradient
 }
 
@@ -63,7 +62,6 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
       badgeText,
       onSelect,
       disabled = false,
-      ctaText = '选择领用',
     },
     ref,
   ) => {
@@ -143,23 +141,12 @@ const GradientItemCard = React.forwardRef<HTMLDivElement, GradientItemCardProps>
                 </div>
               </div>
 
-              {quantity <= 0 ? (
+              {quantity <= 0 && (
                 <span
                   className="rounded-lg px-3 py-2 text-sm font-bold"
                   style={{ backgroundColor: '#f1f5f9', color: '#94a3b8' }}
                 >
                   暂无库存
-                </span>
-              ) : (
-                <span
-                  className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3.5 text-sm font-bold text-white transition-transform group-hover:translate-x-0.5"
-                  style={{
-                    background: 'linear-gradient(145deg, #162033, #0f172a)',
-                    boxShadow: '0 10px 22px rgba(15,23,42,0.16), inset 0 1px 0 rgba(255,255,255,0.12)',
-                  }}
-                >
-                  {ctaText}
-                  {authRequired ? <LockKeyhole className="size-4" /> : <ArrowRight className="size-4" />}
                 </span>
               )}
             </div>
