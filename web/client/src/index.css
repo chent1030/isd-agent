@@ -261,7 +261,6 @@
     background-repeat: no-repeat;
     transition: background-position 900ms ease;
     pointer-events: none;
-    z-index: 0;
   }
 
   .btn-shine:hover::before {

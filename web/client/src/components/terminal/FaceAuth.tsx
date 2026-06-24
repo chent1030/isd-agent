@@ -227,9 +227,15 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
 
       {canUseManualAuth && (
         <div className="flex gap-2">
-          <Button variant="default" size="lg" className="btn-shine" onClick={startCamera}>
+          <Button
+            variant="default"
+            size="lg"
+            className="btn-shine"
+            style={{ backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }}
+            onClick={startCamera}
+          >
             <RefreshCw />
-            重新扫脸
+            <span>重新识别</span>
           </Button>
           <Button
             variant="outline"
@@ -243,9 +249,14 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       )}
 
       {state === 'idle' && (
-        <Button size="lg" className="btn-shine" onClick={startCamera}>
+        <Button
+          size="lg"
+          className="btn-shine"
+          style={{ backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }}
+          onClick={startCamera}
+        >
           <Camera />
-          开始认证
+          <span>开始认证</span>
         </Button>
       )}
 
@@ -280,9 +291,12 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
                 size="lg"
                 className="flex-1"
                 disabled={manualWorkNo.trim().length !== WORK_NO_LENGTH}
+                style={manualWorkNo.trim().length === WORK_NO_LENGTH
+                  ? { backgroundColor: '#0f172a', borderColor: '#0f172a', color: '#ffffff' }
+                  : { backgroundColor: '#dbe4ea', borderColor: '#dbe4ea', color: '#334155', opacity: 1 }}
                 onClick={() => void submitManualAuth()}
               >
-                确认
+                <span>确认</span>
               </Button>
             </div>
           </div>
