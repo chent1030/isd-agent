@@ -5,6 +5,7 @@ const LOCK_SOCKET_TIMEOUT = 3000
 const PROTOCOL_HEADER = Buffer.from([0x73, 0x74, 0x61, 0x72])
 const PROTOCOL_FOOTER = Buffer.from([0x65, 0x6e, 0x64, 0x6f])
 const CMD_OPEN_SINGLE_LOCK = 0x9a
+const MIN_RESPONSE_LENGTH = 10
 
 export interface LockTarget {
   cabinetNo: string | number
@@ -14,7 +15,9 @@ export interface LockTarget {
 export interface OpenLockResult {
   boardAddr: number
   lockNumber: number
-  status: 'closed' | 'open'
+  status: 'closed' | 'open' | 'unknown'
+  rawResponseHex?: string
+  warning?: string
 }
 
 function calculateBCC(dataList: number[]) {
@@ -31,6 +34,12 @@ function buildOpenLockCommand(boardAddr: number, lockNumber: number) {
     Buffer.from([calculateBCC(payload)]),
     PROTOCOL_FOOTER,
   ])
+}
+
+export function bufferToHex(buffer: Buffer) {
+  return Array.from(buffer)
+    .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
+    .join(' ')
 }
 
 function sendLockCommand(commandBytes: Buffer): Promise<Buffer> {
@@ -61,23 +70,50 @@ function sendLockCommand(commandBytes: Buffer): Promise<Buffer> {
   })
 }
 
-function parseOpenLockResponse(response: Buffer, boardAddr: number, lockNumber: number): OpenLockResult {
-  if (response.length < 10) throw new Error('锁控板响应长度不足')
-  const headerMatched =
-    response[0] === PROTOCOL_HEADER[0] &&
-    response[1] === PROTOCOL_HEADER[1] &&
-    response[2] === PROTOCOL_HEADER[2] &&
-    response[3] === PROTOCOL_HEADER[3]
-  if (!headerMatched) throw new Error('锁控板响应头不匹配')
-  if (response[4] !== CMD_OPEN_SINGLE_LOCK) throw new Error('锁控板响应命令码不匹配')
-  if (response[5] !== boardAddr) throw new Error('锁控板地址不匹配')
-  if (response[6] !== lockNumber) throw new Error('锁号不匹配')
+export function parseOpenLockResponse(response: Buffer, boardAddr: number, lockNumber: number): OpenLockResult {
+  if (response.length < MIN_RESPONSE_LENGTH) throw new Error('锁控板响应长度不足')
 
-  return {
-    boardAddr,
-    lockNumber,
-    status: response[7] === 0x00 ? 'closed' : 'open',
+  const frames: Buffer[] = []
+  for (let index = 0; index <= response.length - MIN_RESPONSE_LENGTH; index += 1) {
+    const headerMatched =
+      response[index] === PROTOCOL_HEADER[0] &&
+      response[index + 1] === PROTOCOL_HEADER[1] &&
+      response[index + 2] === PROTOCOL_HEADER[2] &&
+      response[index + 3] === PROTOCOL_HEADER[3]
+    if (headerMatched) frames.push(response.subarray(index))
   }
+
+  if (!frames.length) throw new Error('锁控板响应头不匹配')
+
+  const matchingFrame = frames.find(frame =>
+    frame[4] === CMD_OPEN_SINGLE_LOCK &&
+    frame[5] === boardAddr &&
+    frame[6] === lockNumber
+  )
+  if (matchingFrame) {
+    return {
+      boardAddr,
+      lockNumber,
+      status: matchingFrame[7] === 0x00 ? 'closed' : 'open',
+    }
+  }
+
+  const sameLockFrame = frames.find(frame =>
+    frame[5] === boardAddr &&
+    frame[6] === lockNumber
+  )
+  if (sameLockFrame) {
+    return {
+      boardAddr,
+      lockNumber,
+      status: 'unknown',
+      rawResponseHex: bufferToHex(response),
+      warning: `锁控板已响应但命令码不匹配，期望 0x${CMD_OPEN_SINGLE_LOCK.toString(16).toUpperCase()}，实际 0x${sameLockFrame[4].toString(16).toUpperCase()}`,
+    }
+  }
+
+  if (!frames.some(frame => frame[5] === boardAddr)) throw new Error('锁控板地址不匹配')
+  throw new Error('锁号不匹配')
 }
 
 function validateHardwareByte(parsed: number, fieldName: string, rawValue: unknown) {
@@ -111,5 +147,9 @@ export async function openLock(target: LockTarget): Promise<OpenLockResult> {
   const boardAddr = parseHardwareByte(target.cabinetNo, '柜号')
   const lockNumber = parseHardwareByte(target.slotNo, '格口号')
   const response = await sendLockCommand(buildOpenLockCommand(boardAddr, lockNumber))
-  return parseOpenLockResponse(response, boardAddr, lockNumber)
+  const result = parseOpenLockResponse(response, boardAddr, lockNumber)
+  if (result.warning) {
+    console.warn('[lock] %s; response=%s', result.warning, result.rawResponseHex)
+  }
+  return result
 }
