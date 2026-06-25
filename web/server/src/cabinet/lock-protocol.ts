@@ -2,7 +2,7 @@ import net from 'node:net'
 import { env } from '../env.js'
 
 const LOCK_RESPONSE_TIMEOUT_MS = 3000
-const DOOR_CLOSE_TIMEOUT_MS = 30000
+const DOOR_CLOSE_TIMEOUT_MS = 120000
 const PROTOCOL_HEADER = Buffer.from([0x73, 0x74, 0x61, 0x72])
 const PROTOCOL_FOOTER = Buffer.from([0x65, 0x6e, 0x64, 0x6f])
 const CMD_OPEN_SINGLE_LOCK = 0x9a
