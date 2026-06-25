@@ -99,7 +99,14 @@
     color: var(--foreground);
     font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
     text-rendering: geometricPrecision;
+  }
+
+  ::selection {
+    background: transparent;
   }
 
   button,
@@ -107,6 +114,8 @@
   select,
   textarea {
     font: inherit;
+    -webkit-user-select: none;
+    user-select: none;
   }
 }
 

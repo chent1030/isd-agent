@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, Keyboard, RefreshCw, ScanFace, X } from 'lucide-react'
+import { Camera, CheckCircle2, IdCard, Keyboard, RefreshCw, ScanFace, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 import type { FaceState, Operator } from '@/types/api'
 
@@ -73,6 +74,8 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
   const [errorMsg, setErrorMsg] = useState('')
   const [manualVisible, setManualVisible] = useState(false)
   const [manualWorkNo, setManualWorkNo] = useState('')
+  const [pendingOperator, setPendingOperator] = useState<Operator | null>(null)
+  const [confirmingOperator, setConfirmingOperator] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const runRef = useRef(0)
@@ -128,7 +131,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
         if (result?.empName && result?.empWorkNo) {
           setState('success')
           stopCamera()
-          await onAuthenticated({ empName: result.empName, empWorkNo: result.empWorkNo })
+          setPendingOperator({ empName: result.empName, empWorkNo: result.empWorkNo })
           return
         }
       }
@@ -143,13 +146,14 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       setManualWorkNo('')
       setManualVisible(true)
     }
-  }, [captureFrame, onAuthenticated, stopCamera, waitForVideoReady])
+  }, [captureFrame, stopCamera, waitForVideoReady])
 
   const startCamera = useCallback(async () => {
     if (state === 'camera-loading' || state === 'camera' || state === 'recognizing') return
     runRef.current += 1
     setErrorMsg('')
     setManualVisible(false)
+    setPendingOperator(null)
     setState('camera-loading')
     try {
       let stream: MediaStream
@@ -199,7 +203,24 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
     }
     setManualVisible(false)
     setState('success')
-    await onAuthenticated({ empName: `工号${empWorkNo}`, empWorkNo })
+    setPendingOperator({ empName: `工号${empWorkNo}`, empWorkNo })
+  }
+
+  const cancelOperatorConfirm = () => {
+    if (confirmingOperator) return
+    setPendingOperator(null)
+    setState('idle')
+    setErrorMsg('')
+  }
+
+  const confirmOperator = async () => {
+    if (!pendingOperator || confirmingOperator) return
+    setConfirmingOperator(true)
+    try {
+      await onAuthenticated(pendingOperator)
+    } finally {
+      setConfirmingOperator(false)
+    }
   }
 
   return (
@@ -222,7 +243,7 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
       </div>
 
       <p className="text-center text-sm text-slate-500">
-        {errorMsg && state === 'failed' ? errorMsg : '认证通过后，系统将继续执行开柜和业务记录。'}
+        {errorMsg && state === 'failed' ? errorMsg : '认证通过后，请员工确认身份再继续操作。'}
       </p>
 
       {canUseManualAuth && (
@@ -316,6 +337,67 @@ export const FaceAuth = memo(function FaceAuth({ onAuthenticated }: FaceAuthProp
           </div>
         </div>
       )}
+
+      <Dialog open={Boolean(pendingOperator)} onOpenChange={open => { if (!open) cancelOperatorConfirm() }}>
+        <DialogContent className="max-w-[460px] border-0 p-0">
+          <DialogHeader
+            className="border-b-0 px-6 py-5"
+            style={{
+              background: 'linear-gradient(135deg, #ecfeff 0%, #f0f9ff 58%, #fff7ed 100%)',
+              color: '#0f172a',
+              boxShadow: 'inset 0 -1px 0 rgba(20,184,166,0.16)',
+            }}
+          >
+            <div
+              className="mb-3 flex size-14 items-center justify-center rounded-lg"
+              style={{ background: 'linear-gradient(145deg, #14b8a6, #0d9488)', color: '#ffffff' }}
+            >
+              <CheckCircle2 className="size-8" />
+            </div>
+            <DialogTitle className="pr-10 text-2xl" style={{ color: '#0f172a' }}>
+              确认员工身份
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-5" style={{ backgroundColor: '#eefbff', color: '#0f172a' }}>
+            <div
+              className="rounded-lg bg-white p-5"
+              style={{ boxShadow: '0 18px 38px rgba(15,118,110,0.10), inset 0 1px 0 rgba(255,255,255,0.96)' }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex size-16 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: '#ccfbf1', color: '#0f766e' }}
+                >
+                  <IdCard className="size-8" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-bold" style={{ color: '#0f766e' }}>识别到员工</div>
+                  <div className="mt-1 truncate text-3xl font-black text-slate-950">
+                    {pendingOperator?.empName || '-'}
+                  </div>
+                  <div className="mt-2 text-base font-bold tabular-nums text-slate-600">
+                    工号：{pendingOperator?.empWorkNo || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="border-t-0 px-6 py-4" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
+            <Button variant="ghost" size="xl" disabled={confirmingOperator} onClick={cancelOperatorConfirm}>
+              取消
+            </Button>
+            <Button
+              size="xl"
+              className="btn-shine"
+              disabled={confirmingOperator}
+              style={{ background: 'linear-gradient(145deg, #14b8a6, #0d9488)', borderColor: '#0d9488', color: '#ffffff' }}
+              onClick={() => void confirmOperator()}
+            >
+              {confirmingOperator ? '处理中...' : '确认'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 })
