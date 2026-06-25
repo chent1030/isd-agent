@@ -46,6 +46,10 @@ export function bufferToHex(buffer: Buffer) {
     .join(' ')
 }
 
+function logLockDebug(message: string, extra?: Record<string, unknown>) {
+  console.info('[lock] %s%s', message, extra ? ` ${JSON.stringify(extra)}` : '')
+}
+
 function getLockStatusFromBoardSnapshot(frame: Buffer, lockNumber: number): OpenLockResult['status'] {
   if (!Number.isInteger(lockNumber) || lockNumber < 1 || lockNumber > 24) return 'unknown'
 
@@ -83,6 +87,10 @@ function sendLockCommand(
     const finish = (buffer: Buffer) => {
       if (completed) return
       completed = true
+      logLockDebug('completed response collection', {
+        totalLength: buffer.length,
+        totalHex: bufferToHex(buffer),
+      })
       socket.destroy()
       resolve(buffer)
     }
@@ -97,22 +105,40 @@ function sendLockCommand(
     socket.setTimeout(timeoutMs)
 
     socket.on('connect', () => {
+      logLockDebug('connected, sending command', {
+        host: env.lockServerIp,
+        port: env.lockServerPort,
+        commandHex: bufferToHex(commandBytes),
+      })
       socket.write(commandBytes)
     })
 
     socket.on('data', data => {
-      chunks.push(Buffer.isBuffer(data) ? data : Buffer.from(data))
+      const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data)
+      chunks.push(chunk)
       const response = Buffer.concat(chunks)
+      logLockDebug('received data', {
+        chunkLength: chunk.length,
+        chunkHex: bufferToHex(chunk),
+        totalLength: response.length,
+        totalHex: bufferToHex(response),
+      })
       if (!options.isComplete || options.isComplete(response)) finish(response)
     })
 
     socket.on('timeout', () => {
       const response = Buffer.concat(chunks)
+      logLockDebug('socket timeout', {
+        timeoutMs,
+        totalLength: response.length,
+        totalHex: response.length > 0 ? bufferToHex(response) : '',
+      })
       if (response.length > 0) finish(response)
       else fail(new Error('锁控板连接超时，未收到响应'))
     })
 
     socket.on('error', error => {
+      logLockDebug('socket error', { message: error.message })
       fail(error)
     })
 
