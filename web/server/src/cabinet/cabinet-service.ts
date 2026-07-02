@@ -1,4 +1,4 @@
-import { env, normalizeOperator } from '../env.js'
+import { env, normalizeOperator, type StockDeductionMode } from '../env.js'
 import {
   type OperatorIdentity,
   type AvailableItem,
@@ -10,7 +10,7 @@ import {
   buildExpectedReturnTime,
   getPageRecords,
 } from './cabinet-api.js'
-import { openLock } from './lock-protocol.js'
+import { openLock, type OpenLockOptions } from './lock-protocol.js'
 import { normalizeBorrowRecordLocation } from '../shared/cabinet-record.js'
 
 export interface BorrowRecord {
@@ -51,6 +51,10 @@ export interface ItemActionResult {
   quantity: number
 }
 
+export function getStockDeductionLockOptions(mode: StockDeductionMode = env.stockDeductionMode): OpenLockOptions {
+  return { waitForClose: mode !== 'door-open' }
+}
+
 /** 领用/借用：三步编排（plan → TCP 开柜 → 业务落库） */
 export async function executeItemAction(params: {
   action: 'receive' | 'borrow'
@@ -78,12 +82,12 @@ export async function executeItemAction(params: {
   }
 
   const doorResults = []
-  const waitForClose = env.stockDeductionMode !== 'door-open'
+  const lockOptions = getStockDeductionLockOptions()
   for (const location of locations) {
     doorResults.push(await openLock({
       cabinetNo: location.cabinetNo,
       slotNo: location.slotNo,
-    }, { waitForClose }))
+    }, lockOptions))
   }
 
   const endpoint = params.action === 'receive' ? '/cabinet/item/receive' : '/cabinet/item/operate/borrow'
@@ -201,7 +205,7 @@ export async function returnBorrowRecord(params: {
   await openLock({
     cabinetNo: returnLocation.cabinetNo,
     slotNo: returnLocation.slotNo,
-  })
+  }, getStockDeductionLockOptions())
 
   const quantity = Math.max(Number.parseInt(String(params.quantity ?? 1), 10) || 1, 1)
   return requestCabinet('/cabinet/borrow/return', undefined, safeOperator, {
