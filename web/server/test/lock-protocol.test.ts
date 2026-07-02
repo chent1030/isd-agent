@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseOpenLockResponse, parseOpenLockResponses } from '../src/cabinet/lock-protocol.js'
+import {
+  isOpenLockResponseComplete,
+  parseOpenLockResponse,
+  parseOpenLockResponses,
+} from '../src/cabinet/lock-protocol.js'
 
 test('keeps business flow alive when lock board ack command differs after opening', () => {
   const response = Buffer.from([
@@ -50,6 +54,35 @@ test('parses open then closed status frames from the same connection', () => {
 
   assert.deepEqual(results.map(result => result.status), ['open', 'closed'])
   assert.equal(parseOpenLockResponse(response, 0x02, 0x03).status, 'closed')
+})
+
+test('treats an open response as complete when close waiting is disabled', () => {
+  const response = Buffer.from([
+    0x73, 0x74, 0x61, 0x72,
+    0x9a, 0x02, 0x03, 0x11, 0x8a,
+    0x65, 0x6e, 0x64, 0x6f,
+  ])
+
+  assert.equal(isOpenLockResponseComplete(response, 0x02, 0x03, false), true)
+})
+
+test('requires open then closed response when close waiting is enabled', () => {
+  const openOnly = Buffer.from([
+    0x73, 0x74, 0x61, 0x72,
+    0x9a, 0x02, 0x03, 0x11, 0x8a,
+    0x65, 0x6e, 0x64, 0x6f,
+  ])
+  const openThenClosed = Buffer.concat([
+    openOnly,
+    Buffer.from([
+      0x73, 0x74, 0x61, 0x72,
+      0x9a, 0x02, 0x03, 0x00, 0x99,
+      0x65, 0x6e, 0x64, 0x6f,
+    ]),
+  ])
+
+  assert.equal(isOpenLockResponseComplete(openOnly, 0x02, 0x03, true), false)
+  assert.equal(isOpenLockResponseComplete(openThenClosed, 0x02, 0x03, true), true)
 })
 
 test('parses 0x60 lock status frames as open and closed states', () => {

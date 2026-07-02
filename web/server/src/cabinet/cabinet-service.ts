@@ -78,11 +78,12 @@ export async function executeItemAction(params: {
   }
 
   const doorResults = []
+  const waitForClose = env.stockDeductionMode !== 'door-open'
   for (const location of locations) {
     doorResults.push(await openLock({
       cabinetNo: location.cabinetNo,
       slotNo: location.slotNo,
-    }))
+    }, { waitForClose }))
   }
 
   const endpoint = params.action === 'receive' ? '/cabinet/item/receive' : '/cabinet/item/operate/borrow'

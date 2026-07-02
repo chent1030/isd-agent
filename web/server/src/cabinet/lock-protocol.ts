@@ -16,6 +16,10 @@ export interface LockTarget {
   slotNo: number
 }
 
+export interface OpenLockOptions {
+  waitForClose?: boolean
+}
+
 export interface OpenLockResult {
   boardAddr: number
   lockNumber: number
@@ -68,6 +72,16 @@ function hasOpenThenClosed(results: OpenLockResult[]) {
     if (sawOpen && result.status === 'closed') return true
   }
   return false
+}
+
+export function isOpenLockResponseComplete(
+  response: Buffer,
+  boardAddr: number,
+  lockNumber: number,
+  waitForClose = true,
+) {
+  const results = parseOpenLockResponses(response, boardAddr, lockNumber)
+  return waitForClose ? hasOpenThenClosed(results) : results.length > 0
 }
 
 function sendLockCommand(
@@ -240,16 +254,17 @@ function parseHardwareByte(value: unknown, fieldName: string) {
   return validateHardwareByte(parsed, fieldName, value)
 }
 
-export async function openLock(target: LockTarget): Promise<OpenLockResult> {
+export async function openLock(target: LockTarget, options: OpenLockOptions = {}): Promise<OpenLockResult> {
+  const waitForClose = options.waitForClose ?? true
   const boardAddr = parseHardwareByte(target.cabinetNo, '柜号')
   const lockNumber = parseHardwareByte(target.slotNo, '格口号')
   const response = await sendLockCommand(
     buildOpenLockCommand(boardAddr, lockNumber),
     {
-      timeoutMs: DOOR_CLOSE_TIMEOUT_MS,
+      timeoutMs: waitForClose ? DOOR_CLOSE_TIMEOUT_MS : LOCK_RESPONSE_TIMEOUT_MS,
       isComplete: currentResponse => {
         try {
-          return hasOpenThenClosed(parseOpenLockResponses(currentResponse, boardAddr, lockNumber))
+          return isOpenLockResponseComplete(currentResponse, boardAddr, lockNumber, waitForClose)
         } catch {
           return false
         }
@@ -260,7 +275,7 @@ export async function openLock(target: LockTarget): Promise<OpenLockResult> {
   if (result.warning) {
     console.warn('[lock] %s; response=%s', result.warning, result.rawResponseHex)
   }
-  if (!hasOpenThenClosed(parseOpenLockResponses(response, boardAddr, lockNumber))) {
+  if (waitForClose && !isOpenLockResponseComplete(response, boardAddr, lockNumber, true)) {
     throw new Error(`柜门未关闭，已等待 ${Math.round(DOOR_CLOSE_TIMEOUT_MS / 1000)} 秒`)
   }
   return result

@@ -33,6 +33,21 @@ const DEFAULT_LOCK_SERVER_PORT = 10123
 const DEFAULT_TWIN_LEFT_CABINET_NO = '1'
 const DEFAULT_TWIN_RIGHT_CABINET_NO = '2'
 const DEFAULT_IDLE_TIMEOUT_MINUTES = 5
+const DEFAULT_STOCK_DEDUCTION_MODE = 'door-close'
+
+export type StockDeductionMode = 'door-close' | 'door-open'
+
+export function normalizeStockDeductionMode(value: unknown): StockDeductionMode {
+  const mode = String(value ?? '').trim().toLowerCase()
+  if (mode === 'door-open' || mode === 'open') return 'door-open'
+  if (mode === 'door-close' || mode === 'close' || mode === '') return DEFAULT_STOCK_DEDUCTION_MODE
+  console.warn(
+    '[config] Unsupported CABINET_STOCK_DEDUCTION_MODE=%s, falling back to %s',
+    value,
+    DEFAULT_STOCK_DEDUCTION_MODE,
+  )
+  return DEFAULT_STOCK_DEDUCTION_MODE
+}
 
 export const env = {
   port: toNumber(process.env.PORT, 3000),
@@ -59,6 +74,7 @@ export const env = {
     const value = toNumber(firstDefined(process.env.CABINET_LOCK_SERVER_PORT, process.env.CABINET_SERVER_PORT), DEFAULT_LOCK_SERVER_PORT)
     return value > 0 ? value : DEFAULT_LOCK_SERVER_PORT
   })(),
+  stockDeductionMode: normalizeStockDeductionMode(process.env.CABINET_STOCK_DEDUCTION_MODE),
 
   twinLeftCabinetNo: String(firstDefined(process.env.CABINET_TWIN_LEFT_CABINET_NO, process.env.CABINET_LEFT_CABINET_NO) || DEFAULT_TWIN_LEFT_CABINET_NO).trim(),
   twinRightCabinetNo: String(firstDefined(process.env.CABINET_TWIN_RIGHT_CABINET_NO, process.env.CABINET_RIGHT_CABINET_NO) || DEFAULT_TWIN_RIGHT_CABINET_NO).trim(),
